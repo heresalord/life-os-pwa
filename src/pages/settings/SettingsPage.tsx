@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useUserSettings } from '../../hooks/useUserSettings'
@@ -11,7 +10,6 @@ import { Settings, LogOut, Download, AlertTriangle, User } from 'lucide-react'
 export function SettingsPage() {
   const { user } = useAuth()
   const { data: settings, upsert } = useUserSettings()
-  const navigate = useNavigate()
   
   const [budget, setBudget] = useState(settings?.daily_budget?.toString() || '100')
   const [currency, setCurrency] = useState(settings?.currency || 'USD')

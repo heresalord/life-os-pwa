@@ -5,21 +5,7 @@ import Papa from 'papaparse'
 export async function exportAllDataToCSV() {
   const tables = ['tasks', 'transactions', 'notes', 'inbox_items', 'books', 'goals', 'agenda_blocks', 'daily_records'] as const
   
-  const zipData: Record<string, string> = {}
-
-  for (const t of tables) {
-    const data = await db[t].toArray()
-    if (data.length > 0) {
-      zipData[`${t}.csv`] = Papa.unparse(data)
-    }
-  }
-
-  // To keep it simple without adding JSZip dependency, we'll download them one by one
-  // or combine them into a JSON if CSV isn't strictly required for all.
-  // The spec says "CSV export", so let's trigger downloads sequentially or generate a JSON.
-  // Let's generate a full JSON export for backup, and CSVs for specific analytical tables.
-  
-  const fullJson = {}
+  const fullJson: Record<string, unknown[]> = {}
   for (const t of tables) {
     fullJson[t] = await db[t].toArray()
   }
