@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { displayDate } from '../../lib/dateUtils'
 import { InboxFAB } from '../inbox/InboxFAB'
+import { InstallBanner } from './InstallBanner'
 import clsx from 'clsx'
 
 const primaryNav = [
@@ -125,6 +126,7 @@ export function AppShell({ children }: AppShellProps) {
       </main>
 
       <InboxFAB />
+      <InstallBanner />
 
       <nav
         className="fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-border"
