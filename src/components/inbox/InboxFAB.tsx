@@ -1,10 +1,7 @@
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
-import { useAppStore } from '../../store/useAppStore'
-import { getUserLocalDate } from '../../lib/dateUtils'
 import { enqueueSync } from '../../db/syncQueue'
 import { db } from '../../db'
 
@@ -16,7 +13,6 @@ export function InboxFAB() {
   const [type, setType] = useState<typeof TYPES[number]>('thought')
   const [saving, setSaving] = useState(false)
   const { user } = useAuth()
-  const { timezone } = useAppStore()
 
   const handleCapture = async () => {
     if (!text.trim() || !user) return
@@ -34,9 +30,7 @@ export function InboxFAB() {
       captured_at: new Date().toISOString(),
     }
 
-    // Write to IndexedDB immediately (offline-first)
-    await db.inbox_items.add(item as any)
-    // Queue Supabase sync
+    await db.inbox_items.add(item as Parameters<typeof db.inbox_items.add>[0])
     await enqueueSync('inbox_items', 'insert', item)
 
     setText('')
@@ -47,7 +41,6 @@ export function InboxFAB() {
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      {/* FAB trigger — sits just above bottom nav */}
       <Dialog.Trigger asChild>
         <button
           id="inbox-fab"
@@ -65,7 +58,6 @@ export function InboxFAB() {
           className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-8 sm:w-full sm:max-w-md sm:rounded-2xl sm:border"
           style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
         >
-          {/* Handle bar (mobile) */}
           <div className="w-10 h-1 rounded-full bg-border mx-auto mb-5 sm:hidden" />
 
           <div className="flex items-center justify-between mb-4">
@@ -75,16 +67,13 @@ export function InboxFAB() {
             </Dialog.Close>
           </div>
 
-          {/* Type chips */}
           <div className="flex gap-2 flex-wrap mb-4">
             {TYPES.map(t => (
               <button
                 key={t}
                 onClick={() => setType(t)}
                 className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-                  type === t
-                    ? 'bg-accent text-bg'
-                    : 'bg-surface-2 text-text-secondary hover:bg-muted'
+                  type === t ? 'bg-accent text-bg' : 'bg-surface-2 text-text-secondary hover:bg-muted'
                 }`}
               >
                 {t}
@@ -92,14 +81,11 @@ export function InboxFAB() {
             ))}
           </div>
 
-          {/* Text input */}
           <textarea
             autoFocus
             value={text}
             onChange={e => setText(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleCapture()
-            }}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleCapture() }}
             placeholder="What's on your mind?"
             rows={3}
             className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none resize-none transition-colors text-sm"

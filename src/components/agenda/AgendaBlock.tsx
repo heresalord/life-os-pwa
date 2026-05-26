@@ -1,24 +1,7 @@
-
-import React, { useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { AgendaBlock as AgendaBlockType } from '../../db/schema'
 import clsx from 'clsx'
-
-const TYPE_COLORS: Record<string, string> = {
-  focus: 'border-l-accent bg-accent/10',
-  meeting: 'border-l-info bg-info/10',
-  routine: 'border-l-success bg-success/10',
-  break: 'border-l-warning bg-warning/10',
-  other: 'border-l-text-muted bg-surface-2'
-}
-
-const TYPE_TEXT_COLORS: Record<string, string> = {
-  focus: 'text-accent',
-  meeting: 'text-info',
-  routine: 'text-success',
-  break: 'text-warning',
-  other: 'text-text-muted'
-}
 
 export function AgendaBlock({ block, onDelete }: { block: AgendaBlockType, onDelete: (id: string) => void }) {
   const [swiped, setSwiped] = useState(false)
@@ -31,9 +14,8 @@ export function AgendaBlock({ block, onDelete }: { block: AgendaBlockType, onDel
     if (diff > 50) setSwiped(true)
     if (diff < -50) setSwiped(false)
   }
-  const handleTouchEnd = () => touchStartX.current = null
+  const handleTouchEnd = () => { touchStartX.current = null }
 
-  // Format time e.g., 09:00:00 -> 9:00 AM
   const formatTime = (t: string) => {
     const [h, m] = t.split(':')
     const hr = parseInt(h)
@@ -42,13 +24,24 @@ export function AgendaBlock({ block, onDelete }: { block: AgendaBlockType, onDel
     return `${hr12}:${m} ${ampm}`
   }
 
-  const colorClass = TYPE_COLORS[block.type || 'other'] || TYPE_COLORS.other
-  const textClass = TYPE_TEXT_COLORS[block.type || 'other'] || TYPE_TEXT_COLORS.other
+  // Calculate duration in minutes
+  const getDuration = () => {
+    const [sh, sm] = block.start_time.split(':').map(Number)
+    const [eh, em] = block.end_time.split(':').map(Number)
+    const mins = (eh * 60 + em) - (sh * 60 + sm)
+    if (mins < 60) return `${mins}m`
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    return m > 0 ? `${h}h ${m}m` : `${h}h`
+  }
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-border group">
       <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
-        <button onClick={() => onDelete(block.id)} className="p-2 text-danger hover:bg-danger/10 rounded-full transition-colors">
+        <button
+          onClick={() => onDelete(block.id)}
+          className="p-2 text-danger hover:bg-danger/10 rounded-full transition-colors"
+        >
           <Trash2 size={18} />
         </button>
       </div>
@@ -58,8 +51,7 @@ export function AgendaBlock({ block, onDelete }: { block: AgendaBlockType, onDel
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={clsx(
-          "relative flex items-center p-3 transition-transform duration-200 ease-out border-l-4",
-          colorClass,
+          "relative flex items-center p-3 bg-surface transition-transform duration-200 ease-out border-l-4 border-l-accent",
           swiped ? "-translate-x-16" : "translate-x-0"
         )}
       >
@@ -69,8 +61,8 @@ export function AgendaBlock({ block, onDelete }: { block: AgendaBlockType, onDel
         </div>
 
         <div className="flex flex-col min-w-0 flex-1">
-          <span className="text-sm font-medium text-text truncate">{block.title}</span>
-          <span className={clsx("text-xs capitalize font-medium mt-0.5", textClass)}>{block.type}</span>
+          <span className="text-sm font-medium text-text truncate">{block.description}</span>
+          <span className="text-xs text-text-muted mt-0.5">{getDuration()}</span>
         </div>
       </div>
     </div>

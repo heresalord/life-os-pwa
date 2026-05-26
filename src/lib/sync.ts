@@ -2,6 +2,9 @@ import { db } from '../db'
 import { supabase } from './supabase'
 import { useSyncStore } from '../store/useSyncStore'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabaseAny = supabase as any
+
 let isSyncing = false
 
 export const processSyncQueue = async () => {
@@ -14,18 +17,18 @@ export const processSyncQueue = async () => {
     useSyncStore.getState().setPendingCount(queue.length)
 
     for (const item of queue) {
-      if (item.retries >= 5) continue // Skip items that have failed too many times
-      
+      if (item.retries >= 5) continue
+
       let success = false
       try {
         if (item.operation === 'insert') {
-          const { error } = await supabase.from(item.table as any).insert(item.payload)
+          const { error } = await supabaseAny.from(item.table).insert([item.payload])
           if (!error) success = true
         } else if (item.operation === 'update') {
-          const { error } = await supabase.from(item.table as any).update(item.payload).eq('id', item.payload.id)
+          const { error } = await supabaseAny.from(item.table).update(item.payload).eq('id', item.payload.id)
           if (!error) success = true
         } else if (item.operation === 'delete') {
-          const { error } = await supabase.from(item.table as any).delete().eq('id', item.payload.id)
+          const { error } = await supabaseAny.from(item.table).delete().eq('id', item.payload.id)
           if (!error) success = true
         }
       } catch (err) {
@@ -38,11 +41,10 @@ export const processSyncQueue = async () => {
         await db.sync_queue.update(item.id, { retries: item.retries + 1 })
       }
     }
-    
-    // Update pending count after sync attempt
+
     const remaining = await db.sync_queue.where('synced').equals(0).count()
     useSyncStore.getState().setPendingCount(remaining)
-    
+
   } finally {
     isSyncing = false
     useSyncStore.getState().setIsSyncing(false)

@@ -1,33 +1,24 @@
-import { supabase } from '../lib/supabase'
+import { supabase, db } from '../lib/supabase'
 import type { Database } from '../types/database'
 
-export type UsersettingsRow = Database['public']['Tables']['user_settings']['Row']
-export type UsersettingsInsert = Database['public']['Tables']['user_settings']['Insert']
-export type UsersettingsUpdate = Database['public']['Tables']['user_settings']['Update']
+export type UserSettingsRow    = Database['public']['Tables']['user_settings']['Row']
+export type UserSettingsInsert = Database['public']['Tables']['user_settings']['Insert']
+export type UserSettingsUpdate = Database['public']['Tables']['user_settings']['Update']
 
 export const userSettingsApi = {
-  async fetchAll() {
-    const { data, error } = await supabase.from('user_settings').select('*')
+  async fetchByUserId(userId: string): Promise<UserSettingsRow | null> {
+    const { data, error } = await supabase.from('user_settings').select('*').eq('user_id', userId).maybeSingle()
     if (error) throw error
     return data
   },
-  async fetchById(id: string) {
-    const { data, error } = await supabase.from('user_settings').select('*').eq('id', id).single()
+  async upsert(payload: UserSettingsInsert): Promise<UserSettingsRow> {
+    const { data, error } = await db.from('user_settings').upsert(payload, { onConflict: 'user_id' }).select().single()
     if (error) throw error
     return data
   },
-  async create(payload: UsersettingsInsert) {
-    const { data, error } = await supabase.from('user_settings').insert(payload).select().single()
+  async update(userId: string, payload: UserSettingsUpdate): Promise<UserSettingsRow> {
+    const { data, error } = await db.from('user_settings').update(payload).eq('user_id', userId).select().single()
     if (error) throw error
     return data
-  },
-  async update(id: string, payload: UsersettingsUpdate) {
-    const { data, error } = await supabase.from('user_settings').update(payload).eq('id', id).select().single()
-    if (error) throw error
-    return data
-  },
-  async remove(id: string) {
-    const { error } = await supabase.from('user_settings').delete().eq('id', id)
-    if (error) throw error
   }
 }

@@ -1,11 +1,8 @@
-
-import { CheckSquare, Check } from 'lucide-react'
+import { CheckSquare } from 'lucide-react'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
 import { useDailyRecord } from '../../hooks/useDailyRecord'
 import { useAppStore } from '../../store/useAppStore'
 import { EmptyState } from '../EmptyState'
-
-const MOOD_EMOJI = ['', '😶','😕','😐','🙂','😊']
 
 export function FocusTasksPanel() {
   const { selectedDate } = useAppStore()
@@ -18,14 +15,12 @@ export function FocusTasksPanel() {
 
   return (
     <div className="bg-surface border border-border rounded-2xl p-4 space-y-3">
-      {/* Intent */}
       {record?.intent ? (
         <p className="text-sm text-accent italic">"{record.intent}"</p>
       ) : (
         <p className="text-xs text-text-muted">No intent set for today</p>
       )}
 
-      {/* Task progress */}
       {tasks.length > 0 && (
         <div>
           <div className="flex justify-between text-xs text-text-muted mb-1">
@@ -38,7 +33,6 @@ export function FocusTasksPanel() {
         </div>
       )}
 
-      {/* Task list */}
       {pending.length === 0 ? (
         <EmptyState icon={<CheckSquare size={28} />} title="All clear!" message="No pending tasks for today." />
       ) : (

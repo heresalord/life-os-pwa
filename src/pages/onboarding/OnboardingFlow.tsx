@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
+import { userSettingsApi } from '../../api/userSettings'
+import { userProfilesApi } from '../../api/userProfiles'
 
 export function OnboardingFlow() {
   const { user, profile, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const setStoreTimezone = useAppStore(state => state.setTimezone)
-  
+
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
-  
-  // Form State
+
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
   const [currency, setCurrency] = useState('USD')
@@ -20,7 +20,6 @@ export function OnboardingFlow() {
   const [morningTime, setMorningTime] = useState('07:00')
   const [nightTime, setNightTime] = useState('21:00')
 
-  // Set name if available from profile
   useEffect(() => {
     if (profile?.display_name && !name) setName(profile.display_name)
   }, [profile])
@@ -28,30 +27,29 @@ export function OnboardingFlow() {
   const handleComplete = async () => {
     if (!user) return
     setLoading(true)
-    
-    // 1. Create settings
-    await supabase.from('user_settings').insert({
-      user_id: user.id,
-      currency,
-      daily_budget: parseFloat(budget),
-      morning_reminder_time: morningTime,
-      night_reminder_time: nightTime,
-      notifications_enabled: false // Will prompt later in phase 17
-    })
-    
-    // 2. Update profile
-    await supabase.from('user_profiles').update({
-      display_name: name,
-      timezone,
-      onboarded: true
-    }).eq('id', user.id)
-
-    setStoreTimezone(timezone)
-    await refreshProfile()
-    navigate('/')
+    try {
+      await userSettingsApi.upsert({
+        user_id: user.id,
+        currency,
+        daily_budget: parseFloat(budget),
+        morning_reminder_time: morningTime,
+        night_reminder_time: nightTime,
+        notifications_enabled: false,
+      })
+      await userProfilesApi.update(user.id, {
+        display_name: name,
+        timezone,
+        onboarded: true,
+      })
+      setStoreTimezone(timezone)
+      await refreshProfile()
+      navigate('/')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-4">
@@ -62,7 +60,7 @@ export function OnboardingFlow() {
             <span className="text-text-muted text-sm">Step {step} of 5</span>
           </div>
           <div className="w-full bg-surface-2 rounded-full h-2">
-            <div className="bg-accent h-2 rounded-full transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }}></div>
+            <div className="bg-accent h-2 rounded-full transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }} />
           </div>
         </div>
 
@@ -109,7 +107,7 @@ export function OnboardingFlow() {
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-text-muted mb-1">Daily Budget</label>
-                  <input type="number" value={budget} onChange={e => setBudget(e.target.value)} min="0" step="1"
+                  <input type="number" value={budget} onChange={e => setBudget(e.target.value)} min="0"
                     className="w-full bg-surface-2 border border-border rounded-md px-4 py-3 text-text focus:border-accent focus:outline-none" />
                 </div>
               </div>
@@ -132,8 +130,7 @@ export function OnboardingFlow() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setStep(3)} className="flex-1 bg-surface-2 text-text font-medium rounded-md py-3 hover:bg-muted">Back</button>
-              <button onClick={() => setStep(5)}
-                className="flex-[2] bg-accent text-bg font-medium rounded-md py-3 hover:bg-accent-dim">Continue</button>
+              <button onClick={() => setStep(5)} className="flex-[2] bg-accent text-bg font-medium rounded-md py-3 hover:bg-accent-dim">Continue</button>
             </div>
           </div>
         )}
@@ -146,14 +143,12 @@ export function OnboardingFlow() {
               <input type="time" value={nightTime} onChange={e => setNightTime(e.target.value)}
                 className="w-full bg-surface-2 border border-border rounded-md px-4 py-3 text-text focus:border-accent focus:outline-none text-xl text-center" />
             </div>
-            
             {isIOS && (
               <div className="bg-info/10 border border-info/30 p-4 rounded-md">
                 <p className="text-info text-sm font-medium">Using an iPhone/iPad?</p>
-                <p className="text-info/80 text-xs mt-1">Tap the Share button below and select <b>"Add to Home Screen"</b> for the best app experience and push notifications.</p>
+                <p className="text-info/80 text-xs mt-1">Tap Share → <b>"Add to Home Screen"</b> for the best experience and push notifications.</p>
               </div>
             )}
-
             <div className="flex gap-3 mt-8">
               <button onClick={() => setStep(4)} className="flex-1 bg-surface-2 text-text font-medium rounded-md py-3 hover:bg-muted">Back</button>
               <button onClick={handleComplete} disabled={loading}

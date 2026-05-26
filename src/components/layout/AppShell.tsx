@@ -2,7 +2,7 @@ import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
-  CalendarDays, Inbox, FileText, Search, Settings, Plus, X
+  CalendarDays, Inbox, FileText, Search, Settings, X
 } from 'lucide-react'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,17 +12,17 @@ import { InboxFAB } from '../inbox/InboxFAB'
 import clsx from 'clsx'
 
 const primaryNav = [
-  { to: '/',          icon: LayoutDashboard, label: 'Home'    },
-  { to: '/tasks',     icon: CheckSquare,     label: 'Tasks'   },
-  { to: '/finance',   icon: DollarSign,      label: 'Finance' },
-  { to: '/goals',     icon: Target,          label: 'Goals'   },
-  { to: '/books',     icon: BookOpen,        label: 'Books'   },
+  { to: '/',        icon: LayoutDashboard, label: 'Home'    },
+  { to: '/tasks',   icon: CheckSquare,     label: 'Tasks'   },
+  { to: '/finance', icon: DollarSign,      label: 'Finance' },
+  { to: '/goals',   icon: Target,          label: 'Goals'   },
+  { to: '/books',   icon: BookOpen,        label: 'Books'   },
 ]
 
 const secondaryNav = [
-  { to: '/agenda',  icon: CalendarDays, label: 'Agenda'  },
-  { to: '/inbox',   icon: Inbox,        label: 'Inbox'   },
-  { to: '/notes',   icon: FileText,     label: 'Notes'   },
+  { to: '/agenda', icon: CalendarDays, label: 'Agenda' },
+  { to: '/inbox',  icon: Inbox,        label: 'Inbox'  },
+  { to: '/notes',  icon: FileText,     label: 'Notes'  },
 ]
 
 interface AppShellProps {
@@ -43,11 +43,8 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="flex flex-col min-h-screen bg-bg">
-
-      {/* ── Top Header ─────────────────────────────────────── */}
       <header className="sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-          {/* Left: wordmark + date */}
           <div className="flex flex-col leading-tight">
             <span className="text-xs text-text-muted font-body uppercase tracking-widest">Life OS</span>
             <span className="text-sm text-text font-medium">
@@ -55,11 +52,9 @@ export function AppShell({ children }: AppShellProps) {
             </span>
           </div>
 
-          {/* Right: sync dot, search, avatar */}
           <div className="flex items-center gap-3">
             <SyncStatusDot />
             <button
-              id="header-search-btn"
               onClick={() => navigate('/search')}
               className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors"
               aria-label="Search"
@@ -67,10 +62,8 @@ export function AppShell({ children }: AppShellProps) {
               <Search size={18} />
             </button>
 
-            {/* Avatar / menu */}
             <div className="relative">
               <button
-                id="header-avatar-btn"
                 onClick={() => setMenuOpen(v => !v)}
                 className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-medium hover:bg-accent/30 transition-colors"
               >
@@ -113,7 +106,6 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </header>
 
-      {/* ── Time Travel Banner ─────────────────────────────── */}
       {isTimeTravel && (
         <div className="bg-timetravel/15 border-b border-timetravel/30 px-4 py-2 flex items-center justify-between">
           <span className="text-xs text-timetravel font-medium">
@@ -128,15 +120,12 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       )}
 
-      {/* ── Page Content ───────────────────────────────────── */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-28">
         {children}
       </main>
 
-      {/* ── Floating Action Button ─────────────────────────── */}
       <InboxFAB />
 
-      {/* ── Bottom Nav (mobile-first) ──────────────────────── */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -147,14 +136,9 @@ export function AppShell({ children }: AppShellProps) {
               key={to}
               to={to}
               end={to === '/'}
-              id={`nav-${label.toLowerCase()}`}
               className={({ isActive }) =>
-                clsx(
-                  'flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all',
-                  isActive
-                    ? 'text-accent'
-                    : 'text-text-muted hover:text-text-secondary'
-                )
+                clsx('flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all',
+                  isActive ? 'text-accent' : 'text-text-muted hover:text-text-secondary')
               }
             >
               {({ isActive }) => (

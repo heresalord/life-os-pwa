@@ -1,10 +1,11 @@
 import { create } from 'zustand'
 import { getUserLocalDate } from '../lib/dateUtils'
 
-interface AppState {
+export interface AppState {
   selectedDate: string
   timezone: string
   setSelectedDate: (date: string) => void
+  setDate: (date: string) => void  // alias used by some pages
   setTimezone: (tz: string) => void
   resetToToday: () => void
 }
@@ -15,10 +16,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   timezone: defaultTimezone,
   selectedDate: getUserLocalDate(defaultTimezone),
   setSelectedDate: (date) => set({ selectedDate: date }),
-  setTimezone: (tz) => {
-    set({ timezone: tz })
-    // Only update date if it was originally matching today in the old timezone
-    // For simplicity, we just keep the currently selected string date.
-  },
+  setDate: (date) => set({ selectedDate: date }),
+  setTimezone: (tz) => set({ timezone: tz }),
   resetToToday: () => set({ selectedDate: getUserLocalDate(get().timezone) })
 }))
