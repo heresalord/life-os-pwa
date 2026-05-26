@@ -1,30 +1,49 @@
+import { WifiOff, RefreshCw, CheckCheck } from 'lucide-react'
 import { useSyncStore } from '../store/useSyncStore'
-import clsx from 'clsx'
+import { processSyncQueue } from '../lib/sync'
+import { useState } from 'react'
 
 export function SyncStatusDot() {
   const { isOnline, isSyncing, pendingCount } = useSyncStore()
+  const [showTip, setShowTip] = useState(false)
 
-  let colorClass = 'bg-gray-500' // Offline
-  let title = 'Offline'
-
-  if (isOnline) {
-    if (isSyncing) {
-      colorClass = 'bg-yellow-500 animate-pulse'
-      title = 'Syncing...'
-    } else if (pendingCount > 0) {
-      colorClass = 'bg-yellow-500'
-      title = `${pendingCount} items pending sync`
-    } else {
-      colorClass = 'bg-green-500'
-      title = 'Synced'
+  const handleClick = () => {
+    if (isOnline && pendingCount > 0 && !isSyncing) {
+      processSyncQueue()
     }
+    setShowTip(v => !v)
+    setTimeout(() => setShowTip(false), 2500)
   }
 
+  const state = !isOnline
+    ? { icon: WifiOff, color: 'text-text-muted', label: 'Offline — changes saved locally' }
+    : isSyncing
+    ? { icon: RefreshCw, color: 'text-warning', label: 'Syncing…' }
+    : pendingCount > 0
+    ? { icon: RefreshCw, color: 'text-warning', label: `${pendingCount} change${pendingCount > 1 ? 's' : ''} waiting — tap to sync` }
+    : { icon: CheckCheck, color: 'text-success', label: 'All changes saved' }
+
+  const Icon = state.icon
+
   return (
-    <div 
-      className={clsx("w-2 h-2 rounded-full", colorClass)} 
-      title={title}
-      aria-label={title}
-    />
+    <div className="relative">
+      <button
+        onClick={handleClick}
+        aria-label={state.label}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors ${state.color}`}
+      >
+        <Icon size={14} className={isSyncing ? 'animate-spin' : ''} />
+        {pendingCount > 0 && isOnline && (
+          <span className="text-[10px] font-medium tabular-nums">{pendingCount}</span>
+        )}
+      </button>
+
+      {showTip && (
+        <div className="absolute right-0 top-9 z-50 whitespace-nowrap bg-surface border border-border rounded-lg px-3 py-2 text-xs text-text-secondary shadow-xl">
+          {state.label}
+          <div className="absolute -top-1.5 right-3 w-3 h-3 bg-surface border-l border-t border-border rotate-45" />
+        </div>
+      )}
+    </div>
   )
 }

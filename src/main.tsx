@@ -6,11 +6,15 @@ import './index.css'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { registerSW } from 'virtual:pwa-register'
+import { startSyncEngine } from './lib/sync'
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   registerSW({ immediate: true })
 }
+
+// Start background sync engine (polls every 30s, reacts to online/offline)
+startSyncEngine()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
