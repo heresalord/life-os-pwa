@@ -1,0 +1,8 @@
+  useEffect(() => {
+    if (user) {
+      supabaseAny.from('user_profiles').select('display_name').eq('id', user.id).single()
+        .then(({ data }: { data: { display_name: string } | null }) => {
+          if (data?.display_name) setDisplayName(data.display_name)
+        })
+    }
+  }, [user])

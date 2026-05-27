@@ -37,7 +37,7 @@ export function useGoalMutations() {
   })
 
   const addEvent = useMutation({
-    mutationFn: async (payload: { goal_id: string; date: string; value: number }) => {
+    mutationFn: async (payload: { goal_id: string; date: string; value: number; event_type?: 'add' | 'subtract' }) => {
       if (!user) return
       const event = {
         id: crypto.randomUUID(),
@@ -45,6 +45,7 @@ export function useGoalMutations() {
         goal_id: payload.goal_id,
         date: payload.date,
         value: payload.value,
+        event_type: payload.event_type ?? 'add',
         created_at: new Date().toISOString()
       }
       await db.goal_events.add(event as any)

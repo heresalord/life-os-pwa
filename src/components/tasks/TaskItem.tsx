@@ -1,7 +1,8 @@
 
 import React, { useRef, useState } from 'react'
-import { Check, X, RotateCw, Trash2 } from 'lucide-react'
+import { Check, X, RotateCw, Trash2, GripVertical } from 'lucide-react'
 import type { Task } from '../../db/schema'
+import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import clsx from 'clsx'
 
 interface TaskItemProps {
@@ -9,9 +10,10 @@ interface TaskItemProps {
   onToggleComplete: (id: string, current: boolean) => void
   onToggleSkip: (id: string, current: boolean) => void
   onDelete: (id: string) => void
+  dragHandleProps?: DraggableProvidedDragHandleProps | null
 }
 
-export function TaskItem({ task, onToggleComplete, onToggleSkip, onDelete }: TaskItemProps) {
+export function TaskItem({ task, onToggleComplete, onToggleSkip, onDelete, dragHandleProps }: TaskItemProps) {
   const [swiped, setSwiped] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
@@ -34,37 +36,51 @@ export function TaskItem({ task, onToggleComplete, onToggleSkip, onDelete }: Tas
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-surface border border-border group">
-      {/* Background action (Delete) visible on swipe */}
+      {/* Swipe background (Delete) */}
       <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
         <button onClick={() => onDelete(task.id)} className="p-2 text-danger hover:bg-danger/10 rounded-full transition-colors">
           <Trash2 size={18} />
         </button>
       </div>
 
-      {/* Foreground content */}
+      {/* Foreground */}
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={clsx(
-          "relative flex items-center gap-3 p-3 bg-surface transition-transform duration-200 ease-out",
-          swiped ? "-translate-x-16" : "translate-x-0"
+          'relative flex items-center gap-2 p-3 bg-surface transition-transform duration-200 ease-out',
+          swiped ? '-translate-x-16' : 'translate-x-0'
         )}
       >
+        {/* Drag handle — only shown for pending tasks */}
+        {isPending && dragHandleProps ? (
+          <div
+            {...dragHandleProps}
+            className="text-text-muted hover:text-text-secondary transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+          >
+            <GripVertical size={16} />
+          </div>
+        ) : (
+          <div className="w-4 flex-shrink-0" />
+        )}
+
+        {/* Checkbox */}
         <button
           onClick={() => onToggleComplete(task.id, task.completed)}
           className={clsx(
-            "w-5 h-5 rounded flex items-center justify-center border flex-shrink-0 transition-colors",
-            task.completed ? "bg-success border-success text-bg" : "border-border hover:border-text-muted text-transparent"
+            'w-5 h-5 rounded flex items-center justify-center border flex-shrink-0 transition-colors',
+            task.completed ? 'bg-success border-success text-bg' : 'border-border hover:border-text-muted text-transparent'
           )}
         >
           <Check size={14} strokeWidth={3} />
         </button>
 
+        {/* Title + meta */}
         <div className="flex flex-col min-w-0 flex-1">
           <span className={clsx(
-            "text-sm truncate transition-colors",
-            task.completed || task.skipped ? "text-text-muted line-through" : "text-text"
+            'text-sm truncate transition-colors',
+            task.completed || task.skipped ? 'text-text-muted line-through' : 'text-text'
           )}>
             {task.title}
           </span>
@@ -75,12 +91,14 @@ export function TaskItem({ task, onToggleComplete, onToggleSkip, onDelete }: Tas
           )}
         </div>
 
+        {/* Priority badge */}
         {task.priority && isPending && (
           <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-surface-2 text-text-secondary flex-shrink-0">
             P{task.priority}
           </span>
         )}
 
+        {/* Skip / Undo */}
         {isPending && (
           <button
             onClick={() => onToggleSkip(task.id, task.skipped)}
@@ -90,17 +108,17 @@ export function TaskItem({ task, onToggleComplete, onToggleSkip, onDelete }: Tas
             <X size={16} />
           </button>
         )}
-        
+
         {(task.completed || task.skipped) && (
-           <button
-             onClick={() => {
-               if(task.completed) onToggleComplete(task.id, true)
-               if(task.skipped) onToggleSkip(task.id, true)
-             }}
-             className="text-[10px] text-text-muted hover:text-text transition-colors border border-border px-2 py-1 rounded flex-shrink-0"
-           >
-             Undo
-           </button>
+          <button
+            onClick={() => {
+              if (task.completed) onToggleComplete(task.id, true)
+              if (task.skipped) onToggleSkip(task.id, true)
+            }}
+            className="text-[10px] text-text-muted hover:text-text transition-colors border border-border px-2 py-1 rounded flex-shrink-0"
+          >
+            Undo
+          </button>
         )}
       </div>
     </div>

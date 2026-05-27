@@ -10,6 +10,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { displayDate } from '../../lib/dateUtils'
 import { InboxFAB } from '../inbox/InboxFAB'
 import { InstallBanner } from './InstallBanner'
+import { useUserSettings } from '../../hooks/useUserSettings'
 import clsx from 'clsx'
 
 const primaryNav = [
@@ -36,21 +37,37 @@ export function AppShell({ children }: AppShellProps) {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = React.useState(false)
 
+  const { data: settings } = useUserSettings()
+
   const today = new Date().toLocaleDateString('en-CA', { timeZone: timezone })
   const isTimeTravel = selectedDate !== today
 
   const displayName = profile?.display_name || 'You'
   const initials = displayName.slice(0, 2).toUpperCase()
 
+  React.useEffect(() => {
+    if (settings?.theme) {
+      document.documentElement.dataset.theme = settings.theme
+    }
+  }, [settings?.theme])
+
   return (
     <div className="flex flex-col min-h-screen bg-bg">
       <header className="sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex flex-col leading-tight">
+          <div className="flex flex-col leading-tight relative group">
             <span className="text-xs text-text-muted font-body uppercase tracking-widest">Life OS</span>
-            <span className="text-sm text-text font-medium">
-              {displayDate(selectedDate, 'EEE, MMM d')}
-            </span>
+            <div className="relative">
+              <input 
+                type="date"
+                value={selectedDate}
+                onChange={(e) => useAppStore.getState().setSelectedDate(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+              />
+              <span className="text-sm text-text font-medium group-hover:text-accent transition-colors flex items-center gap-1">
+                {displayDate(selectedDate, 'EEE, MMM d')}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">

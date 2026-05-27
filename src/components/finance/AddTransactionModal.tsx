@@ -3,29 +3,44 @@ import React, { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Plus, X } from 'lucide-react'
 import { useTransactionMutations } from '../../hooks/useTransactionMutations'
+import { useUserSettings } from '../../hooks/useUserSettings'
 
-const CATEGORIES = {
+const DEFAULT_CATEGORIES = {
   expense: ['food', 'transport', 'housing', 'utilities', 'entertainment', 'shopping', 'health', 'other'],
   income: ['salary', 'freelance', 'investment', 'gift', 'other']
 }
 
 export function AddTransactionModal({ date }: { date: string }) {
+  const { data: settings } = useUserSettings()
+  const expCats = settings?.expense_categories?.length ? settings.expense_categories : DEFAULT_CATEGORIES.expense
+  const incCats = settings?.income_categories?.length ? settings.income_categories : DEFAULT_CATEGORIES.income
+
   const [open, setOpen] = useState(false)
   const [type, setType] = useState<'expense' | 'income'>('expense')
   const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState(CATEGORIES.expense[0])
+  const [fee, setFee] = useState('')
+  const [category, setCategory] = useState(expCats[0])
   const [description, setDescription] = useState('')
   
   const { addTransaction } = useTransactionMutations(date)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const val = parseFloat(amount)
+    let val = parseFloat(amount)
+    const feeVal = parseFloat(fee) || 0
     if (!val || val <= 0) return
+    
+    if (type === 'expense') {
+      val += feeVal
+    } else if (type === 'income') {
+      val -= feeVal
+      if (val < 0) val = 0
+    }
     
     addTransaction.mutate({ amount: val, type, category, description: description.trim(), date })
     
     setAmount('')
+    setFee('')
     setDescription('')
     setOpen(false)
   }
@@ -51,11 +66,11 @@ export function AddTransactionModal({ date }: { date: string }) {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Type Toggle */}
             <div className="flex p-1 bg-surface-2 rounded-lg">
-              <button type="button" onClick={() => { setType('expense'); setCategory(CATEGORIES.expense[0]) }}
+              <button type="button" onClick={() => { setType('expense'); setCategory(expCats[0]) }}
                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${type === 'expense' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
                 Expense
               </button>
-              <button type="button" onClick={() => { setType('income'); setCategory(CATEGORIES.income[0]) }}
+              <button type="button" onClick={() => { setType('income'); setCategory(incCats[0]) }}
                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${type === 'income' ? 'bg-success/20 text-success shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
                 Income
               </button>
@@ -80,6 +95,26 @@ export function AddTransactionModal({ date }: { date: string }) {
               </div>
             </div>
             
+            {/* Fee / Tax */}
+            <div>
+              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Fee / Tax (Optional)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-lg">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={fee}
+                  onChange={e => setFee(e.target.value)}
+                  className="w-full bg-surface-2 border border-border rounded-xl pl-8 pr-4 py-3 text-text text-lg placeholder-text-muted focus:border-accent focus:outline-none transition-colors"
+                />
+              </div>
+              <p className="text-[10px] text-text-muted mt-1 ml-1">
+                {type === 'expense' ? 'Added to the total expense.' : 'Deducted from the total income.'}
+              </p>
+            </div>
+            
             {/* Category */}
             <div>
               <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Category</label>
@@ -88,7 +123,10 @@ export function AddTransactionModal({ date }: { date: string }) {
                 onChange={e => setCategory(e.target.value)}
                 className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text capitalize focus:border-accent focus:outline-none transition-colors appearance-none"
               >
-                {CATEGORIES[type].map(c => <option key={c} value={c}>{c}</option>)}
+                {type === 'expense' 
+                  ? expCats.map(c => <option key={c} value={c}>{c}</option>)
+                  : incCats.map(c => <option key={c} value={c}>{c}</option>)
+                }
               </select>
             </div>
 
