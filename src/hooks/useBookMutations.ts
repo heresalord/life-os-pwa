@@ -1,15 +1,34 @@
-
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import { supabase as supa } from '../lib/supabase'
+const sbAny = supa as any
+
+type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
+
+async function writeBook(table: string, op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
+  if (navigator.onLine) {
+    let error = null
+    if (op === 'insert')       ({ error } = await sbAny.from(table).insert([payload]))
+    else if (op === 'update')  ({ error } = await sbAny.from(table).update(payload).eq('id', payload.id))
+    else                       ({ error } = await sbAny.from(table).delete().eq('id', payload.id))
+    if (error) await enqueueSync(table, op, payload)
+  } else {
+    await enqueueSync(table, op, payload)
+  }
+}
 
 export function useBookMutations() {
   const { user } = useAuth()
   const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['books'] })
 
   const addBook = useMutation({
-    mutationFn: async (payload: { title: string; author?: string; total_pages?: number; status: string }) => {
+    mutationFn: async (payload: {
+      title: string; author?: string; total_pages?: number; status: BookStatus
+    }) => {
       if (!user) return
       const book = {
         id: crypto.randomUUID(),
@@ -19,33 +38,38 @@ export function useBookMutations() {
         total_pages: payload.total_pages || null,
         current_page: 0,
         status: payload.status,
-        rating: null,
-        review: null,
-        finished_at: payload.status === 'completed' ? new Date().toISOString() : null,
-        created_at: new Date().toISOString()
+        reflection: null,
+        abandon_reason: null,
+        started_at: payload.status === 'reading' ? new Date().toISOString().split('T')[0] : null,
+        finished_at: payload.status === 'finished' ? new Date().toISOString().split('T')[0] : null,
+        tags: [],
+        added_at: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }
-      await db.books.add(book as any)
-      await enqueueSync('books', 'insert', book)
+      await db.books.add(book as Parameters<typeof db.books.add>[0])
+      await writeBook('books', 'insert', book)
       return book
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['books'] })
+    onSuccess: () => invalidate()
   })
 
   const updateBook = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
-      await db.books.update(id, updates)
+    mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
+      const withTimestamp = { ...updates, updated_at: new Date().toISOString() }
+      await db.books.update(id, withTimestamp)
       const updated = await db.books.get(id)
-      await enqueueSync('books', 'update', updated)
+      if (updated) await writeBook('books', 'update', updated as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['books'] })
+    onSuccess: () => invalidate()
   })
 
   const deleteBook = useMutation({
     mutationFn: async (id: string) => {
       await db.books.delete(id)
-      await enqueueSync('books', 'delete', { id })
+      await writeBook('books', 'delete', { id })
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['books'] })
+    onSuccess: () => invalidate()
   })
 
   return { addBook, updateBook, deleteBook }

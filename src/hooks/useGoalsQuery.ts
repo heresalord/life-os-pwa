@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
@@ -7,14 +6,20 @@ import { useAuth } from './useAuth'
 export function useGoalsQuery(state = 'active') {
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['goals', state],
+    queryKey: ['goals', state, user?.id],
     enabled: !!user,
+    staleTime: 0,
     queryFn: async () => {
-      const local = await db.goals.where('state').equals(state).toArray()
-      if (local.length) return local
-      const { data } = await supabase.from('goals').select('*').eq('user_id', user!.id).eq('state', state)
-      if (data?.length) await db.goals.bulkPut(data as any)
-      return data ?? []
+      if (navigator.onLine) {
+        const { data, error } = await supabase
+          .from('goals').select('*')
+          .eq('user_id', user!.id).eq('state', state)
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        if (data) await db.goals.bulkPut(data as Parameters<typeof db.goals.bulkPut>[0])
+        return data ?? []
+      }
+      return db.goals.where('state').equals(state).toArray()
     }
   })
 }

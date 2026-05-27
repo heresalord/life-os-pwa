@@ -1,19 +1,18 @@
-
 import { useGoalsQuery } from '../../hooks/useGoalsQuery'
 import { useBooksQuery } from '../../hooks/useBooksQuery'
 import { useDailyRecord } from '../../hooks/useDailyRecord'
 import { useAppStore } from '../../store/useAppStore'
 
-const MOOD_EMOJI = ['', '😶','😕','😐','🙂','😊']
-const MOOD_LABEL = ['', 'Low','Difficult','Okay','Good','Great']
+const MOOD_EMOJI = ['', '😶', '😕', '😐', '🙂', '😊']
+const MOOD_LABEL = ['', 'Low', 'Difficult', 'Okay', 'Good', 'Great']
 
 export function MoodGoalsBooksPanel() {
   const { selectedDate } = useAppStore()
   const { data: record } = useDailyRecord(selectedDate)
   const { data: goals = [] } = useGoalsQuery('active')
-  const { data: reading = [] } = useBooksQuery('reading')
+  const { data: allBooks = [] } = useBooksQuery()
 
-  const book = reading[0]
+  const book = allBooks.find(b => b.status === 'reading')
   const bookPct = book?.total_pages ? Math.round(((book.current_page ?? 0) / book.total_pages) * 100) : 0
 
   return (
@@ -25,36 +24,45 @@ export function MoodGoalsBooksPanel() {
           <span className="text-sm text-text-secondary">{MOOD_LABEL[record.mood]} day</span>
         </div>
       ) : (
-        <p className="text-xs text-text-muted">Mood not set</p>
+        <p className="text-xs text-text-muted">Mood not set today</p>
       )}
 
       {/* Top 3 goals */}
-      {goals.slice(0, 3).map(g => {
-        const events = 0 // we'll sum events later in Phase 8
-        const pct = g.target ? Math.min(Math.round((events / Number(g.target)) * 100), 100) : 0
-        return (
-          <div key={g.id}>
-            <div className="flex justify-between text-xs text-text-muted mb-1">
-              <span className="truncate">{g.name}</span>
-              <span>{pct}%</span>
+      {goals.length === 0 ? (
+        <p className="text-xs text-text-muted">No active goals</p>
+      ) : (
+        goals.slice(0, 3).map(g => {
+          const pct = g.target ? 0 : 0 // events summed in GoalsPage
+          return (
+            <div key={g.id}>
+              <div className="flex justify-between text-xs text-text-muted mb-1">
+                <span className="truncate">{g.name}</span>
+                <span className="flex-shrink-0 ml-2">{pct}%</span>
+              </div>
+              <div className="h-1 bg-surface-2 rounded-full overflow-hidden">
+                <div className="h-full bg-accent/50 rounded-full" style={{ width: `${pct}%` }} />
+              </div>
             </div>
-            <div className="h-1 bg-surface-2 rounded-full overflow-hidden">
-              <div className="h-full bg-accent/50 rounded-full" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        )
-      })}
-      {goals.length === 0 && <p className="text-xs text-text-muted">No active goals</p>}
+          )
+        })
+      )}
 
       {/* Current book */}
       {book && (
-        <div className="pt-1 border-t border-border">
-          <p className="text-xs text-text-muted mb-0.5">Reading</p>
+        <div className="pt-3 border-t border-border">
+          <p className="text-xs text-text-muted mb-1">Currently reading</p>
           <p className="text-sm text-text font-medium truncate">{book.title}</p>
-          <div className="h-1 bg-surface-2 rounded-full overflow-hidden mt-1.5">
-            <div className="h-full bg-info/60 rounded-full" style={{ width: `${bookPct}%` }} />
-          </div>
-          <p className="text-xs text-text-muted mt-0.5">{book.current_page ?? 0} / {book.total_pages} pages</p>
+          {book.author && <p className="text-xs text-text-muted">{book.author}</p>}
+          {book.total_pages ? (
+            <>
+              <div className="h-1 bg-surface-2 rounded-full overflow-hidden mt-2">
+                <div className="h-full bg-info/60 rounded-full transition-all" style={{ width: `${bookPct}%` }} />
+              </div>
+              <p className="text-xs text-text-muted mt-1">{book.current_page ?? 0} / {book.total_pages} pages · {bookPct}%</p>
+            </>
+          ) : (
+            <p className="text-xs text-text-muted mt-1">{book.current_page ?? 0} pages read</p>
+          )}
         </div>
       )}
     </div>

@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
@@ -7,14 +6,22 @@ import { useAuth } from './useAuth'
 export function useTransactionsQuery(date: string) {
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['transactions', date],
+    queryKey: ['transactions', date, user?.id],
     enabled: !!user,
+    staleTime: 0,
     queryFn: async () => {
-      const local = await db.transactions.where('date').equals(date).toArray()
-      if (local.length) return local
-      const { data } = await supabase.from('transactions').select('*').eq('date', date).eq('user_id', user!.id)
-      if (data?.length) await db.transactions.bulkPut(data as any)
-      return data ?? []
+      if (navigator.onLine) {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user!.id)
+          .eq('date', date)
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        if (data) await db.transactions.bulkPut(data as Parameters<typeof db.transactions.bulkPut>[0])
+        return data ?? []
+      }
+      return db.transactions.where('date').equals(date).reverse().sortBy('created_at')
     }
   })
 }
