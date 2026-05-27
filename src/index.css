@@ -3,81 +3,91 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  /* ── Colors ── */
   --color-bg:        var(--theme-bg);
   --color-surface:   var(--theme-surface);
   --color-surface-2: var(--theme-surface-2);
   --color-border:    var(--theme-border);
   --color-muted:     var(--theme-muted);
 
-  --color-text:          var(--theme-text);
+  --color-text:           var(--theme-text);
   --color-text-secondary: var(--theme-text-secondary);
-  --color-text-muted:    var(--theme-text-muted);
+  --color-text-muted:     var(--theme-text-muted);
 
-  --color-accent:        var(--theme-accent);
-  --color-accent-dim:    var(--theme-accent-dim);
-  --color-accent-glow:   var(--theme-accent-glow);
+  --color-accent:      var(--theme-accent);
+  --color-accent-dim:  var(--theme-accent-dim);
+  --color-accent-glow: var(--theme-accent-glow);
 
-  --color-success:  var(--theme-success);
-  --color-warning:  var(--theme-warning);
-  --color-danger:   var(--theme-danger);
-  --color-info:     var(--theme-info);
-
-  /* time-travel yellow */
+  --color-success:    var(--theme-success);
+  --color-warning:    var(--theme-warning);
+  --color-danger:     var(--theme-danger);
+  --color-info:       var(--theme-info);
   --color-timetravel: var(--theme-timetravel);
 
-  /* ── Typography ── */
   --font-display: 'Fraunces', Georgia, serif;
   --font-body:    'DM Sans', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 
-  /* ── Radius ── */
-  --radius-sm:  4px;
-  --radius-md:  8px;
-  --radius-lg:  12px;
-  --radius-xl:  16px;
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
   --radius-full: 9999px;
 
-  /* ── Spacing extras ── */
   --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Task completion flash animation */
+  --animate-ping-once: ping-once 0.5s ease-out forwards;
+  @keyframes ping-once {
+    0%   { opacity: 0.6; transform: scale(1); }
+    60%  { opacity: 0.3; transform: scale(1.02); }
+    100% { opacity: 0;   transform: scale(1); }
+  }
+
+  /* Checkbox bounce */
+  --animate-check-bounce: check-bounce 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  @keyframes check-bounce {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
 }
 
 :root {
-  --theme-bg: #0a0a0a;
-  --theme-surface: #111111;
-  --theme-surface-2: #1a1a1a;
-  --theme-border: #2a2a2a;
-  --theme-muted: #3a3a3a;
-  --theme-text: #f0ede8;
+  --theme-bg:             #0a0a0a;
+  --theme-surface:        #111111;
+  --theme-surface-2:      #1a1a1a;
+  --theme-border:         #2a2a2a;
+  --theme-muted:          #3a3a3a;
+  --theme-text:           #f0ede8;
   --theme-text-secondary: #8a8580;
-  --theme-text-muted: #5a5550;
-  --theme-accent: #c8b89a;
-  --theme-accent-dim: #8a7a65;
-  --theme-accent-glow: #c8b89a26;
-  --theme-success: #6a9e72;
-  --theme-warning: #c8a96a;
-  --theme-danger: #b86a6a;
-  --theme-info: #6a8ab8;
-  --theme-timetravel: #c8a92a;
+  --theme-text-muted:     #5a5550;
+  --theme-accent:         #c8b89a;
+  --theme-accent-dim:     #8a7a65;
+  --theme-accent-glow:    #c8b89a26;
+  --theme-success:        #6a9e72;
+  --theme-warning:        #c8a96a;
+  --theme-danger:         #b86a6a;
+  --theme-info:           #6a8ab8;
+  --theme-timetravel:     #c8a92a;
 }
 
 :root[data-theme="light"] {
-  --theme-bg: #fcfbfa;
-  --theme-surface: #ffffff;
-  --theme-surface-2: #f4f2ef;
-  --theme-border: #e5e2db;
-  --theme-muted: #d4d0c8;
-  --theme-text: #1a1918;
+  --theme-bg:             #fcfbfa;
+  --theme-surface:        #ffffff;
+  --theme-surface-2:      #f4f2ef;
+  --theme-border:         #e5e2db;
+  --theme-muted:          #d4d0c8;
+  --theme-text:           #1a1918;
   --theme-text-secondary: #5c5854;
-  --theme-text-muted: #827e78;
-  --theme-accent: #b09a75; 
-  --theme-accent-dim: #8c7653;
-  --theme-accent-glow: #b09a7526;
-  --theme-success: #4f8056;
-  --theme-warning: #c09e51;
-  --theme-danger: #a85454;
-  --theme-info: #4f6d99;
-  --theme-timetravel: #b59414;
+  --theme-text-muted:     #827e78;
+  --theme-accent:         #b09a75;
+  --theme-accent-dim:     #8c7653;
+  --theme-accent-glow:    #b09a7526;
+  --theme-success:        #4f8056;
+  --theme-warning:        #c09e51;
+  --theme-danger:         #a85454;
+  --theme-info:           #4f6d99;
+  --theme-timetravel:     #b59414;
 }
 
 /* ── Base ── */
@@ -102,6 +112,7 @@ body {
   -webkit-user-select: none;
 }
 
+/* Re-enable text selection inside inputs and textareas */
 input, textarea, [contenteditable], .selectable {
   user-select: auto;
   -webkit-user-select: auto;
@@ -113,10 +124,18 @@ input, textarea, [contenteditable], .selectable {
   flex-direction: column;
 }
 
+/* ── Task completion animation ── */
+.animate-ping-once {
+  animation: var(--animate-ping-once);
+}
+.animate-check-bounce {
+  animation: var(--animate-check-bounce);
+}
+
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--theme-muted); border-radius: 9999px; }
+::-webkit-scrollbar         { width: 4px; height: 4px; }
+::-webkit-scrollbar-track   { background: transparent; }
+::-webkit-scrollbar-thumb   { background: var(--theme-muted); border-radius: 9999px; }
 
 /* ── Selection ── */
 ::selection { background: var(--theme-accent-glow); color: var(--theme-accent); }

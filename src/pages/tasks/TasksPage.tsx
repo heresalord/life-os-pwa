@@ -27,7 +27,7 @@ export function TasksPage() {
   useEffect(() => {
     setPendingOrder(prev => {
       if (prev.length === 0) return pending
-      const ids = new Set(pending.map(t => t.id))
+      const ids    = new Set(pending.map(t => t.id))
       const prevIds = new Set(prev.map(t => t.id))
       const merged = prev.filter(t => ids.has(t.id))
       pending.forEach(t => { if (!prevIds.has(t.id)) merged.push(t) })
@@ -52,12 +52,27 @@ export function TasksPage() {
 
   const handleDelete = (id: string) => deleteTask.mutate(id)
 
+  const handleEdit = (id: string, newTitle: string) =>
+    updateTask.mutate({ id, updates: { title: newTitle } })
+
+  const renderTask = (t: Task, draggableProps?: Parameters<typeof TaskItem>[0]['dragHandleProps']) => (
+    <TaskItem
+      task={t as Parameters<typeof TaskItem>[0]['task']}
+      dragHandleProps={draggableProps}
+      onToggleComplete={handleToggleComplete}
+      onToggleSkip={handleToggleSkip}
+      onDelete={handleDelete}
+      onEdit={handleEdit}
+    />
+  )
+
   return (
     <div className="space-y-5">
       <header>
         <h1 className="text-2xl font-display text-text">Tasks</h1>
       </header>
 
+      {/* Tab bar */}
       <div className="flex p-1 bg-surface-2 border border-border rounded-xl">
         <button onClick={() => setTab('today')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-lg transition-colors ${
@@ -73,9 +88,7 @@ export function TasksPage() {
         </button>
       </div>
 
-      {tab === 'history' ? (
-        <TaskHistory />
-      ) : (
+      {tab === 'history' ? <TaskHistory /> : (
         <>
           <AddTaskModal date={selectedDate} />
 
@@ -101,11 +114,7 @@ export function TasksPage() {
                                 <div ref={prov.innerRef} {...prov.draggableProps}
                                   style={{ ...prov.draggableProps.style, opacity: snap.isDragging ? 0.85 : 1 }}
                                   className={snap.isDragging ? 'shadow-lg shadow-black/30 rounded-xl' : ''}>
-                                  <TaskItem task={t as Parameters<typeof TaskItem>[0]['task']}
-                                    dragHandleProps={prov.dragHandleProps}
-                                    onToggleComplete={handleToggleComplete}
-                                    onToggleSkip={handleToggleSkip}
-                                    onDelete={handleDelete} />
+                                  {renderTask(t, prov.dragHandleProps)}
                                 </div>
                               )}
                             </Draggable>
@@ -122,12 +131,7 @@ export function TasksPage() {
                 <section className="space-y-2">
                   <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider pl-1">Completed</h2>
                   <div className="space-y-2 opacity-70">
-                    {completed.map(t => (
-                      <TaskItem key={t.id} task={t as Parameters<typeof TaskItem>[0]['task']}
-                        onToggleComplete={handleToggleComplete}
-                        onToggleSkip={handleToggleSkip}
-                        onDelete={handleDelete} />
-                    ))}
+                    {completed.map(t => renderTask(t))}
                   </div>
                 </section>
               )}
@@ -136,12 +140,7 @@ export function TasksPage() {
                 <section className="space-y-2">
                   <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider pl-1">Skipped</h2>
                   <div className="space-y-2 opacity-50">
-                    {skipped.map(t => (
-                      <TaskItem key={t.id} task={t as Parameters<typeof TaskItem>[0]['task']}
-                        onToggleComplete={handleToggleComplete}
-                        onToggleSkip={handleToggleSkip}
-                        onDelete={handleDelete} />
-                    ))}
+                    {skipped.map(t => renderTask(t))}
                   </div>
                 </section>
               )}
