@@ -4,14 +4,18 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { userSettingsApi } from '../../api/userSettings'
 import { userProfilesApi } from '../../api/userProfiles'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import { supabase as supa } from '../../lib/supabase'
+const sbAny = supa as any
 
 export function OnboardingFlow() {
   const { user, profile, refreshProfile } = useAuth()
   const navigate = useNavigate()
-  const setStoreTimezone = useAppStore(state => state.setTimezone)
+  const { setTimezone: setStoreTimezone, setTheme } = useAppStore()
 
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
@@ -22,138 +26,179 @@ export function OnboardingFlow() {
 
   useEffect(() => {
     if (profile?.display_name && !name) setName(profile.display_name)
-  }, [profile])
+  }, [profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleComplete = async () => {
     if (!user) return
     setLoading(true)
+    setError('')
     try {
+      // 1. Create/upsert user_settings
       await userSettingsApi.upsert({
         user_id: user.id,
         currency,
-        daily_budget: parseFloat(budget),
+        daily_budget: parseFloat(budget) || 100,
         morning_reminder_time: morningTime,
         night_reminder_time: nightTime,
         notifications_enabled: false,
+        theme: 'light',
       })
-      await userProfilesApi.update(user.id, {
-        display_name: name,
-        timezone,
-        onboarded: true,
-      })
+
+      // 2. Update profile — if the trigger hasn't created it yet, insert it
+      try {
+        await userProfilesApi.update(user.id, {
+          display_name: name.trim(),
+          timezone,
+          onboarded: true,
+        })
+      } catch {
+        // Profile row may not exist yet if trigger was slow — insert it
+        await sbAny.from('user_profiles').upsert({
+          id: user.id,
+          display_name: name.trim(),
+          timezone,
+          onboarded: true,
+        }, { onConflict: 'id' })
+      }
+
+      // 3. Apply timezone + theme locally
       setStoreTimezone(timezone)
+      setTheme('light')
+
+      // 4. Refresh profile in auth state — wait for it to confirm onboarded=true
       await refreshProfile()
-      navigate('/')
+
+      // 5. Small buffer so AuthGuard re-reads the updated profile before we navigate
+      await new Promise(r => setTimeout(r, 150))
+
+      navigate('/', { replace: true })
+    } catch (err) {
+      console.error('Onboarding error:', err)
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    !(window as unknown as Record<string, unknown>).MSStream
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-surface border border-border rounded-xl shadow-lg p-6 sm:p-8">
+      <div className="w-full max-w-md bg-surface border border-border rounded-2xl shadow-lg p-6 sm:p-8">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-display text-accent">Setup Life OS</h1>
+            <h1 className="text-2xl font-display text-accent">Life OS</h1>
             <span className="text-text-muted text-sm">Step {step} of 5</span>
           </div>
-          <div className="w-full bg-surface-2 rounded-full h-2">
-            <div className="bg-accent h-2 rounded-full transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }} />
+          <div className="w-full bg-surface-2 rounded-full h-1.5 overflow-hidden">
+            <div className="bg-accent h-full rounded-full transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }} />
           </div>
         </div>
 
+        {error && (
+          <div className="mb-4 p-3 bg-danger/10 border border-danger/30 rounded-xl text-sm text-danger">
+            {error}
+          </div>
+        )}
+
         {step === 1 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-6">
             <div>
-              <h2 className="text-lg text-text font-medium mb-2">What should we call you?</h2>
-              <p className="text-text-secondary text-sm mb-4">A friendly display name for your dashboard.</p>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your name" autoFocus
-                className="w-full bg-surface-2 border border-border rounded-md px-4 py-3 text-text focus:border-accent focus:outline-none" />
+              <h2 className="text-lg text-text font-medium mb-1">What should we call you?</h2>
+              <p className="text-text-secondary text-sm mb-4">A friendly name for your dashboard.</p>
+              <input type="text" value={name} onChange={e => setName(e.target.value)}
+                placeholder="Your name" autoFocus
+                className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
             </div>
             <button onClick={() => name.trim() && setStep(2)} disabled={!name.trim()}
-              className="w-full bg-accent text-bg font-medium rounded-md py-3 hover:bg-accent-dim disabled:opacity-50">Continue</button>
+              className="w-full bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
+              Continue
+            </button>
           </div>
         )}
 
         {step === 2 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-6">
             <div>
-              <h2 className="text-lg text-text font-medium mb-2">Set your timezone</h2>
-              <p className="text-text-secondary text-sm mb-4">Crucial for accurate daily carry-overs and reminders.</p>
+              <h2 className="text-lg text-text font-medium mb-1">Your timezone</h2>
+              <p className="text-text-secondary text-sm mb-4">Used for daily task carry-overs and reminders.</p>
               <input type="text" value={timezone} onChange={e => setTimezone(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-md px-4 py-3 text-text focus:border-accent focus:outline-none" />
-              <p className="text-text-muted text-xs mt-2">Auto-detected. Edit if incorrect.</p>
+                className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+              <p className="text-text-muted text-xs mt-1.5">Auto-detected — edit if incorrect.</p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setStep(1)} className="flex-1 bg-surface-2 text-text font-medium rounded-md py-3 hover:bg-muted">Back</button>
+              <button onClick={() => setStep(1)} className="flex-1 bg-surface-2 text-text font-medium rounded-xl py-3 hover:bg-muted transition-colors">Back</button>
               <button onClick={() => timezone.trim() && setStep(3)} disabled={!timezone.trim()}
-                className="flex-[2] bg-accent text-bg font-medium rounded-md py-3 hover:bg-accent-dim disabled:opacity-50">Continue</button>
+                className="flex-[2] bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">Continue</button>
             </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-6">
             <div>
-              <h2 className="text-lg text-text font-medium mb-2">Finance awareness</h2>
-              <p className="text-text-secondary text-sm mb-4">Set your currency and a loose daily budget target.</p>
-              <div className="flex gap-3 mb-4">
-                <div className="w-1/3">
-                  <label className="block text-xs text-text-muted mb-1">Currency</label>
+              <h2 className="text-lg text-text font-medium mb-1">Finance awareness</h2>
+              <p className="text-text-secondary text-sm mb-4">A loose daily budget to stay aware — not to judge.</p>
+              <div className="flex gap-3">
+                <div className="w-28">
+                  <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Currency</label>
                   <input type="text" value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} maxLength={3}
-                    className="w-full bg-surface-2 border border-border rounded-md px-4 py-3 text-text focus:border-accent focus:outline-none text-center uppercase" />
+                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-text focus:border-accent focus:outline-none text-center uppercase font-medium" />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-text-muted mb-1">Daily Budget</label>
+                  <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Daily Budget</label>
                   <input type="number" value={budget} onChange={e => setBudget(e.target.value)} min="0"
-                    className="w-full bg-surface-2 border border-border rounded-md px-4 py-3 text-text focus:border-accent focus:outline-none" />
+                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
                 </div>
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setStep(2)} className="flex-1 bg-surface-2 text-text font-medium rounded-md py-3 hover:bg-muted">Back</button>
+              <button onClick={() => setStep(2)} className="flex-1 bg-surface-2 text-text font-medium rounded-xl py-3 hover:bg-muted transition-colors">Back</button>
               <button onClick={() => currency && budget && setStep(4)} disabled={!currency || !budget}
-                className="flex-[2] bg-accent text-bg font-medium rounded-md py-3 hover:bg-accent-dim disabled:opacity-50">Continue</button>
+                className="flex-[2] bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">Continue</button>
             </div>
           </div>
         )}
 
         {step === 4 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-6">
             <div>
-              <h2 className="text-lg text-text font-medium mb-2">Morning Ritual</h2>
-              <p className="text-text-secondary text-sm mb-4">When do you usually start your day?</p>
+              <h2 className="text-lg text-text font-medium mb-1">Morning Ritual</h2>
+              <p className="text-text-secondary text-sm mb-4">When do you want a gentle reminder to start your day?</p>
               <input type="time" value={morningTime} onChange={e => setMorningTime(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-md px-4 py-3 text-text focus:border-accent focus:outline-none text-xl text-center" />
+                className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none text-xl text-center" />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setStep(3)} className="flex-1 bg-surface-2 text-text font-medium rounded-md py-3 hover:bg-muted">Back</button>
-              <button onClick={() => setStep(5)} className="flex-[2] bg-accent text-bg font-medium rounded-md py-3 hover:bg-accent-dim">Continue</button>
+              <button onClick={() => setStep(3)} className="flex-1 bg-surface-2 text-text font-medium rounded-xl py-3 hover:bg-muted transition-colors">Back</button>
+              <button onClick={() => setStep(5)} className="flex-[2] bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors">Continue</button>
             </div>
           </div>
         )}
 
         {step === 5 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-6">
             <div>
-              <h2 className="text-lg text-text font-medium mb-2">Evening Review</h2>
-              <p className="text-text-secondary text-sm mb-4">When do you want to wind down and reflect?</p>
+              <h2 className="text-lg text-text font-medium mb-1">Evening Review</h2>
+              <p className="text-text-secondary text-sm mb-4">When do you want a reminder to reflect on your day?</p>
               <input type="time" value={nightTime} onChange={e => setNightTime(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-md px-4 py-3 text-text focus:border-accent focus:outline-none text-xl text-center" />
+                className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none text-xl text-center" />
             </div>
+
             {isIOS && (
-              <div className="bg-info/10 border border-info/30 p-4 rounded-md">
-                <p className="text-info text-sm font-medium">Using an iPhone/iPad?</p>
-                <p className="text-info/80 text-xs mt-1">Tap Share → <b>"Add to Home Screen"</b> for the best experience and push notifications.</p>
+              <div className="bg-info/10 border border-info/30 p-4 rounded-xl">
+                <p className="text-info text-sm font-medium mb-1">Using iPhone or iPad?</p>
+                <p className="text-info/80 text-xs leading-relaxed">
+                  Tap <strong>Share →</strong> <strong>"Add to Home Screen"</strong> for the best experience and to enable push notifications.
+                </p>
               </div>
             )}
-            <div className="flex gap-3 mt-8">
-              <button onClick={() => setStep(4)} className="flex-1 bg-surface-2 text-text font-medium rounded-md py-3 hover:bg-muted">Back</button>
+
+            <div className="flex gap-3">
+              <button onClick={() => setStep(4)} className="flex-1 bg-surface-2 text-text font-medium rounded-xl py-3 hover:bg-muted transition-colors">Back</button>
               <button onClick={handleComplete} disabled={loading}
-                className="flex-[2] bg-accent text-bg font-medium rounded-md py-3 hover:bg-accent-dim disabled:opacity-50">
-                {loading ? 'Finishing...' : 'Complete Setup'}
+                className="flex-[2] bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
+                {loading ? 'Setting up…' : 'Start using Life OS'}
               </button>
             </div>
           </div>

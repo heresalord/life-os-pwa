@@ -295,6 +295,7 @@ export interface Database {
           finished_at: string | null
           current_page: number
           total_pages: number | null
+          cover_url: string | null
           tags: string[]
           reflection: string | null
           abandon_reason: string | null
@@ -312,6 +313,7 @@ export interface Database {
           finished_at?: string | null
           current_page?: number
           total_pages?: number | null
+          cover_url?: string | null
           tags?: string[]
           reflection?: string | null
           abandon_reason?: string | null
@@ -329,6 +331,7 @@ export interface Database {
           finished_at?: string | null
           current_page?: number
           total_pages?: number | null
+          cover_url?: string | null
           tags?: string[]
           reflection?: string | null
           abandon_reason?: string | null

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
 import type { UserProfile } from '../db/schema'
@@ -9,26 +9,35 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = async (userId: string) => {
-    // Retry up to 3x — trigger can take a moment on first signup
-    for (let i = 0; i < 3; i++) {
+  const fetchProfile = useCallback(async (userId: string, retries = 5) => {
+    // New signups: the DB trigger that creates user_profiles runs async.
+    // Retry up to `retries` times with increasing delay before giving up.
+    for (let i = 0; i < retries; i++) {
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (data) {
-        setProfile(data)
+        setProfile(data as UserProfile)
         setLoading(false)
-        return
+        return data
       }
-      if (error && error.code !== 'PGRST116') break
+
       // PGRST116 = row not found yet — wait and retry
-      await new Promise(r => setTimeout(r, 600))
+      const isNotFound = !error || error.code === 'PGRST116'
+      if (!isNotFound) break
+
+      // Exponential back-off: 400ms, 800ms, 1200ms, 1600ms, 2000ms
+      await new Promise(r => setTimeout(r, 400 * (i + 1)))
     }
+
+    // Gave up — user has no profile yet (very new signup, trigger slow)
+    // Leave profile as null; AuthGuard will send them to /onboarding
     setLoading(false)
-  }
+    return null
+  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -53,16 +62,14 @@ export function useAuth() {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [fetchProfile])
+
+  const refreshProfile = useCallback(() => {
+    if (user) return fetchProfile(user.id, 1) // single attempt — profile exists by now
+    return Promise.resolve(null)
+  }, [user, fetchProfile])
 
   const signOut = () => supabase.auth.signOut()
 
-  return {
-    session,
-    user,
-    profile,
-    loading,
-    signOut,
-    refreshProfile: () => user && fetchProfile(user.id),
-  }
+  return { session, user, profile, loading, signOut, refreshProfile }
 }

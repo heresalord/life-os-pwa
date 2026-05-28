@@ -5,6 +5,7 @@ export function AuthGuard() {
   const { user, profile, loading } = useAuth()
   const location = useLocation()
 
+  // Show spinner while session + profile are loading
   if (loading) {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-3">
@@ -14,17 +15,21 @@ export function AuthGuard() {
     )
   }
 
+  // Not logged in → sign in
   if (!user) {
-    return <Navigate to="/signin" replace />
+    return <Navigate to="/signin" state={{ from: location }} replace />
   }
 
-  // Redirect to onboarding if not complete
-  if (profile && !profile.onboarded && location.pathname !== '/onboarding') {
+  const isOnboarding = location.pathname === '/onboarding'
+  const needsOnboarding = !profile || !profile.onboarded
+
+  // Not onboarded → force to onboarding (but don't redirect if already there)
+  if (needsOnboarding && !isOnboarding) {
     return <Navigate to="/onboarding" replace />
   }
 
-  // If onboarded and trying to visit /onboarding, redirect home
-  if (profile?.onboarded && location.pathname === '/onboarding') {
+  // Already onboarded → don't let them back into onboarding
+  if (!needsOnboarding && isOnboarding) {
     return <Navigate to="/" replace />
   }
 

@@ -1,9 +1,30 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Search, Loader } from 'lucide-react'
 import { useBookMutations } from '../../hooks/useBookMutations'
 
 type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
+
+interface OLBook {
+  title: string
+  author: string
+  pages?: number
+  coverId?: number
+  coverUrl?: string
+}
+
+async function searchOpenLibrary(query: string): Promise<OLBook[]> {
+  if (!query.trim()) return []
+  const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=5&fields=title,author_name,number_of_pages_median,cover_i`)
+  const json = await res.json()
+  return (json.docs ?? []).map((d: Record<string, unknown>) => ({
+    title: d.title as string,
+    author: Array.isArray(d.author_name) ? (d.author_name as string[])[0] : '',
+    pages: d.number_of_pages_median as number | undefined,
+    coverId: d.cover_i as number | undefined,
+    coverUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : undefined,
+  }))
+}
 
 export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: BookStatus }) {
   const [open, setOpen] = useState(false)
@@ -11,7 +32,38 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
   const [author, setAuthor] = useState('')
   const [pages, setPages] = useState('')
   const [status, setStatus] = useState<BookStatus>(defaultStatus)
+  const [coverUrl, setCoverUrl] = useState<string | undefined>()
+
+  const [searchQ, setSearchQ] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [suggestions, setSuggestions] = useState<OLBook[]>([])
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
   const { addBook } = useBookMutations()
+
+  // Debounced Open Library search
+  useEffect(() => {
+    if (!searchQ.trim() || searchQ.length < 3) { setSuggestions([]); return }
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const results = await searchOpenLibrary(searchQ)
+        setSuggestions(results)
+      } catch { setSuggestions([]) }
+      finally { setSearching(false) }
+    }, 500)
+    return () => clearTimeout(searchTimer.current)
+  }, [searchQ])
+
+  const pickSuggestion = (book: OLBook) => {
+    setTitle(book.title)
+    setAuthor(book.author)
+    if (book.pages) setPages(book.pages.toString())
+    setCoverUrl(book.coverUrl)
+    setSuggestions([])
+    setSearchQ('')
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,10 +73,9 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
       author: author.trim() || undefined,
       total_pages: pages ? parseInt(pages) : undefined,
       status,
+      cover_url: coverUrl,
     })
-    setTitle('')
-    setAuthor('')
-    setPages('')
+    setTitle(''); setAuthor(''); setPages(''); setCoverUrl(undefined); setSearchQ('')
     setOpen(false)
   }
 
@@ -45,31 +96,80 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
             <Dialog.Close className="text-text-muted hover:text-text"><X size={18} /></Dialog.Close>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Title</label>
-              <input autoFocus required value={title} onChange={e => setTitle(e.target.value)} placeholder="Book title"
-                className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+
+            {/* Open Library search */}
+            <div className="relative">
+              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Search Open Library</label>
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
+                  placeholder="Search by title or author…"
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-text focus:border-accent focus:outline-none" />
+                {searching && <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted animate-spin" />}
+              </div>
+
+              {suggestions.length > 0 && (
+                <div className="absolute z-10 left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
+                  {suggestions.map((s, i) => (
+                    <button key={i} type="button" onClick={() => pickSuggestion(s)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-2 transition-colors text-left border-b border-border last:border-0">
+                      {s.coverUrl
+                        ? <img src={s.coverUrl} alt="" className="w-8 h-12 object-cover rounded flex-shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                        : <div className="w-8 h-12 bg-surface-2 rounded flex-shrink-0 flex items-center justify-center text-text-muted text-lg">📘</div>
+                      }
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-text truncate">{s.title}</p>
+                        <p className="text-xs text-text-muted truncate">{s.author}</p>
+                        {s.pages && <p className="text-[10px] text-text-muted">{s.pages} pages</p>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Author (Optional)</label>
-              <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Author name"
-                className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+
+            <div className="flex gap-4 items-start">
+              {/* Cover preview */}
+              {coverUrl && (
+                <div className="relative flex-shrink-0">
+                  <img src={coverUrl} alt="cover" className="w-14 h-20 object-cover rounded-lg border border-border shadow-md" />
+                  <button type="button" onClick={() => setCoverUrl(undefined)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-danger rounded-full flex items-center justify-center">
+                    <X size={10} className="text-bg" />
+                  </button>
+                </div>
+              )}
+
+              <div className="flex-1 space-y-3">
+                <div>
+                  <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Title</label>
+                  <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="Book title"
+                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Author</label>
+                  <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Optional"
+                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none" />
+                </div>
+              </div>
             </div>
+
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Total Pages</label>
+                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Pages</label>
                 <input type="number" min="1" value={pages} onChange={e => setPages(e.target.value)} placeholder="Optional"
-                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text focus:border-accent focus:outline-none" />
               </div>
               <div className="flex-[2]">
                 <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Status</label>
                 <select value={status} onChange={e => setStatus(e.target.value as BookStatus)}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
+                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text focus:border-accent focus:outline-none appearance-none">
                   <option value="to-read">To Read</option>
                   <option value="reading">Reading</option>
                 </select>
               </div>
             </div>
+
             <button type="submit" disabled={!title.trim() || addBook.isPending}
               className="w-full bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
               {addBook.isPending ? 'Saving…' : 'Add Book'}

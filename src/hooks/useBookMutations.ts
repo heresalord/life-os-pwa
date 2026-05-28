@@ -27,7 +27,7 @@ export function useBookMutations() {
 
   const addBook = useMutation({
     mutationFn: async (payload: {
-      title: string; author?: string; total_pages?: number; status: BookStatus
+      title: string; author?: string; total_pages?: number; status: BookStatus; cover_url?: string;
     }) => {
       if (!user) return
       const book = {
@@ -36,6 +36,7 @@ export function useBookMutations() {
         title: payload.title,
         author: payload.author || null,
         total_pages: payload.total_pages || null,
+        cover_url: payload.cover_url || null,
         current_page: 0,
         status: payload.status,
         reflection: null,
