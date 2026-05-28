@@ -284,6 +284,7 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
   const [showEdit, setShowEdit] = useState(false)
   const [showAbandon, setShowAbandon] = useState(false)
   const [showProgress, setShowProgress] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
@@ -322,7 +323,7 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
       <div className="relative overflow-hidden rounded-xl bg-surface border border-border">
         {/* Swipe delete */}
         <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
-          <button onClick={() => onDelete(book.id)} className="p-2 text-danger rounded-full transition-colors">
+          <button onClick={() => setShowDeleteConfirm(true)} className="p-2 text-danger rounded-full transition-colors">
             <Trash2 size={18} />
           </button>
         </div>
@@ -333,9 +334,12 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
           onTouchEnd={handleTouchEnd}
           className={clsx('relative flex items-start gap-4 p-4 bg-surface transition-transform duration-200 ease-out', swiped ? '-translate-x-16' : 'translate-x-0')}
         >
-          {/* Book cover placeholder */}
-          <div className="w-11 h-16 bg-surface-2 border border-border rounded flex-shrink-0 flex items-center justify-center">
-            <span className="text-xl opacity-25">📘</span>
+          {/* Book cover */}
+          <div className="w-11 h-16 bg-surface-2 border border-border rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
+            {book.cover_url
+              ? <img src={book.cover_url} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+              : <span className="text-xl opacity-25">📘</span>
+            }
           </div>
 
           <div className="flex flex-col min-w-0 flex-1 gap-1">
@@ -413,7 +417,7 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
                 </button>
               )}
 
-              <button onClick={() => onDelete(book.id)} title="Delete"
+              <button onClick={() => setShowDeleteConfirm(true)} title="Delete"
                 className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors ml-auto">
                 <Trash2 size={14} />
               </button>
@@ -443,6 +447,31 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
       <EditBookModal   book={book} open={showEdit}   onClose={() => setShowEdit(false)} />
       <AbandonModal    book={book} open={showAbandon} onClose={() => setShowAbandon(false)} />
       <ProgressModal   book={book} open={showProgress} onClose={() => setShowProgress(false)} />
+
+      {/* Delete confirmation */}
+      <Dialog.Root open={showDeleteConfirm} onOpenChange={v => { if (!v) setShowDeleteConfirm(false) }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/85 backdrop-blur-sm" />
+          <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm sm:rounded-2xl sm:border"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
+            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
+            <Dialog.Title className="text-base font-medium text-text mb-1">Remove this book?</Dialog.Title>
+            <p className="text-sm text-text-secondary mb-5">
+              <span className="font-medium text-text">{book.title}</span> will be permanently deleted.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-3 bg-surface-2 text-text font-medium rounded-xl hover:bg-muted transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => { setShowDeleteConfirm(false); onDelete(book.id) }}
+                className="flex-[2] py-3 bg-danger/15 text-danger font-medium rounded-xl hover:bg-danger/25 transition-colors">
+                Delete
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   )
 }
