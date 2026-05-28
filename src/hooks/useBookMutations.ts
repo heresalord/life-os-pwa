@@ -8,11 +8,26 @@ const sbAny = supa as any
 
 type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
 
+// Columns that exist in the Supabase books table.
+// cover_url lives only in local IndexedDB until a migration adds it remotely.
+const SUPABASE_BOOK_COLUMNS = [
+  'id','user_id','title','author','status','started_at','finished_at',
+  'current_page','total_pages','tags','reflection','abandon_reason',
+  'added_at','created_at','updated_at','cover_url',
+] as const
+
+function toSupabasePayload(payload: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([k]) => (SUPABASE_BOOK_COLUMNS as readonly string[]).includes(k))
+  )
+}
+
 async function writeBook(table: string, op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
   if (navigator.onLine) {
     let error = null
-    if (op === 'insert')       ({ error } = await sbAny.from(table).insert([payload]))
-    else if (op === 'update')  ({ error } = await sbAny.from(table).update(payload).eq('id', payload.id))
+    const safePayload = op !== 'delete' ? toSupabasePayload(payload) : payload
+    if (op === 'insert')       ({ error } = await sbAny.from(table).insert([safePayload]))
+    else if (op === 'update')  ({ error } = await sbAny.from(table).update(safePayload).eq('id', payload.id))
     else                       ({ error } = await sbAny.from(table).delete().eq('id', payload.id))
     if (error) await enqueueSync(table, op, payload)
   } else {
@@ -69,6 +84,17 @@ export function useBookMutations() {
     mutationFn: async (id: string) => {
       await db.books.delete(id)
       await writeBook('books', 'delete', { id })
+    },
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ['books'] })
+      const previous = qc.getQueryData<unknown[]>(['books', user?.id])
+      qc.setQueryData(['books', user?.id], (old: unknown[] = []) =>
+        (old as { id: string }[]).filter(b => b.id !== id)
+      )
+      return { previous }
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(['books', user?.id], ctx.previous)
     },
     onSuccess: () => invalidate()
   })

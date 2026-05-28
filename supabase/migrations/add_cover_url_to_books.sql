@@ -1,0 +1,2 @@
+-- This migration is superseded by supabase_schema.sql which already includes cover_url.
+-- Run supabase_schema.sql in the Supabase SQL editor instead.

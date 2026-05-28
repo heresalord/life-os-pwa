@@ -81,9 +81,12 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
       total_pages: pages ? parseInt(pages) : undefined,
       status,
       cover_url: coverUrl,
+    }, {
+      onSuccess: () => {
+        setTitle(''); setAuthor(''); setPages(''); setCoverUrl(undefined); setSearchQ('')
+        setOpen(false)
+      }
     })
-    setTitle(''); setAuthor(''); setPages(''); setCoverUrl(undefined); setSearchQ('')
-    setOpen(false)
   }
 
   return (
@@ -116,7 +119,7 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
               </div>
 
               {suggestions.length > 0 && (
-                <div className="absolute z-10 left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
+                <div className="absolute z-10 left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-xl overflow-hidden max-h-64 overflow-y-auto">
                   {suggestions.map((s, i) => (
                     <button key={i} type="button" onClick={() => pickSuggestion(s)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-2 transition-colors text-left border-b border-border last:border-0">

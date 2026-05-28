@@ -85,6 +85,7 @@ export function useGoalMutations() {
       note?: string
     }) => {
       if (!user) return
+      const now = new Date().toISOString()
       const event = {
         id: crypto.randomUUID(),
         user_id: user.id,
@@ -97,13 +98,18 @@ export function useGoalMutations() {
         new_state: null,
         old_target: null,
         new_target: null,
-        created_at: new Date().toISOString(),
+        created_at: now,
       }
       await db.goal_events.add(event as Parameters<typeof db.goal_events.add>[0])
       await write('goal_events', 'insert', event)
+      // Also bump the parent goal's updated_at so dashboard reflects recent activity
+      const tsUpdate = { updated_at: now }
+      await db.goals.update(payload.goal_id, tsUpdate)
+      const updatedGoal = await db.goals.get(payload.goal_id)
+      if (updatedGoal) await write('goals', 'update', updatedGoal)
       return event
     },
-    onSuccess: () => invalidateEvents()
+    onSuccess: () => { invalidateEvents(); invalidateGoals() }
   })
 
   return { addGoal, updateGoal, deleteGoal, addEvent }

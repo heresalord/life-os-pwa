@@ -1,5 +1,5 @@
 import React from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
   CalendarDays, Inbox, FileText, Search, Settings, X
@@ -35,7 +35,14 @@ export function AppShell({ children }: AppShellProps) {
   const { profile, signOut } = useAuth()
   const { selectedDate, timezone } = useAppStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const [animKey, setAnimKey] = React.useState(location.pathname)
+
+  // Trigger slide animation on route change
+  React.useEffect(() => {
+    setAnimKey(location.pathname)
+  }, [location.pathname])
 
   const { data: settings } = useUserSettings()
 
@@ -138,8 +145,10 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       )}
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-28">
-        {children}
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-28 overflow-x-hidden">
+        <div key={animKey} className="page-enter">
+          {children}
+        </div>
       </main>
 
       <InboxFAB />

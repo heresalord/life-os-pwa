@@ -380,43 +380,42 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
             )}
 
             {/* Actions row */}
-            <div className="flex items-center gap-1 mt-2 flex-wrap">
-              <button onClick={() => setShowEdit(true)}
-                className="flex items-center gap-1 text-[11px] text-text-muted hover:text-accent px-2 py-1 rounded-lg hover:bg-accent/10 transition-colors">
-                <Pencil size={11} /> Edit
+            <div className="flex items-center gap-1 mt-2">
+              <button onClick={() => setShowEdit(true)} title="Edit"
+                className="p-1.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
+                <Pencil size={14} />
               </button>
 
               {book.status === 'to-read' && (
-                <button onClick={handleStartReading}
-                  className="flex items-center gap-1 text-[11px] text-info hover:text-info/80 px-2 py-1 rounded-lg hover:bg-info/10 transition-colors">
-                  <BookOpen size={11} /> Start reading
+                <button onClick={handleStartReading} title="Start reading"
+                  className="p-1.5 text-text-muted hover:text-info hover:bg-info/10 rounded-lg transition-colors">
+                  <BookOpen size={14} />
                 </button>
               )}
 
               {book.status === 'reading' && (
                 <>
-                  <button onClick={() => setShowFinish(true)}
-                    className="flex items-center gap-1 text-[11px] text-success hover:text-success/80 px-2 py-1 rounded-lg hover:bg-success/10 transition-colors">
-                    <CheckCheck size={11} /> Mark finished
+                  <button onClick={() => setShowFinish(true)} title="Mark finished"
+                    className="p-1.5 text-text-muted hover:text-success hover:bg-success/10 rounded-lg transition-colors">
+                    <CheckCheck size={14} />
                   </button>
-                  <button onClick={() => setShowAbandon(true)}
-                    className="flex items-center gap-1 text-[11px] text-text-muted hover:text-warning px-2 py-1 rounded-lg hover:bg-warning/10 transition-colors">
-                    <BookX size={11} /> Abandon
+                  <button onClick={() => setShowAbandon(true)} title="Abandon"
+                    className="p-1.5 text-text-muted hover:text-warning hover:bg-warning/10 rounded-lg transition-colors">
+                    <BookX size={14} />
                   </button>
                 </>
               )}
 
               {book.status === 'finished' && book.reflection && (
-                <button onClick={() => setShowReflection(v => !v)}
-                  className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors">
-                  {showReflection ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                  {showReflection ? 'Hide' : 'Reflection'}
+                <button onClick={() => setShowReflection(v => !v)} title={showReflection ? 'Hide reflection' : 'Show reflection'}
+                  className="p-1.5 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
+                  {showReflection ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
               )}
 
-              <button onClick={() => onDelete(book.id)}
-                className="flex items-center gap-1 text-[11px] text-danger hover:text-danger/80 px-2 py-1 rounded-lg hover:bg-danger/10 transition-colors ml-auto">
-                <Trash2 size={11} /> Delete
+              <button onClick={() => onDelete(book.id)} title="Delete"
+                className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors ml-auto">
+                <Trash2 size={14} />
               </button>
             </div>
 

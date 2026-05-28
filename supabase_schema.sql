@@ -168,6 +168,7 @@ create table books (
   user_id        uuid not null references auth.users(id) on delete cascade,
   title          text not null,
   author         text,
+  cover_url      text,
   status         text not null default 'to-read' check (status in ('to-read', 'reading', 'finished', 'abandoned')),
   started_at     date,
   finished_at    date,
