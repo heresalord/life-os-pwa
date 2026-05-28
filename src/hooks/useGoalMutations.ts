@@ -68,6 +68,14 @@ export function useGoalMutations() {
     onSuccess: () => invalidateGoals()
   })
 
+  const deleteGoal = useMutation({
+    mutationFn: async (id: string) => {
+      await db.goals.delete(id)
+      await write('goals', 'delete', { id })
+    },
+    onSuccess: () => invalidateGoals()
+  })
+
   const addEvent = useMutation({
     mutationFn: async (payload: {
       goal_id: string
@@ -98,5 +106,5 @@ export function useGoalMutations() {
     onSuccess: () => invalidateEvents()
   })
 
-  return { addGoal, updateGoal, addEvent }
+  return { addGoal, updateGoal, deleteGoal, addEvent }
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Plus, X, Search, Loader } from 'lucide-react'
 import { useBookMutations } from '../../hooks/useBookMutations'
+import { useBooksQuery } from '../../hooks/useBooksQuery'
 
 type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
 
@@ -40,6 +41,7 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
   const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const { addBook } = useBookMutations()
+  const { data: allBooks = [] } = useBooksQuery()
 
   // Debounced Open Library search
   useEffect(() => {
@@ -67,9 +69,14 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    const titleTrimmed = title.trim()
+    if (!titleTrimmed) return
+    if (allBooks.some(b => b.title.toLowerCase() === titleTrimmed.toLowerCase())) {
+      alert("This book is already in your library.")
+      return
+    }
     addBook.mutate({
-      title: title.trim(),
+      title: titleTrimmed,
       author: author.trim() || undefined,
       total_pages: pages ? parseInt(pages) : undefined,
       status,

@@ -408,11 +408,16 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
 
               {book.status === 'finished' && book.reflection && (
                 <button onClick={() => setShowReflection(v => !v)}
-                  className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors ml-auto">
+                  className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors">
                   {showReflection ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                   {showReflection ? 'Hide' : 'Reflection'}
                 </button>
               )}
+
+              <button onClick={() => onDelete(book.id)}
+                className="flex items-center gap-1 text-[11px] text-danger hover:text-danger/80 px-2 py-1 rounded-lg hover:bg-danger/10 transition-colors ml-auto">
+                <Trash2 size={11} /> Delete
+              </button>
             </div>
 
             {/* Expandable reflection */}

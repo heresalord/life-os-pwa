@@ -31,7 +31,7 @@ export function MoodGoalsBooksPanel() {
       {goals.length === 0 ? (
         <p className="text-xs text-text-muted">No active goals</p>
       ) : (
-        goals.slice(0, 3).map(g => {
+        goals.slice().sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 3).map(g => {
           const pct = g.target ? 0 : 0 // events summed in GoalsPage
           return (
             <div key={g.id}>

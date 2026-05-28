@@ -22,7 +22,7 @@ function applyTheme(theme: Theme) {
   localStorage.setItem('lifeos-theme', theme)
 }
 
-const savedTheme = (localStorage.getItem('lifeos-theme') as Theme) || 'dark'
+const savedTheme = (localStorage.getItem('lifeos-theme') as Theme) || 'light'
 applyTheme(savedTheme)
 
 export const useAppStore = create<AppState>((set, get) => ({

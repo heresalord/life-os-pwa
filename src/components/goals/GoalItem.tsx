@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Minus, ChevronDown, ChevronUp, Check, Archive, Flame } from 'lucide-react'
+import { Plus, Minus, ChevronDown, ChevronUp, Check, Archive, Flame, Trash2 } from 'lucide-react'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
 import type { Goal } from '../../db/schema'
 import clsx from 'clsx'
@@ -25,7 +25,7 @@ function MiniProgressRing({ pct, size = 40 }: { pct: number; size?: number }) {
 }
 
 export function GoalItem({ goal, progress, date }: { goal: Goal; progress: number; date: string }) {
-  const { addEvent, updateGoal } = useGoalMutations()
+  const { addEvent, updateGoal, deleteGoal } = useGoalMutations()
   const [expanded, setExpanded] = useState(false)
   const [logValue, setLogValue] = useState('1')
   const [showLog, setShowLog] = useState(false)
@@ -198,6 +198,12 @@ export function GoalItem({ goal, progress, date }: { goal: Goal; progress: numbe
               className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-text-muted bg-surface border border-border rounded-xl hover:text-text hover:bg-muted transition-colors"
             >
               <Archive size={13} /> Archive
+            </button>
+            <button
+              onClick={() => deleteGoal.mutate(goal.id)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-danger bg-danger/10 border border-danger/20 rounded-xl hover:bg-danger/20 transition-colors ml-auto"
+            >
+              <Trash2 size={13} /> Delete
             </button>
           </div>
         </div>
