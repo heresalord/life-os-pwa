@@ -1,9 +1,45 @@
 import React, { useRef, useState } from 'react'
-import { Trash2, Pencil, CheckCheck, BookX, ChevronDown, ChevronUp, X, BookOpen } from 'lucide-react'
+import {
+  Trash2, Pencil, CheckCheck, BookX, ChevronDown, ChevronUp,
+  X, BookOpen, Star, Quote,
+} from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useBookMutations } from '../../hooks/useBookMutations'
+import { useQuotesQuery } from '../../hooks/useQuotesQuery'
+import { useQuoteMutations } from '../../hooks/useQuoteMutations'
+import { haptic } from '../../lib/haptic'
 import type { Book } from '../../db/schema'
 import clsx from 'clsx'
+
+// ── Star rating widget ────────────────────────────────────────────────────
+function StarRating({
+  value, onChange, size = 18, readOnly = false,
+}: { value: number | null; onChange?: (v: number) => void; size?: number; readOnly?: boolean }) {
+  const [hovered, setHovered] = useState<number | null>(null)
+  const display = hovered ?? value ?? 0
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(n => (
+        <button
+          key={n}
+          type="button"
+          disabled={readOnly}
+          onClick={() => !readOnly && onChange?.(n)}
+          onMouseEnter={() => !readOnly && setHovered(n)}
+          onMouseLeave={() => !readOnly && setHovered(null)}
+          className={clsx('transition-colors', readOnly ? 'cursor-default' : 'cursor-pointer')}
+          style={{ lineHeight: 1 }}
+        >
+          <Star
+            size={size}
+            className={n <= display ? 'text-warning fill-warning' : 'text-border'}
+            strokeWidth={1.5}
+          />
+        </button>
+      ))}
+    </div>
+  )
+}
 
 // ── Finish flow ───────────────────────────────────────────────────────────
 function FinishBookFlow({ book, open, onClose }: { book: Book; open: boolean; onClose: () => void }) {
@@ -12,12 +48,16 @@ function FinishBookFlow({ book, open, onClose }: { book: Book; open: boolean; on
   const [q1, setQ1] = useState('')
   const [q2, setQ2] = useState('')
   const [q3, setQ3] = useState('')
+  const [rating, setRating] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
 
+  const STEPS = 4
   const minLen = 10
-  const canNext = step === 1 ? q1.trim().length >= minLen
+  const canNext =
+    step === 1 ? q1.trim().length >= minLen
     : step === 2 ? q2.trim().length >= minLen
-    : q3.trim().length >= minLen
+    : step === 3 ? q3.trim().length >= minLen
+    : true // rating is optional
 
   const handleFinish = async () => {
     setSaving(true)
@@ -25,7 +65,9 @@ function FinishBookFlow({ book, open, onClose }: { book: Book; open: boolean; on
     await updateBook.mutateAsync({ id: book.id, updates: {
       status: 'finished', reflection,
       finished_at: new Date().toISOString().split('T')[0],
+      rating,
     }})
+    haptic('success')
     setSaving(false)
     onClose()
   }
@@ -34,19 +76,22 @@ function FinishBookFlow({ book, open, onClose }: { book: Book; open: boolean; on
     <Dialog.Root open={open} onOpenChange={v => { if (!v) onClose() }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/85 backdrop-blur-sm" />
-        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-6 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg sm:rounded-2xl sm:border"
-          style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+        <Dialog.Content
+          className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-6 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg sm:rounded-2xl sm:border"
+          style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        >
           <div className="w-10 h-1 rounded-full bg-border mx-auto mb-5 sm:hidden" />
           <div className="flex items-center justify-between mb-3">
             <Dialog.Title className="text-base font-display text-text">Finishing "{book.title}"</Dialog.Title>
             <button onClick={onClose} className="text-text-muted hover:text-text"><X size={18} /></button>
           </div>
           <div className="flex gap-1.5 mb-6">
-            {[1,2,3].map(s => (
-              <div key={s} className={`flex-1 h-1 rounded-full transition-all duration-300 ${s <= step ? 'bg-success' : 'bg-surface-2'}`} />
+            {Array.from({ length: STEPS }, (_, i) => (
+              <div key={i} className={`flex-1 h-1 rounded-full transition-all duration-300 ${i + 1 <= step ? 'bg-success' : 'bg-surface-2'}`} />
             ))}
           </div>
-          <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">Question {step} of 3</p>
+          <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">Step {step} of {STEPS}</p>
+
           {step === 1 && (
             <div className="space-y-3">
               <p className="text-lg font-display text-text">What did this book teach you?</p>
@@ -71,20 +116,132 @@ function FinishBookFlow({ book, open, onClose }: { book: Book; open: boolean; on
                 className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-success focus:outline-none resize-none" />
             </div>
           )}
+          {step === 4 && (
+            <div className="space-y-5 py-2">
+              <div>
+                <p className="text-lg font-display text-text mb-1">Rate this book</p>
+                <p className="text-sm text-text-secondary mb-5">Optional — how would you rate it overall?</p>
+                <div className="flex justify-center">
+                  <StarRating value={rating} onChange={setRating} size={36} />
+                </div>
+                {rating && (
+                  <p className="text-center text-sm text-text-muted mt-3">
+                    {['', 'Did not enjoy it', 'It was okay', 'Liked it', 'Really liked it', 'Loved it'][rating]}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3 mt-5">
             {step > 1 && (
               <button onClick={() => setStep(s => s - 1)}
                 className="flex-1 py-3 bg-surface-2 text-text font-medium rounded-xl hover:bg-muted transition-colors">Back</button>
             )}
-            {step < 3 ? (
+            {step < STEPS ? (
               <button onClick={() => setStep(s => s + 1)} disabled={!canNext}
                 className="flex-[2] py-3 bg-success/20 text-success font-medium rounded-xl hover:bg-success/30 transition-colors disabled:opacity-40">Next</button>
             ) : (
-              <button onClick={handleFinish} disabled={!canNext || saving}
+              <button onClick={handleFinish} disabled={saving}
                 className="flex-[2] py-3 bg-success text-bg font-medium rounded-xl hover:bg-success/90 transition-colors disabled:opacity-40">
                 {saving ? 'Saving…' : 'Mark as Finished ✓'}
               </button>
             )}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+// ── Quotes panel ──────────────────────────────────────────────────────────
+function QuotesPanel({ book, open, onClose }: { book: Book; open: boolean; onClose: () => void }) {
+  const { data: quotes = [], isLoading } = useQuotesQuery(open ? book.id : null)
+  const { addQuote, deleteQuote } = useQuoteMutations(book.id)
+  const [text, setText] = useState('')
+  const [page, setPage] = useState('')
+
+  const handleAdd = () => {
+    const t = text.trim()
+    if (!t) return
+    haptic('light')
+    addQuote.mutate({ text: t, page: page ? parseInt(page) : null }, {
+      onSuccess: () => { setText(''); setPage('') },
+    })
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={v => { if (!v) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
+        <Dialog.Content
+          className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl shadow-2xl flex flex-col sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg sm:rounded-2xl sm:border sm:max-h-[80vh]"
+          style={{ maxHeight: '80dvh', paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        >
+          <div className="p-5 pb-0 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
+            <div className="flex items-center justify-between mb-4">
+              <Dialog.Title className="text-base font-medium text-text">
+                Quotes · <span className="text-text-muted font-normal text-sm">{book.title}</span>
+              </Dialog.Title>
+              <button onClick={onClose} className="text-text-muted hover:text-text"><X size={18} /></button>
+            </div>
+            {/* Add quote */}
+            <div className="space-y-2 mb-4">
+              <textarea
+                value={text}
+                onChange={e => setText(e.target.value)}
+                rows={2}
+                placeholder="Paste or type a quote…"
+                className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm text-text placeholder-text-muted focus:border-accent focus:outline-none resize-none"
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  value={page}
+                  onChange={e => setPage(e.target.value)}
+                  placeholder="Page (optional)"
+                  className="selectable w-36 bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text placeholder-text-muted focus:border-accent focus:outline-none"
+                />
+                <button
+                  onClick={handleAdd}
+                  disabled={!text.trim() || addQuote.isPending}
+                  className="flex-1 py-2 bg-accent text-bg font-medium text-sm rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-40"
+                >
+                  {addQuote.isPending ? 'Saving…' : 'Save Quote'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quote list */}
+          <div className="overflow-y-auto flex-1 px-5 pb-2 space-y-3">
+            {isLoading && (
+              <div className="flex justify-center py-6">
+                <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+              </div>
+            )}
+            {!isLoading && quotes.length === 0 && (
+              <p className="text-center text-sm text-text-muted py-6 italic">
+                No quotes saved yet. Highlight something worth keeping.
+              </p>
+            )}
+            {quotes.map(q => (
+              <div key={q.id} className="group/quote relative bg-surface-2 border border-border rounded-xl p-4">
+                <p className="text-sm text-text leading-relaxed italic">"{q.text}"</p>
+                {q.page && (
+                  <p className="text-xs text-text-muted mt-2">— p. {q.page}</p>
+                )}
+                <button
+                  onClick={() => { haptic('light'); deleteQuote.mutate(q.id) }}
+                  className="absolute top-3 right-3 p-1 text-text-muted opacity-0 group-hover/quote:opacity-100 focus:opacity-100 hover:text-danger transition-all"
+                  title="Delete quote"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
@@ -99,6 +256,7 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
   const [author, setAuthor] = useState(book.author || '')
   const [pages, setPages] = useState(book.total_pages?.toString() || '')
   const [status, setStatus] = useState(book.status)
+  const [rating, setRating] = useState<number | null>(book.rating ?? null)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -108,6 +266,7 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
       author: author.trim() || null,
       total_pages: pages ? parseInt(pages) : null,
       status,
+      rating,
       started_at: status === 'reading' && !book.started_at ? new Date().toISOString().split('T')[0] : book.started_at,
     }})
     setSaving(false)
@@ -148,9 +307,14 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
                   <option value="to-read">To Read</option>
                   <option value="reading">Reading</option>
+                  <option value="finished">Finished</option>
                   <option value="abandoned">Abandoned</option>
                 </select>
               </div>
+            </div>
+            <div>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Rating</label>
+              <StarRating value={rating} onChange={setRating} size={22} />
             </div>
             <button onClick={handleSave} disabled={!title.trim() || saving}
               className="w-full py-3 bg-accent text-bg font-medium rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-50">
@@ -171,9 +335,7 @@ function AbandonModal({ book, open, onClose }: { book: Book; open: boolean; onCl
 
   const handleAbandon = async () => {
     setSaving(true)
-    await updateBook.mutateAsync({ id: book.id, updates: {
-      status: 'abandoned', abandon_reason: reason.trim() || null
-    }})
+    await updateBook.mutateAsync({ id: book.id, updates: { status: 'abandoned', abandon_reason: reason.trim() || null }})
     setSaving(false)
     onClose()
   }
@@ -285,6 +447,7 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
   const [showAbandon, setShowAbandon] = useState(false)
   const [showProgress, setShowProgress] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showQuotes, setShowQuotes] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
@@ -300,10 +463,10 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
     ? Math.min(Math.round((book.current_page / book.total_pages) * 100), 100) : 0
 
   const statusColor = {
-    'reading': 'text-info bg-info/10',
-    'finished': 'text-success bg-success/10',
+    'reading':   'text-info bg-info/10',
+    'finished':  'text-success bg-success/10',
     'abandoned': 'text-warning bg-warning/10',
-    'to-read': 'text-text-muted bg-surface-2',
+    'to-read':   'text-text-muted bg-surface-2',
   }[book.status] ?? 'text-text-muted bg-surface-2'
 
   const statusLabel = {
@@ -313,17 +476,22 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
 
   const handleStartReading = () => {
     updateBook.mutate({ id: book.id, updates: {
-      status: 'reading',
-      started_at: new Date().toISOString().split('T')[0],
+      status: 'reading', started_at: new Date().toISOString().split('T')[0],
     }})
+  }
+
+  const confirmDelete = () => {
+    haptic('medium')
+    setSwiped(false)
+    setShowDeleteConfirm(true)
   }
 
   return (
     <>
       <div className="relative overflow-hidden rounded-xl bg-surface border border-border">
-        {/* Swipe delete */}
+        {/* Swipe-reveal delete */}
         <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
-          <button onClick={() => setShowDeleteConfirm(true)} className="p-2 text-danger rounded-full transition-colors">
+          <button onClick={confirmDelete} className="p-2 text-danger rounded-full transition-colors">
             <Trash2 size={18} />
           </button>
         </div>
@@ -332,12 +500,16 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className={clsx('relative flex items-start gap-4 p-4 bg-surface transition-transform duration-200 ease-out', swiped ? '-translate-x-16' : 'translate-x-0')}
+          className={clsx(
+            'relative flex items-start gap-4 p-4 bg-surface transition-transform duration-200 ease-out',
+            swiped ? '-translate-x-16' : 'translate-x-0'
+          )}
         >
           {/* Book cover */}
-          <div className="w-11 h-16 bg-surface-2 border border-border rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
+          <div className="w-11 h-16 rounded flex-shrink-0 overflow-hidden bg-surface-2 border border-border flex items-center justify-center">
             {book.cover_url
-              ? <img src={book.cover_url} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+              ? <img src={book.cover_url} alt="" className="w-full h-full object-cover"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
               : <span className="text-xl opacity-25">📘</span>
             }
           </div>
@@ -353,6 +525,11 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
                 {statusLabel}
               </span>
             </div>
+
+            {/* Star rating (finished books) */}
+            {book.status === 'finished' && book.rating && (
+              <StarRating value={book.rating} size={13} readOnly />
+            )}
 
             {/* Reading progress */}
             {book.status === 'reading' && (
@@ -371,14 +548,14 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
               </button>
             )}
 
-            {/* Finished reflection snippet */}
+            {/* Finished: reflection snippet */}
             {book.status === 'finished' && book.reflection && (
               <p className="text-xs text-text-muted mt-1 italic line-clamp-2 leading-relaxed">
                 {book.reflection.split('\n').find(l => l && !l.startsWith('**')) || ''}
               </p>
             )}
 
-            {/* Abandon reason */}
+            {/* Abandoned: reason */}
             {book.status === 'abandoned' && book.abandon_reason && (
               <p className="text-xs text-text-muted mt-1 italic">"{book.abandon_reason}"</p>
             )}
@@ -388,6 +565,12 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
               <button onClick={() => setShowEdit(true)} title="Edit"
                 className="p-1.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
                 <Pencil size={14} />
+              </button>
+
+              {/* Quotes (all statuses) */}
+              <button onClick={() => setShowQuotes(true)} title="Quotes"
+                className="p-1.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
+                <Quote size={14} />
               </button>
 
               {book.status === 'to-read' && (
@@ -411,13 +594,14 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
               )}
 
               {book.status === 'finished' && book.reflection && (
-                <button onClick={() => setShowReflection(v => !v)} title={showReflection ? 'Hide reflection' : 'Show reflection'}
+                <button onClick={() => setShowReflection(v => !v)}
+                  title={showReflection ? 'Hide reflection' : 'Show reflection'}
                   className="p-1.5 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
                   {showReflection ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
               )}
 
-              <button onClick={() => setShowDeleteConfirm(true)} title="Delete"
+              <button onClick={confirmDelete} title="Delete"
                 className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors ml-auto">
                 <Trash2 size={14} />
               </button>
@@ -443,22 +627,32 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
         </div>
       </div>
 
-      <FinishBookFlow book={book} open={showFinish} onClose={() => setShowFinish(false)} />
-      <EditBookModal   book={book} open={showEdit}   onClose={() => setShowEdit(false)} />
-      <AbandonModal    book={book} open={showAbandon} onClose={() => setShowAbandon(false)} />
-      <ProgressModal   book={book} open={showProgress} onClose={() => setShowProgress(false)} />
+      <FinishBookFlow book={book} open={showFinish}   onClose={() => setShowFinish(false)} />
+      <EditBookModal  book={book} open={showEdit}     onClose={() => setShowEdit(false)} />
+      <AbandonModal   book={book} open={showAbandon}  onClose={() => setShowAbandon(false)} />
+      <ProgressModal  book={book} open={showProgress} onClose={() => setShowProgress(false)} />
+      <QuotesPanel    book={book} open={showQuotes}   onClose={() => setShowQuotes(false)} />
 
-      {/* Delete confirmation */}
+      {/* ── Delete confirmation ── */}
       <Dialog.Root open={showDeleteConfirm} onOpenChange={v => { if (!v) setShowDeleteConfirm(false) }}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/85 backdrop-blur-sm" />
-          <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm sm:rounded-2xl sm:border"
-            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
-            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
-            <Dialog.Title className="text-base font-medium text-text mb-1">Remove this book?</Dialog.Title>
-            <p className="text-sm text-text-secondary mb-5">
-              <span className="font-medium text-text">{book.title}</span> will be permanently deleted.
-            </p>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
+          <Dialog.Content
+            className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm sm:rounded-2xl sm:border"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
+            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-5 sm:hidden" />
+            <div className="flex items-start gap-4 mb-5">
+              {book.cover_url && (
+                <img src={book.cover_url} alt="" className="w-10 h-14 object-cover rounded flex-shrink-0 opacity-70" />
+              )}
+              <div>
+                <Dialog.Title className="text-base font-medium text-text mb-0.5">Remove this book?</Dialog.Title>
+                <p className="text-sm text-text-secondary">
+                  <span className="font-medium text-text">{book.title}</span> will be permanently deleted.
+                </p>
+              </div>
+            </div>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 py-3 bg-surface-2 text-text font-medium rounded-xl hover:bg-muted transition-colors">

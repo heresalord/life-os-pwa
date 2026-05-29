@@ -174,6 +174,8 @@ create table books (
   finished_at    date,
   current_page   int default 0,
   total_pages    int,
+  cover_url      text,
+  rating         int check (rating >= 1 and rating <= 5),
   tags           text[] default '{}',
   reflection     text,
   abandon_reason text,

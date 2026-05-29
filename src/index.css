@@ -145,6 +145,28 @@ input, textarea, [contenteditable], .selectable {
   flex-direction: column;
 }
 
+/* ── Goal completion burst ── */
+@keyframes goal-complete-burst {
+  0%   { transform: scale(1);    opacity: 1; }
+  40%  { transform: scale(1.18); opacity: 0.9; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes confetti-pop {
+  0%   { opacity: 1; transform: translateY(0)   scale(1); }
+  100% { opacity: 0; transform: translateY(-48px) scale(0.4); }
+}
+.goal-complete-ring {
+  animation: goal-complete-burst 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.confetti-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: confetti-pop 600ms ease-out forwards;
+  pointer-events: none;
+}
+
 /* ── Page transitions (app-like feel, ready for Capacitor) ── */
 @keyframes page-enter-anim {
   from { opacity: 0; transform: translateY(8px); }

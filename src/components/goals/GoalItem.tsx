@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Plus, Minus, ChevronDown, ChevronUp, Check, Archive, Flame, Trash2 } from 'lucide-react'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
+import { haptic } from '../../lib/haptic'
 import type { Goal } from '../../db/schema'
 import clsx from 'clsx'
 
@@ -29,10 +30,31 @@ export function GoalItem({ goal, progress, date }: { goal: Goal; progress: numbe
   const [expanded, setExpanded] = useState(false)
   const [logValue, setLogValue] = useState('1')
   const [showLog, setShowLog] = useState(false)
+  const [justCompleted, setJustCompleted] = useState(false)
+  const [confettiDots, setConfettiDots] = useState<{ id: number; color: string; angle: number }[]>([])
+  const prevPct = useRef(0)
 
   const target = goal.target || 1
   const pct = Math.min(Math.round((progress / target) * 100), 100)
   const isComplete = progress >= target
+
+  // Fire confetti when goal just crossed 100%
+  useEffect(() => {
+    if (pct >= 100 && prevPct.current < 100) {
+      haptic('success')
+      setJustCompleted(true)
+      const colors = ['var(--theme-success)', 'var(--theme-accent)', 'var(--theme-warning)', '#f472b6']
+      setConfettiDots(
+        Array.from({ length: 8 }, (_, i) => ({
+          id: Date.now() + i,
+          color: colors[i % colors.length],
+          angle: (i / 8) * 360,
+        }))
+      )
+      setTimeout(() => { setJustCompleted(false); setConfettiDots([]) }, 800)
+    }
+    prevPct.current = pct
+  }, [pct])
 
   const unitLabel =
     goal.measurement_type === 'currency' && goal.currency ? goal.currency
@@ -45,6 +67,7 @@ export function GoalItem({ goal, progress, date }: { goal: Goal; progress: numbe
   const handleLog = (direction: 'add' | 'subtract') => {
     const val = parseFloat(logValue) || 1
     if (val <= 0) return
+    haptic('medium')
     addEvent.mutate({ goal_id: goal.id, date, value: val, event_type: direction })
     setShowLog(false)
   }
@@ -64,12 +87,26 @@ export function GoalItem({ goal, progress, date }: { goal: Goal; progress: numbe
     )}>
       {/* Main row */}
       <div className="p-4 flex items-center gap-3">
-        {/* Progress ring */}
+        {/* Progress ring + confetti */}
         <div className="relative flex-shrink-0">
-          <MiniProgressRing pct={pct} size={44} />
+          <div className={justCompleted ? 'goal-complete-ring' : ''}>
+            <MiniProgressRing pct={pct} size={44} />
+          </div>
           <span className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold text-text-secondary rotate-0">
             {pct}%
           </span>
+          {confettiDots.map(dot => (
+            <span
+              key={dot.id}
+              className="confetti-dot"
+              style={{
+                backgroundColor: dot.color,
+                left: `calc(50% + ${Math.cos((dot.angle * Math.PI) / 180) * 20}px)`,
+                top:  `calc(50% + ${Math.sin((dot.angle * Math.PI) / 180) * 20}px)`,
+                animationDelay: `${(dot.angle / 360) * 80}ms`,
+              }}
+            />
+          ))}
         </div>
 
         {/* Name + stats */}

@@ -9,19 +9,38 @@ const VAPID_SUBJECT = "mailto:admin@lifeos.app"
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
 
 serve(async (req) => {
+  // Handle CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } })
+  }
+
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { data: subs, error } = await supabaseClient.from('push_subscriptions').select('*')
+    let body = {}
+    try {
+      body = await req.json()
+    } catch(e) {}
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { user_id, user_ids, title, message, url } = body as any
+    const targetUsers = user_ids || (user_id ? [user_id] : null)
+
+    let query = supabaseClient.from('push_subscriptions').select('*')
+    if (targetUsers && targetUsers.length > 0) {
+      query = query.in('user_id', targetUsers)
+    }
+
+    const { data: subs, error } = await query
     if (error) throw error
 
     const payload = JSON.stringify({
-      title: "Life OS Reminder",
-      body: "Time for your daily review.",
-      url: "/"
+      title: title || "Life OS Reminder",
+      body: message || "Time for your daily review.",
+      url: url || "/"
     })
 
     const results = await Promise.all(subs.map(async (sub) => {

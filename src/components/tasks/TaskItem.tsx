@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { Check, X, RotateCw, Trash2, GripVertical, Pencil } from 'lucide-react'
+import { haptic } from '../../lib/haptic'
 import type { Task } from '../../db/schema'
 import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import clsx from 'clsx'
@@ -32,8 +33,11 @@ export function TaskItem({ task, onToggleComplete, onToggleSkip, onDelete, onEdi
 
   const handleCheckClick = () => {
     if (!task.completed) {
+      haptic('success')
       setJustCompleted(true)
       setTimeout(() => setJustCompleted(false), 600)
+    } else {
+      haptic('light')
     }
     onToggleComplete(task.id, task.completed)
   }

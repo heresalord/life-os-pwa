@@ -55,6 +55,16 @@ export function AppShell({ children }: AppShellProps) {
   React.useEffect(() => {
     if (settings?.theme) {
       document.documentElement.dataset.theme = settings.theme
+      
+      // Update status bar theme-color
+      let metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      if (!metaThemeColor) {
+        metaThemeColor = document.createElement('meta')
+        metaThemeColor.setAttribute('name', 'theme-color')
+        document.head.appendChild(metaThemeColor)
+      }
+      // Match the root backgrounds defined in index.css
+      metaThemeColor.setAttribute('content', settings.theme === 'light' ? '#fcfbfa' : '#0a0a0a')
     }
   }, [settings?.theme])
 

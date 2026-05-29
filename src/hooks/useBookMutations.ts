@@ -13,7 +13,7 @@ type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
 const SUPABASE_BOOK_COLUMNS = [
   'id','user_id','title','author','status','started_at','finished_at',
   'current_page','total_pages','tags','reflection','abandon_reason',
-  'added_at','created_at','updated_at','cover_url',
+  'added_at','created_at','updated_at','cover_url','rating',
 ] as const
 
 function toSupabasePayload(payload: Record<string, unknown>) {
@@ -54,6 +54,7 @@ export function useBookMutations() {
         cover_url: payload.cover_url || null,
         current_page: 0,
         status: payload.status,
+        rating: null as number | null,
         reflection: null,
         abandon_reason: null,
         started_at: payload.status === 'reading' ? new Date().toISOString().split('T')[0] : null,

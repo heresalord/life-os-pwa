@@ -8,8 +8,9 @@ import { useAppStore } from '../../store/useAppStore'
 import type { Theme } from '../../store/useAppStore'
 import {
   Settings, LogOut, Download, Upload, AlertTriangle, User,
-  CheckCircle, XCircle, Loader, Moon, Sun, X, Plus
+  CheckCircle, XCircle, Loader, Moon, Sun, X, Plus, Bell
 } from 'lucide-react'
+import { pushSupported, isPushSubscribed, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications'
 
 const supabaseAny = supabase as any
 type AnyRow = Record<string, unknown>
@@ -138,6 +139,29 @@ export function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
+
+  useEffect(() => {
+    if (pushSupported) isPushSubscribed().then(setPushEnabled)
+  }, [])
+
+  const handleTogglePush = async () => {
+    if (!user) return
+    setPushLoading(true)
+    try {
+      if (pushEnabled) {
+        await unsubscribeFromPush(user.id)
+        setPushEnabled(false)
+      } else {
+        const ok = await subscribeToPush(user.id)
+        setPushEnabled(ok)
+      }
+    } finally {
+      setPushLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (settings) {
@@ -276,6 +300,32 @@ export function SettingsPage() {
           </button>
         </div>
       </section>
+
+      {/* Notifications */}
+      {pushSupported && (
+        <section className="bg-surface border border-border rounded-2xl p-5 space-y-4">
+          <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-2">
+            <Bell size={14} /> Notifications
+          </h2>
+          <div className="flex items-center justify-between p-3 bg-surface-2 rounded-xl border border-border">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-text">Push Notifications</p>
+              <p className="text-xs text-text-muted truncate">Daily reminders & updates</p>
+            </div>
+            <button 
+              onClick={handleTogglePush} disabled={pushLoading}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50 ${
+                pushEnabled 
+                  ? 'bg-danger/10 text-danger hover:bg-danger/20' 
+                  : 'bg-accent/10 text-accent hover:bg-accent/20'
+              }`}
+            >
+              {pushLoading ? <Loader size={13} className="animate-spin" /> : null}
+              {pushEnabled ? 'Disable' : 'Enable'}
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Preferences */}
       <section className="bg-surface border border-border rounded-2xl p-5 space-y-4">
