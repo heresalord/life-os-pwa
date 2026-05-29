@@ -9,7 +9,7 @@ import { getUserLocalDate } from '../../lib/dateUtils'
 import { TransactionItem } from '../../components/finance/TransactionItem'
 import { AddTransactionModal } from '../../components/finance/AddTransactionModal'
 import { EmptyState } from '../../components/EmptyState'
-import { DollarSign } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
 
 type Period = 'today' | 'week' | 'month'
 
@@ -92,26 +92,25 @@ export function FinancePage() {
   const { deleteTransaction } = useTransactionMutations(selectedDate)
   const { data: settings } = useUserSettings()
 
-  const budget = settings?.daily_budget ?? 100
+  const budget   = settings?.daily_budget ?? 100
   const currency = settings?.currency ?? 'USD'
 
-  // Range dates
   const weekFrom  = getUserLocalDate(timezone, subDays(new Date(today + 'T12:00:00'), 6))
   const monthFrom = getUserLocalDate(timezone, subDays(new Date(today + 'T12:00:00'), 29))
-  const { data: weekTxns = [] }  = useTransactionsRange(weekFrom, today)
+  const { data: weekTxns  = [] } = useTransactionsRange(weekFrom, today)
   const { data: monthTxns = [] } = useTransactionsRange(monthFrom, today)
 
-  const txns = period === 'today' ? todayTxns : period === 'week' ? weekTxns : monthTxns
+  const txns      = period === 'today' ? todayTxns : period === 'week' ? weekTxns : monthTxns
   const isLoading = loadingToday
 
-  const expenses = txns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
-  const income   = txns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
-  const net      = income - expenses
-  const budgetTotal = period === 'today' ? budget : period === 'week' ? budget * 7 : budget * 30
-  const budgetPct = Math.min((expenses / budgetTotal) * 100, 100)
-  const over      = expenses > budgetTotal
+  const expenses     = txns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+  const income       = txns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+  const net          = income - expenses
+  const budgetTotal  = period === 'today' ? budget : period === 'week' ? budget * 7 : budget * 30
+  const budgetPct    = Math.min((expenses / budgetTotal) * 100, 100)
+  const over         = expenses > budgetTotal
+  const periodLabel  = period === 'today' ? 'today' : period === 'week' ? 'this week' : 'this month'
 
-  // Bar chart data
   const chartData = useMemo(() => {
     if (period === 'today') return []
     const days = eachDayOfInterval({
@@ -130,7 +129,7 @@ export function FinancePage() {
   }, [txns, period, today, weekFrom, monthFrom])
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 lg:max-w-5xl">
       <header>
         <h1 className="text-2xl font-display text-text">Finance</h1>
       </header>
@@ -147,10 +146,49 @@ export function FinancePage() {
         ))}
       </div>
 
-      {/* Summary card */}
-      <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
+      {/* ── Desktop stat cards row ── */}
+      <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+        <div className="bg-surface border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingDown size={16} className="text-accent" />
+            <span className="text-xs text-text-muted uppercase tracking-wider">Spent {periodLabel}</span>
+          </div>
+          <p className="text-3xl font-display font-medium text-text">{expenses.toFixed(2)}</p>
+          <p className="text-xs text-text-muted mt-1">{currency}</p>
+        </div>
+        <div className="bg-surface border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={16} className="text-success" />
+            <span className="text-xs text-text-muted uppercase tracking-wider">Earned {periodLabel}</span>
+          </div>
+          <p className="text-3xl font-display font-medium text-success">{income > 0 ? '+' : ''}{income.toFixed(2)}</p>
+          <p className="text-xs text-text-muted mt-1">{currency}</p>
+        </div>
+        <div className="bg-surface border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet size={16} className={over ? 'text-warning' : 'text-text-muted'} />
+            <span className="text-xs text-text-muted uppercase tracking-wider">Net {periodLabel}</span>
+          </div>
+          <p className={`text-3xl font-display font-medium ${net >= 0 ? 'text-success' : 'text-danger'}`}>
+            {net >= 0 ? '+' : ''}{net.toFixed(2)}
+          </p>
+          <div className="mt-2">
+            <div className="flex justify-between text-xs text-text-muted mb-1">
+              <span>Budget {Math.round(budgetPct)}%</span>
+              {over && <span className="text-warning font-medium">Over</span>}
+            </div>
+            <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${over ? 'bg-warning/80' : 'bg-accent/80'}`}
+                style={{ width: `${budgetPct}%` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mobile summary card (hidden on desktop — replaced by stat cards above) ── */}
+      <div className="lg:hidden bg-surface border border-border rounded-2xl p-5 space-y-4">
         <div className="flex items-baseline justify-between">
-          <span className="text-sm text-text-muted">Net {period === 'today' ? 'today' : period === 'week' ? 'this week' : 'this month'}</span>
+          <span className="text-sm text-text-muted">Net {periodLabel}</span>
           <span className={`text-3xl font-display font-medium ${net >= 0 ? 'text-success' : 'text-danger'}`}>
             {net >= 0 ? '+' : ''}{net.toFixed(2)} <span className="text-sm text-text-muted">{currency}</span>
           </span>
@@ -171,7 +209,6 @@ export function FinancePage() {
             <p className={`font-medium ${over ? 'text-warning' : 'text-text'}`}>{budgetTotal.toFixed(0)}</p>
           </div>
         </div>
-
         <div>
           <div className="flex justify-between text-xs text-text-muted mb-1.5">
             <span>Budget used</span>
@@ -182,8 +219,6 @@ export function FinancePage() {
               style={{ width: `${budgetPct}%` }} />
           </div>
         </div>
-
-        {/* Bar chart for week/month */}
         {period !== 'today' && chartData.length > 0 && (
           <div className="pt-2 border-t border-border">
             <BarChart data={chartData} currency={currency} />
@@ -191,30 +226,40 @@ export function FinancePage() {
         )}
       </div>
 
-      {/* Category breakdown for week/month */}
+      {/* Bar chart on desktop — shown in its own card */}
+      {period !== 'today' && chartData.length > 0 && (
+        <div className="hidden lg:block bg-surface border border-border rounded-2xl p-5">
+          <h2 className="text-xs text-text-muted uppercase tracking-wider mb-4">Daily breakdown</h2>
+          <BarChart data={chartData} currency={currency} />
+        </div>
+      )}
+
+      {/* Category breakdown */}
       {period !== 'today' && txns.length > 0 && (
-        <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
-          <h2 className="text-sm font-medium text-text">Expenses by category</h2>
-          <CategoryBreakdown txns={txns as { category: string; amount: number; type: string }[]} type="expense" currency={currency} />
+        <div className="bg-surface border border-border rounded-2xl p-5 space-y-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
+          <div className="space-y-3">
+            <h2 className="text-sm font-medium text-text">Expenses by category</h2>
+            <CategoryBreakdown txns={txns as { category: string; amount: number; type: string }[]} type="expense" currency={currency} />
+          </div>
           {income > 0 && (
-            <>
-              <h2 className="text-sm font-medium text-text pt-2 border-t border-border">Income by category</h2>
+            <div className="space-y-3 border-t border-border pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6">
+              <h2 className="text-sm font-medium text-text">Income by category</h2>
               <CategoryBreakdown txns={txns as { category: string; amount: number; type: string }[]} type="income" currency={currency} />
-            </>
+            </div>
           )}
         </div>
       )}
 
       {period === 'today' && <AddTransactionModal date={selectedDate} />}
 
-      {/* Transaction list — today only */}
+      {/* Transaction list */}
       {period === 'today' && (
         isLoading ? (
           <div className="flex justify-center p-8"><div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>
         ) : todayTxns.length === 0 ? (
           <EmptyState icon={<DollarSign size={40} />} title="No transactions yet" message="Log your first expense or income for today." />
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
             {todayTxns.map(t => (
               <TransactionItem key={t.id} transaction={t as Parameters<typeof TransactionItem>[0]['transaction']}
                 onDelete={(id) => deleteTransaction.mutate(id)} currency={currency} />
@@ -223,14 +268,15 @@ export function FinancePage() {
         )
       )}
 
-      {/* Summary list for week/month */}
       {period !== 'today' && txns.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-medium text-text-secondary px-1">All transactions</h2>
-          {[...txns].reverse().map(t => (
-            <TransactionItem key={t.id} transaction={t as Parameters<typeof TransactionItem>[0]['transaction']}
-              onDelete={() => {}} currency={currency} />
-          ))}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-2 space-y-2 lg:space-y-0">
+            {[...txns].reverse().map(t => (
+              <TransactionItem key={t.id} transaction={t as Parameters<typeof TransactionItem>[0]['transaction']}
+                onDelete={() => {}} currency={currency} />
+            ))}
+          </div>
         </div>
       )}
     </div>

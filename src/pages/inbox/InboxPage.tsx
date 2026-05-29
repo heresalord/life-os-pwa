@@ -1,4 +1,3 @@
-
 import { useInboxQuery } from '../../hooks/useInboxQuery'
 import { useInboxMutations } from '../../hooks/useInboxMutations'
 import { InboxItemCard } from '../../components/inbox/InboxItemCard'
@@ -10,24 +9,31 @@ export function InboxPage() {
   const { deleteItem } = useInboxMutations()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-4xl">
       <header>
         <h1 className="text-2xl font-display text-text">Inbox</h1>
         <p className="text-sm text-text-secondary mt-1">Process captured thoughts and ideas.</p>
       </header>
 
       {isLoading ? (
-        <div className="flex justify-center p-8"><div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>
+        <div className="flex justify-center p-8">
+          <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+        </div>
       ) : items.length === 0 ? (
         <EmptyState
           icon={<Inbox size={40} />}
           title="Inbox is clear"
-          message="Capture thoughts using the + button below. They'll appear here to process."
+          message="Capture thoughts using the + button. They'll appear here to process."
         />
       ) : (
-        <div className="space-y-3">
+        // ── Desktop: 2-column card grid; mobile: single column ──
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {items.map(item => (
-            <InboxItemCard key={item.id} item={item as any} onDelete={(id) => deleteItem.mutate(id)} />
+            <InboxItemCard
+              key={item.id}
+              item={item as any}
+              onDelete={(id) => deleteItem.mutate(id)}
+            />
           ))}
         </div>
       )}

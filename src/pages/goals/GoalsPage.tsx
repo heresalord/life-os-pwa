@@ -13,19 +13,17 @@ export function GoalsPage() {
   const goalIds = goals.map(g => g.id)
   const { data: events = [] } = useGoalEventsQuery(goalIds)
 
-  // Cumulative progress: sum all 'add' events, subtract all 'subtract' events
-  const getProgress = (goalId: string) => {
-    return events
+  const getProgress = (goalId: string) =>
+    events
       .filter(e => e.goal_id === goalId)
       .reduce((sum, e) => {
-        if (e.event_type === 'add') return sum + (e.value || 0)
+        if (e.event_type === 'add')      return sum + (e.value || 0)
         if (e.event_type === 'subtract') return sum - (e.value || 0)
         return sum
       }, 0)
-  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-4xl">
       <header>
         <h1 className="text-2xl font-display text-text">Goals</h1>
       </header>
@@ -43,7 +41,8 @@ export function GoalsPage() {
           message="Set a goal and track your progress over time."
         />
       ) : (
-        <div className="space-y-3">
+        // ── Desktop: 2-column grid; mobile: single column stack ──
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {goals.map(g => (
             <GoalItem key={g.id} goal={g} progress={getProgress(g.id)} date={selectedDate} />
           ))}

@@ -14,14 +14,13 @@ export function AgendaPage() {
   const { selectedDate } = useAppStore()
   const { data: blocks = [], isLoading } = useAgendaQuery(selectedDate)
   const { deleteBlock } = useAgendaMutations(selectedDate)
-
   const [orderedBlocks, setOrderedBlocks] = useState<AgendaBlockType[]>([])
 
   useEffect(() => {
     const sorted = [...blocks].sort((a, b) => a.start_time.localeCompare(b.start_time))
     setOrderedBlocks(prev => {
       if (prev.length === 0) return sorted
-      const ids = new Set(sorted.map(b => b.id))
+      const ids    = new Set(sorted.map(b => b.id))
       const prevIds = new Set(prev.map(b => b.id))
       const merged = prev.filter(b => ids.has(b.id))
       sorted.forEach(b => { if (!prevIds.has(b.id)) merged.push(b) })
@@ -39,7 +38,7 @@ export function AgendaPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-3xl">
       <header>
         <h1 className="text-2xl font-display text-text">Agenda</h1>
       </header>

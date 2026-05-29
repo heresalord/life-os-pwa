@@ -10,6 +10,8 @@ import { useAppStore } from '../../store/useAppStore'
 import { displayDate } from '../../lib/dateUtils'
 import { InboxFAB } from '../inbox/InboxFAB'
 import { InstallBanner } from './InstallBanner'
+import { DesktopSidebar } from './DesktopSidebar'
+import { DesktopTopbar } from './DesktopTopbar'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import clsx from 'clsx'
 
@@ -69,7 +71,7 @@ export function AppShell({ children }: AppShellProps) {
   React.useEffect(() => {
     if (settings?.theme) {
       document.documentElement.dataset.theme = settings.theme
-      
+
       // Update status bar theme-color
       let metaThemeColor = document.querySelector('meta[name="theme-color"]')
       if (!metaThemeColor) {
@@ -77,109 +79,135 @@ export function AppShell({ children }: AppShellProps) {
         metaThemeColor.setAttribute('name', 'theme-color')
         document.head.appendChild(metaThemeColor)
       }
-      // Match the root backgrounds defined in index.css
       metaThemeColor.setAttribute('content', settings.theme === 'light' ? '#fcfbfa' : '#0a0a0a')
     }
   }, [settings?.theme])
 
   return (
-    <div className="flex flex-col min-h-screen bg-bg">
-      <header className="sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex flex-col leading-tight relative group">
-            <span className="text-xs text-text-muted font-body uppercase tracking-widest">Life OS</span>
-            <div className="relative">
-              <input 
-                type="date"
-                value={selectedDate}
-                onChange={(e) => useAppStore.getState().setSelectedDate(e.target.value)}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-              />
-              <span className="text-sm text-text font-medium group-hover:text-accent transition-colors flex items-center gap-1">
-                {displayDate(selectedDate, 'EEE, MMM d')}
-              </span>
+    // ── Shell root: mobile = column stack, desktop = sidebar + content row ──
+    <div className="flex flex-col md:flex-row min-h-screen bg-bg">
+
+      {/* ── Desktop sidebar — hidden on mobile ── */}
+      <DesktopSidebar />
+
+      {/* ── Content column: topbar + page content ── */}
+      <div className="flex flex-col flex-1 min-w-0">
+
+        {/* ── Mobile header — hidden on desktop ── */}
+        <header className="md:hidden sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border">
+          <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div className="flex flex-col leading-tight relative group">
+              <span className="text-xs text-text-muted font-body uppercase tracking-widest">Life OS</span>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => useAppStore.getState().setSelectedDate(e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                />
+                <span className="text-sm text-text font-medium group-hover:text-accent transition-colors flex items-center gap-1">
+                  {displayDate(selectedDate, 'EEE, MMM d')}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <SyncStatusDot />
-            <button
-              onClick={() => navigate('/search')}
-              className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors"
-              aria-label="Search"
-            >
-              <Search size={18} />
-            </button>
-
-            <div className="relative">
+            <div className="flex items-center gap-3">
+              <SyncStatusDot />
               <button
-                onClick={() => setMenuOpen(v => !v)}
-                className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-medium hover:bg-accent/30 transition-colors"
+                onClick={() => navigate('/search')}
+                className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors"
+                aria-label="Search"
               >
-                {initials}
+                <Search size={18} />
               </button>
 
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-10 z-50 w-48 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
-                    <div className="px-4 py-3 border-b border-border">
-                      <p className="text-sm text-text font-medium truncate">{displayName}</p>
-                      <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
-                    </div>
-                    <nav className="py-1">
-                      {secondaryNav.map(({ to, icon: Icon, label }) => (
-                        <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}
+              <div className="relative">
+                <button
+                  onClick={() => setMenuOpen(v => !v)}
+                  className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-medium hover:bg-accent/30 transition-colors"
+                >
+                  {initials}
+                </button>
+
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 top-10 z-50 w-48 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
+                      <div className="px-4 py-3 border-b border-border">
+                        <p className="text-sm text-text font-medium truncate">{displayName}</p>
+                        <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
+                      </div>
+                      <nav className="py-1">
+                        {secondaryNav.map(({ to, icon: Icon, label }) => (
+                          <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                            <Icon size={15} />
+                            {label}
+                          </NavLink>
+                        ))}
+                        <div className="border-t border-border my-1" />
+                        <NavLink to="/settings" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <Icon size={15} />
-                          {label}
+                          <Settings size={15} />
+                          Settings
                         </NavLink>
-                      ))}
-                      <div className="border-t border-border my-1" />
-                      <NavLink to="/settings" onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                        <Settings size={15} />
-                        Settings
-                      </NavLink>
-                      <button onClick={() => { signOut(); setMenuOpen(false) }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors">
-                        <X size={15} />
-                        Sign Out
-                      </button>
-                    </nav>
-                  </div>
-                </>
-              )}
+                        <button onClick={() => { signOut(); setMenuOpen(false) }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors">
+                          <X size={15} />
+                          Sign Out
+                        </button>
+                      </nav>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {isTimeTravel && (
-        <div className="bg-timetravel/15 border-b border-timetravel/30 px-4 py-2 flex items-center justify-between">
-          <span className="text-xs text-timetravel font-medium">
-            🕰 Viewing {displayDate(selectedDate, 'MMMM d, yyyy')}
-          </span>
-          <button
-            onClick={() => useAppStore.getState().resetToToday()}
-            className="text-xs text-timetravel underline hover:no-underline"
-          >
-            Back to Today
-          </button>
-        </div>
-      )}
+        {/* ── Desktop topbar — hidden on mobile ── */}
+        <DesktopTopbar />
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-28 overflow-x-hidden">
-        <div key={animKey} className="page-enter">
-          {children}
-        </div>
-      </main>
+        {/* ── Time-travel banner — shown on both breakpoints ── */}
+        {isTimeTravel && (
+          <div className="bg-timetravel/15 border-b border-timetravel/30 px-4 py-2 flex items-center justify-between">
+            <span className="text-xs text-timetravel font-medium">
+              🕰 Viewing {displayDate(selectedDate, 'MMMM d, yyyy')}
+            </span>
+            <button
+              onClick={() => useAppStore.getState().resetToToday()}
+              className="text-xs text-timetravel underline hover:no-underline"
+            >
+              Back to Today
+            </button>
+          </div>
+        )}
 
-      <InboxFAB />
+        {/* ── Page content ── */}
+        <main className={clsx(
+          // Mobile: full-width constrained column with space for bottom nav
+          'flex-1 w-full px-4 py-4 pb-28 overflow-x-hidden',
+          // Mobile centering (preserved exactly)
+          'max-w-2xl mx-auto',
+          // Desktop: release the constraint, fill the remaining width
+          'md:max-w-none md:mx-0 md:pb-6 md:px-6 md:py-6',
+        )}>
+          <div key={animKey} className="page-enter">
+            {children}
+          </div>
+        </main>
+      </div>
+
+      {/* ── Mobile-only floating elements ── */}
+      <div className="md:hidden">
+        <InboxFAB />
+      </div>
+
       <InstallBanner />
 
+      {/* ── Mobile bottom nav — hidden on desktop ── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-border"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="max-w-2xl mx-auto flex items-center justify-around h-16">

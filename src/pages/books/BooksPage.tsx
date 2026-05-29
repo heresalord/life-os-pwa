@@ -31,7 +31,7 @@ export function BooksPage() {
   const filtered = allBooks.filter(b => b.status === tab)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:max-w-4xl">
       <header>
         <h1 className="text-2xl font-display text-text">Library</h1>
         <p className="text-sm text-text-secondary mt-1">{allBooks.length} book{allBooks.length !== 1 ? 's' : ''} total</p>
@@ -54,7 +54,7 @@ export function BooksPage() {
 
         <AddBookModal defaultStatus={tab === 'finished' || tab === 'abandoned' ? 'to-read' : tab} />
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4">
           {isLoading ? (
             <div className="flex justify-center p-8">
               <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
@@ -66,13 +66,16 @@ export function BooksPage() {
               message={EMPTY_MESSAGES[tab]}
             />
           ) : (
-            filtered.map(b => (
-              <BookItem
-                key={b.id}
-                book={b as Parameters<typeof BookItem>[0]['book']}
-                onDelete={id => deleteBook.mutate(id)}
-              />
-            ))
+            // ── Desktop: 2-column grid; mobile: single column ──
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {filtered.map(b => (
+                <BookItem
+                  key={b.id}
+                  book={b as Parameters<typeof BookItem>[0]['book']}
+                  onDelete={id => deleteBook.mutate(id)}
+                />
+              ))}
+            </div>
           )}
         </div>
       </Tabs.Root>
