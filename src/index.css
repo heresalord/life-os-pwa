@@ -198,3 +198,43 @@ input, textarea, [contenteditable], .selectable {
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
+
+/* ── Desktop UI Utilities ── */
+:root {
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 64px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--theme-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.sidebar-item:hover {
+  color: var(--theme-text);
+  background-color: var(--theme-surface-2);
+}
+
+.sidebar-item.active {
+  color: var(--theme-accent);
+  background-color: var(--theme-accent-glow);
+}
+
+.desktop-topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background-color: rgba(var(--theme-bg), 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--theme-border);
+}
+

@@ -13,13 +13,19 @@ import { InstallBanner } from './InstallBanner'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import clsx from 'clsx'
 
-const primaryNav = [
-  { to: '/',        icon: LayoutDashboard, label: 'Home'    },
-  { to: '/tasks',   icon: CheckSquare,     label: 'Tasks'   },
-  { to: '/finance', icon: DollarSign,      label: 'Finance' },
-  { to: '/goals',   icon: Target,          label: 'Goals'   },
-  { to: '/books',   icon: BookOpen,        label: 'Books'   },
+// Full catalogue of navigable items (Home is always fixed)
+export const ALL_NAV_OPTIONS = [
+  { key: 'tasks',   to: '/tasks',   icon: CheckSquare,  label: 'Tasks'   },
+  { key: 'finance', to: '/finance', icon: DollarSign,   label: 'Finance' },
+  { key: 'goals',   to: '/goals',   icon: Target,       label: 'Goals'   },
+  { key: 'books',   to: '/books',   icon: BookOpen,     label: 'Books'   },
+  { key: 'agenda',  to: '/agenda',  icon: CalendarDays, label: 'Agenda'  },
+  { key: 'inbox',   to: '/inbox',   icon: Inbox,        label: 'Inbox'   },
+  { key: 'notes',   to: '/notes',   icon: FileText,     label: 'Notes'   },
+  { key: 'search',  to: '/search',  icon: Search,       label: 'Search'  },
 ]
+
+const HOME_NAV = { key: 'home', to: '/', icon: LayoutDashboard, label: 'Home' }
 
 const secondaryNav = [
   { to: '/agenda', icon: CalendarDays, label: 'Agenda' },
@@ -33,11 +39,19 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { profile, signOut } = useAuth()
-  const { selectedDate, timezone } = useAppStore()
+  const { selectedDate, timezone, navItems } = useAppStore()
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [animKey, setAnimKey] = React.useState(location.pathname)
+
+  // Build bottom nav from user preference (Home is always slot 1)
+  const dynamicNav = [
+    HOME_NAV,
+    ...navItems
+      .map(key => ALL_NAV_OPTIONS.find(o => o.key === key))
+      .filter(Boolean) as typeof ALL_NAV_OPTIONS,
+  ]
 
   // Trigger slide animation on route change
   React.useEffect(() => {
@@ -169,9 +183,9 @@ export function AppShell({ children }: AppShellProps) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="max-w-2xl mx-auto flex items-center justify-around h-16">
-          {primaryNav.map(({ to, icon: Icon, label }) => (
+          {dynamicNav.map(({ to, icon: Icon, label, key }) => (
             <NavLink
-              key={to}
+              key={key}
               to={to}
               end={to === '/'}
               className={({ isActive }) =>

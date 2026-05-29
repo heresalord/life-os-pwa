@@ -6,21 +6,16 @@ import { supabase as supa } from '../lib/supabase'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
-async function writeQuote(op: 'insert' | 'delete', payload: Record<string, unknown>) {
-  if (navigator.onLine) {
-    let error = null
-    if (op === 'insert') ({ error } = await sbAny.from('quotes').insert([payload]))
-    else                 ({ error } = await sbAny.from('quotes').delete().eq('id', payload.id))
-    if (error) await enqueueSync('quotes', op, payload)
-  } else {
-    await enqueueSync('quotes', op, payload)
-  }
-}
-
+/**
+ * Mutations scoped to a specific book.
+ * The bookId is baked into each mutated row automatically.
+ */
 export function useQuoteMutations(bookId: string) {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['quotes', bookId] })
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['quotes'] })
+  }
 
   const addQuote = useMutation({
     mutationFn: async (payload: { text: string; page?: number | null }) => {
@@ -35,7 +30,12 @@ export function useQuoteMutations(bookId: string) {
         created_at: new Date().toISOString(),
       }
       await db.quotes.add(quote as Parameters<typeof db.quotes.add>[0])
-      await writeQuote('insert', quote)
+      if (navigator.onLine) {
+        const { error } = await sbAny.from('quotes').insert([quote])
+        if (error) await enqueueSync('quotes', 'insert', quote)
+      } else {
+        await enqueueSync('quotes', 'insert', quote)
+      }
       return quote
     },
     onSuccess: () => invalidate(),
@@ -44,16 +44,11 @@ export function useQuoteMutations(bookId: string) {
   const deleteQuote = useMutation({
     mutationFn: async (id: string) => {
       await db.quotes.delete(id)
-      await writeQuote('delete', { id })
-    },
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: ['quotes', bookId] })
-      const prev = qc.getQueryData<{ id: string }[]>(['quotes', bookId])
-      qc.setQueryData(['quotes', bookId], (old: { id: string }[] = []) => old.filter(q => q.id !== id))
-      return { prev }
-    },
-    onError: (_e, _id, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['quotes', bookId], ctx.prev)
+      if (navigator.onLine) {
+        await sbAny.from('quotes').delete().eq('id', id)
+      } else {
+        await enqueueSync('quotes', 'delete', { id })
+      }
     },
     onSuccess: () => invalidate(),
   })

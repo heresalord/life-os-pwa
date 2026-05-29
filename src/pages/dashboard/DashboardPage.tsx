@@ -6,6 +6,7 @@ import { FocusTasksPanel } from '../../components/dashboard/FocusTasksPanel'
 import { FinancePanel } from '../../components/dashboard/FinancePanel'
 import { NotesInboxPanel } from '../../components/dashboard/NotesInboxPanel'
 import { MoodGoalsBooksPanel } from '../../components/dashboard/MoodGoalsBooksPanel'
+import { QuotesWidget } from '../../components/dashboard/QuotesWidget'
 import { useAuth } from '../../hooks/useAuth'
 
 const getGreeting = () => {
@@ -74,6 +75,11 @@ export function DashboardPage() {
         <div className="sm:col-span-2">
           <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Mood · Goals · Books</p>
           <MoodGoalsBooksPanel />
+        </div>
+
+        <div className="sm:col-span-2">
+          <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Quote</p>
+          <QuotesWidget />
         </div>
       </div>
     </div>

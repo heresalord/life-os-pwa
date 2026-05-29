@@ -5,12 +5,14 @@ import { useUserSettings } from '../../hooks/useUserSettings'
 import { exportAllDataToJson, exportTransactionsCSV } from '../../lib/exportUtils'
 import { db } from '../../db'
 import { useAppStore } from '../../store/useAppStore'
+import { ALL_NAV_OPTIONS } from '../../components/layout/AppShell'
 import type { Theme } from '../../store/useAppStore'
 import {
   Settings, LogOut, Download, Upload, AlertTriangle, User,
-  CheckCircle, XCircle, Loader, Moon, Sun, X, Plus, Bell
+  CheckCircle, XCircle, Loader, Moon, Sun, X, Plus, Bell, Layout, Quote
 } from 'lucide-react'
 import { pushSupported, isPushSubscribed, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications'
+import clsx from 'clsx'
 
 const supabaseAny = supabase as any
 type AnyRow = Record<string, unknown>
@@ -127,7 +129,7 @@ function CategoryEditor({
 export function SettingsPage() {
   const { user } = useAuth()
   const { data: settings, upsert } = useUserSettings()
-  const { theme, setTheme } = useAppStore()
+  const { theme, setTheme, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours } = useAppStore()
 
   const [budget, setBudget] = useState('100')
   const [currency, setCurrency] = useState('USD')
@@ -349,6 +351,81 @@ export function SettingsPage() {
 
         <CategoryEditor label="Expense Categories" categories={expenseCats} onChange={setExpenseCats} />
         <CategoryEditor label="Income Categories" categories={incomeCats} onChange={setIncomeCats} />
+      </section>
+
+      {/* Navigation customisation */}
+      <section className="bg-surface border border-border rounded-2xl p-5 space-y-4">
+        <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-2">
+          <Layout size={14} /> Navigation
+        </h2>
+        <p className="text-xs text-text-muted leading-relaxed">
+          Home is always the first tab. Pick the other 4 slots.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {ALL_NAV_OPTIONS.map(opt => {
+            const Icon = opt.icon
+            const selected = navItems.includes(opt.key)
+            return (
+              <button
+                key={opt.key}
+                onClick={() => {
+                  if (selected) {
+                    if (navItems.length <= 1) return // keep at least 1
+                    setNavItems(navItems.filter(k => k !== opt.key))
+                  } else {
+                    if (navItems.length >= 4) {
+                      // Replace last item
+                      setNavItems([...navItems.slice(0, 3), opt.key])
+                    } else {
+                      setNavItems([...navItems, opt.key])
+                    }
+                  }
+                }}
+                className={clsx(
+                  'flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all',
+                  selected
+                    ? 'bg-accent/10 border-accent text-accent'
+                    : 'bg-surface-2 border-border text-text-muted hover:text-text hover:border-text-muted'
+                )}
+              >
+                <Icon size={16} />
+                {opt.label}
+                {selected && (
+                  <span className="ml-auto w-4 h-4 bg-accent rounded-full flex items-center justify-center">
+                    <span className="text-[9px] text-bg font-bold">{navItems.indexOf(opt.key) + 2}</span>
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-[11px] text-text-muted">
+          {navItems.length}/4 slots used · Home is always slot 1
+        </p>
+      </section>
+
+      {/* Quote widget interval */}
+      <section className="bg-surface border border-border rounded-2xl p-5 space-y-4">
+        <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-2">
+          <Quote size={14} /> Quote Widget
+        </h2>
+        <p className="text-xs text-text-muted">How often the dashboard quote rotates automatically.</p>
+        <div className="grid grid-cols-4 gap-2">
+          {[1, 6, 12, 24].map(h => (
+            <button
+              key={h}
+              onClick={() => setQuoteIntervalHours(h)}
+              className={clsx(
+                'py-2.5 rounded-xl border text-sm font-medium transition-all',
+                quoteIntervalHours === h
+                  ? 'bg-accent/10 border-accent text-accent'
+                  : 'bg-surface-2 border-border text-text-muted hover:text-text'
+              )}
+            >
+              {h}h
+            </button>
+          ))}
+        </div>
       </section>
 
       <button onClick={handleSave} disabled={saving}

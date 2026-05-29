@@ -3,26 +3,71 @@ import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
 
-export function useQuotesQuery(bookId: string | null) {
+export interface QuoteWithBook {
+  id: string
+  user_id: string
+  book_id: string
+  text: string
+  page: number | null
+  date: string
+  created_at: string
+  book_title?: string | null
+  book_author?: string | null
+}
+
+/**
+ * Fetch quotes. If bookId is provided, only quotes for that book are returned.
+ * Used by the dashboard widget (no bookId) and the QuotesPanel in BookItem (bookId).
+ */
+export function useQuotesQuery(bookId?: string | null) {
   const { user } = useAuth()
-  return useQuery({
-    queryKey: ['quotes', bookId],
-    enabled: !!user && !!bookId,
+  return useQuery<QuoteWithBook[]>({
+    queryKey: ['quotes', user?.id, bookId ?? 'all'],
+    enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
-      if (!bookId) return []
       if (navigator.onLine) {
-        const { data, error } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let q = (supabase as any)
           .from('quotes')
-          .select('*')
-          .eq('book_id', bookId)
+          .select('*, books(title, author)')
           .eq('user_id', user!.id)
           .order('created_at', { ascending: false })
+        if (bookId) q = q.eq('book_id', bookId)
+
+        const { data, error } = await q
         if (error) throw error
-        if (data) await db.quotes.bulkPut(data as Parameters<typeof db.quotes.bulkPut>[0])
-        return data ?? []
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rows: QuoteWithBook[] = (data ?? []).map((q: any) => ({
+          ...q,
+          book_title: q.books?.title ?? null,
+          book_author: q.books?.author ?? null,
+          books: undefined,
+        }))
+
+        // Persist flat rows to IndexedDB
+        await db.quotes.bulkPut(
+          rows.map(({ book_title: _bt, book_author: _ba, ...rest }) => rest) as Parameters<typeof db.quotes.bulkPut>[0]
+        )
+        return rows
       }
-      return db.quotes.where('book_id').equals(bookId).reverse().sortBy('created_at')
+
+      // Offline — fetch from Dexie, join books manually
+      const quotes = bookId
+        ? await db.quotes.where('book_id').equals(bookId).reverse().sortBy('created_at')
+        : await db.quotes.orderBy('created_at').reverse().toArray()
+
+      const bookIds = [...new Set(quotes.map(q => q.book_id))]
+      const books = await db.books.bulkGet(bookIds)
+      const bookMap = Object.fromEntries(
+        books.filter(Boolean).map(b => [b!.id, b!])
+      )
+      return quotes.map(q => ({
+        ...q,
+        book_title: bookMap[q.book_id]?.title ?? null,
+        book_author: bookMap[q.book_id]?.author ?? null,
+      }))
     },
   })
 }
