@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Force Node.js 24 so all actions work on current GitHub runners
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -18,11 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Node ────────────────────────────────────────────────────────
-      - name: Set up Node.js 20
+      # ── 2. Node 22 (Capacitor 8 requires >=22) ────────────────────────
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install npm dependencies
@@ -46,9 +45,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # ── 6. Android SDK ────────────────────────────────────────────────
-      # ubuntu-latest already has the Android SDK installed at $ANDROID_SDK_ROOT.
-      # We just need to make sure SDK 36 + matching build-tools are present.
+      # ── 6. Android SDK 36 ─────────────────────────────────────────────
       - name: Install Android SDK 36 + build-tools
         run: |
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
@@ -65,8 +62,6 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
 
       # ── 9. Upload artifact ────────────────────────────────────────────
       - name: Upload APK
