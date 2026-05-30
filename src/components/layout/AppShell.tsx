@@ -15,7 +15,6 @@ import { DesktopTopbar } from './DesktopTopbar'
 import { useNavSync } from '../../hooks/useNavSync'
 import clsx from 'clsx'
 
-// Full catalogue of navigable items (Home is always fixed as slot 1)
 export const ALL_NAV_OPTIONS = [
   { key: 'tasks',   to: '/tasks',   icon: CheckSquare,  label: 'Tasks'   },
   { key: 'finance', to: '/finance', icon: DollarSign,   label: 'Finance' },
@@ -41,10 +40,8 @@ export function AppShell({ children }: AppShellProps) {
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [animKey, setAnimKey] = React.useState(location.pathname)
 
-  // Sync nav items to/from Supabase so changes persist across devices
   useNavSync()
 
-  // Bottom nav: Home + user-chosen items
   const dynamicNav = [
     HOME_NAV,
     ...navItems
@@ -52,7 +49,6 @@ export function AppShell({ children }: AppShellProps) {
       .filter(Boolean) as typeof ALL_NAV_OPTIONS,
   ]
 
-  // Pages NOT in the bottom nav — must stay reachable via the hamburger
   const hiddenPages = ALL_NAV_OPTIONS.filter(o => !navItems.includes(o.key))
 
   React.useEffect(() => {
@@ -68,14 +64,20 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-bg">
 
-      {/* Desktop sidebar */}
       <DesktopSidebar />
 
-      {/* Content column */}
       <div className="flex flex-col flex-1 min-w-0">
 
-        {/* Mobile header */}
-        <header className="md:hidden sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border">
+        {/* ── Mobile header ──────────────────────────────────────────────
+            paddingTop: env(safe-area-inset-top) pushes the content below
+            the phone's status bar (notch, Dynamic Island, punch-hole).
+            The background colour extends up behind the status bar, which
+            looks intentional rather than broken.
+            The inner div keeps a fixed h-14 for the actual nav content. */}
+        <header
+          className="md:hidden sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
 
             <div className="flex flex-col leading-tight relative group">
@@ -168,10 +170,8 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </header>
 
-        {/* Desktop topbar */}
         <DesktopTopbar />
 
-        {/* Time-travel banner */}
         {isTimeTravel && (
           <div className="bg-timetravel/15 border-b border-timetravel/30 px-4 py-2 flex items-center justify-between">
             <span className="text-xs text-timetravel font-medium">
@@ -186,7 +186,6 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         )}
 
-        {/* Page content */}
         <main className={clsx(
           'flex-1 w-full px-4 py-4 pb-28 overflow-x-hidden',
           'max-w-2xl mx-auto',
@@ -198,14 +197,15 @@ export function AppShell({ children }: AppShellProps) {
         </main>
       </div>
 
-      {/* InboxFAB — mobile only */}
       <div className="md:hidden">
         <InboxFAB />
       </div>
 
       <InstallBanner />
 
-      {/* Bottom nav — mobile only */}
+      {/* ── Mobile bottom nav ───────────────────────────────────────────
+          paddingBottom: env(safe-area-inset-bottom) lifts the nav above
+          the home indicator on iPhone / gesture bar on Android. */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
