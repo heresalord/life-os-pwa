@@ -35,7 +35,7 @@
 
   --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* Task completion flash animation */
+  /* Task completion flash */
   --animate-ping-once: ping-once 0.5s ease-out forwards;
   @keyframes ping-once {
     0%   { opacity: 0.6; transform: scale(1); }
@@ -52,6 +52,7 @@
   }
 }
 
+/* ── Dark theme (default — matches index.html inline script) ── */
 :root {
   --theme-bg:             #0a0a0a;
   --theme-surface:        #111111;
@@ -69,8 +70,12 @@
   --theme-danger:         #b86a6a;
   --theme-info:           #6a8ab8;
   --theme-timetravel:     #c8a92a;
+
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 64px;
 }
 
+/* ── Light theme ── */
 :root[data-theme="light"] {
   --theme-bg:             #fcfbfa;
   --theme-surface:        #ffffff;
@@ -100,7 +105,8 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  /* Smooth theme transitions — only color properties, not layout */
+  transition: background-color 250ms ease, color 250ms ease;
 }
 
 body {
@@ -110,30 +116,29 @@ body {
   overscroll-behavior: none;
   user-select: none;
   -webkit-user-select: none;
-  /* Capacitor / PWA: disable callout on long-press */
   -webkit-touch-callout: none;
 }
 
-/* Remove the blue tap flash on mobile — critical for app feel */
+/* Remove tap highlight on mobile */
 * {
   -webkit-tap-highlight-color: transparent;
   tap-highlight-color: transparent;
 }
 
-/* Buttons and interactive elements: snappy touch response */
+/* Snappy touch response */
 button, a, [role="button"] {
   touch-action: manipulation;
   cursor: pointer;
 }
 
-/* Active-press feedback so taps feel physical */
+/* Physical press feedback */
 button:active, a:active {
   opacity: 0.75;
   transform: scale(0.97);
   transition: opacity 60ms, transform 60ms;
 }
 
-/* Re-enable text selection inside inputs and textareas */
+/* Re-enable selection in inputs */
 input, textarea, [contenteditable], .selectable {
   user-select: auto;
   -webkit-user-select: auto;
@@ -152,59 +157,95 @@ input, textarea, [contenteditable], .selectable {
   100% { transform: scale(1);    opacity: 1; }
 }
 @keyframes confetti-pop {
-  0%   { opacity: 1; transform: translateY(0)   scale(1); }
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
   100% { opacity: 0; transform: translateY(-48px) scale(0.4); }
 }
-.goal-complete-ring {
-  animation: goal-complete-burst 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
+.goal-complete-ring { animation: goal-complete-burst 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .confetti-dot {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   animation: confetti-pop 600ms ease-out forwards;
   pointer-events: none;
 }
 
-/* ── Page transitions (app-like feel, ready for Capacitor) ── */
-@keyframes page-enter-anim {
+/* ── Page transitions ── */
+/* Mobile: gentle slide-up (8px feels good on small screens) */
+@keyframes page-enter-mobile {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.page-enter {
-  animation: page-enter-anim 180ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+/* Desktop: pure fade — no translate jank on large canvases */
+@keyframes page-enter-desktop {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-/* ── Task completion animation ── */
-.animate-ping-once {
-  animation: var(--animate-ping-once);
+.page-enter {
+  animation: page-enter-mobile 180ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
-.animate-check-bounce {
-  animation: var(--animate-check-bounce);
+
+@media (min-width: 768px) {
+  .page-enter {
+    animation: page-enter-desktop 140ms ease both;
+  }
 }
+
+/* ── Sidebar nav item enter animation ── */
+@keyframes sidebar-item-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.sidebar-item-animate {
+  animation: sidebar-item-in 200ms ease both;
+}
+
+/* ── Modal / sheet entrance ── */
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.sheet-enter {
+  animation: sheet-up 220ms cubic-bezier(0.34, 1.1, 0.64, 1) both;
+}
+
+/* ── Skeleton shimmer ── */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--theme-surface-2) 25%,
+    var(--theme-muted) 50%,
+    var(--theme-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ── Task animations ── */
+.animate-ping-once   { animation: var(--animate-ping-once); }
+.animate-check-bounce { animation: var(--animate-check-bounce); }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar         { width: 4px; height: 4px; }
-::-webkit-scrollbar-track   { background: transparent; }
-::-webkit-scrollbar-thumb   { background: var(--theme-muted); border-radius: 9999px; }
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--theme-muted); border-radius: 9999px; }
 
 /* ── Selection ── */
 ::selection { background: var(--theme-accent-glow); color: var(--theme-accent); }
 
-/* ── Focus ── */
+/* ── Focus ring ── */
 :focus-visible {
   outline: 2px solid var(--theme-accent);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
 
-/* ── Desktop UI Utilities ── */
-:root {
-  --sidebar-width: 240px;
-  --sidebar-width-collapsed: 64px;
-}
-
+/* ── Desktop sidebar utilities ── */
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -214,18 +255,10 @@ input, textarea, [contenteditable], .selectable {
   font-size: 14px;
   font-weight: 500;
   color: var(--theme-text-secondary);
-  transition: all 0.2s ease;
+  transition: color 150ms ease, background-color 150ms ease;
 }
-
-.sidebar-item:hover {
-  color: var(--theme-text);
-  background-color: var(--theme-surface-2);
-}
-
-.sidebar-item.active {
-  color: var(--theme-accent);
-  background-color: var(--theme-accent-glow);
-}
+.sidebar-item:hover  { color: var(--theme-text); background-color: var(--theme-surface-2); }
+.sidebar-item.active { color: var(--theme-accent); background-color: var(--theme-accent-glow); }
 
 .desktop-topbar {
   height: 56px;
@@ -233,8 +266,6 @@ input, textarea, [contenteditable], .selectable {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background-color: rgba(var(--theme-bg), 0.8);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--theme-border);
 }
-

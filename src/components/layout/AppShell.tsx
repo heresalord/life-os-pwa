@@ -2,7 +2,7 @@ import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
-  CalendarDays, Inbox, FileText, Search, Settings, X
+  CalendarDays, Inbox, FileText, Search, Settings, LogOut
 } from 'lucide-react'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,10 +12,9 @@ import { InboxFAB } from '../inbox/InboxFAB'
 import { InstallBanner } from './InstallBanner'
 import { DesktopSidebar } from './DesktopSidebar'
 import { DesktopTopbar } from './DesktopTopbar'
-import { useUserSettings } from '../../hooks/useUserSettings'
 import clsx from 'clsx'
 
-// Full catalogue of navigable items (Home is always fixed)
+// Full catalogue of navigable items (Home is always fixed as slot 1)
 export const ALL_NAV_OPTIONS = [
   { key: 'tasks',   to: '/tasks',   icon: CheckSquare,  label: 'Tasks'   },
   { key: 'finance', to: '/finance', icon: DollarSign,   label: 'Finance' },
@@ -29,12 +28,6 @@ export const ALL_NAV_OPTIONS = [
 
 const HOME_NAV = { key: 'home', to: '/', icon: LayoutDashboard, label: 'Home' }
 
-const secondaryNav = [
-  { to: '/agenda', icon: CalendarDays, label: 'Agenda' },
-  { to: '/inbox',  icon: Inbox,        label: 'Inbox'  },
-  { to: '/notes',  icon: FileText,     label: 'Notes'  },
-]
-
 interface AppShellProps {
   children: React.ReactNode
 }
@@ -47,7 +40,7 @@ export function AppShell({ children }: AppShellProps) {
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [animKey, setAnimKey] = React.useState(location.pathname)
 
-  // Build bottom nav from user preference (Home is always slot 1)
+  // Bottom nav: Home + user-chosen items
   const dynamicNav = [
     HOME_NAV,
     ...navItems
@@ -55,12 +48,13 @@ export function AppShell({ children }: AppShellProps) {
       .filter(Boolean) as typeof ALL_NAV_OPTIONS,
   ]
 
-  // Trigger slide animation on route change
+  // Pages NOT in the bottom nav — these must stay reachable via the hamburger
+  // so nothing ever becomes inaccessible on mobile
+  const hiddenPages = ALL_NAV_OPTIONS.filter(o => !navItems.includes(o.key))
+
   React.useEffect(() => {
     setAnimKey(location.pathname)
   }, [location.pathname])
-
-  const { data: settings } = useUserSettings()
 
   const today = new Date().toLocaleDateString('en-CA', { timeZone: timezone })
   const isTimeTravel = selectedDate !== today
@@ -68,34 +62,24 @@ export function AppShell({ children }: AppShellProps) {
   const displayName = profile?.display_name || 'You'
   const initials = displayName.slice(0, 2).toUpperCase()
 
-  React.useEffect(() => {
-    if (settings?.theme) {
-      document.documentElement.dataset.theme = settings.theme
-
-      // Update status bar theme-color
-      let metaThemeColor = document.querySelector('meta[name="theme-color"]')
-      if (!metaThemeColor) {
-        metaThemeColor = document.createElement('meta')
-        metaThemeColor.setAttribute('name', 'theme-color')
-        document.head.appendChild(metaThemeColor)
-      }
-      metaThemeColor.setAttribute('content', settings.theme === 'light' ? '#fcfbfa' : '#0a0a0a')
-    }
-  }, [settings?.theme])
+  // NOTE: Theme is applied synchronously in index.html and managed entirely by
+  // useAppStore. No effect here to avoid racing the locally-stored value with
+  // a stale DB read which caused the light/dark flash.
 
   return (
-    // ── Shell root: mobile = column stack, desktop = sidebar + content row ──
     <div className="flex flex-col md:flex-row min-h-screen bg-bg">
 
-      {/* ── Desktop sidebar — hidden on mobile ── */}
+      {/* Desktop sidebar */}
       <DesktopSidebar />
 
-      {/* ── Content column: topbar + page content ── */}
+      {/* Content column */}
       <div className="flex flex-col flex-1 min-w-0">
 
-        {/* ── Mobile header — hidden on desktop ── */}
+        {/* Mobile header */}
         <header className="md:hidden sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border">
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+
+            {/* Brand + date picker */}
             <div className="flex flex-col leading-tight relative group">
               <span className="text-xs text-text-muted font-body uppercase tracking-widest">Life OS</span>
               <div className="relative">
@@ -105,7 +89,7 @@ export function AppShell({ children }: AppShellProps) {
                   onChange={(e) => useAppStore.getState().setSelectedDate(e.target.value)}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                 />
-                <span className="text-sm text-text font-medium group-hover:text-accent transition-colors flex items-center gap-1">
+                <span className="text-sm text-text font-medium group-hover:text-accent transition-colors">
                   {displayDate(selectedDate, 'EEE, MMM d')}
                 </span>
               </div>
@@ -121,10 +105,11 @@ export function AppShell({ children }: AppShellProps) {
                 <Search size={18} />
               </button>
 
+              {/* Avatar / hamburger menu */}
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen(v => !v)}
-                  className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-medium hover:bg-accent/30 transition-colors"
+                  className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
                 >
                   {initials}
                 </button>
@@ -132,28 +117,53 @@ export function AppShell({ children }: AppShellProps) {
                 {menuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-10 z-50 w-48 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
+                    <div className="absolute right-0 top-10 z-50 w-52 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
+
+                      {/* User info */}
                       <div className="px-4 py-3 border-b border-border">
                         <p className="text-sm text-text font-medium truncate">{displayName}</p>
                         <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
                       </div>
-                      <nav className="py-1">
-                        {secondaryNav.map(({ to, icon: Icon, label }) => (
-                          <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+
+                      <nav className="py-1 max-h-72 overflow-y-auto">
+                        {/* Pages missing from the bottom nav — ensures nothing is stranded */}
+                        {hiddenPages.map(({ to, icon: Icon, label }) => (
+                          <NavLink
+                            key={to}
+                            to={to}
+                            onClick={() => setMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors"
+                          >
                             <Icon size={15} />
                             {label}
                           </NavLink>
                         ))}
+
                         <div className="border-t border-border my-1" />
+
+                        {/* Routines */}
+                        <NavLink to="/morning" onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                          <span className="text-base">☀️</span> Morning
+                        </NavLink>
+                        <NavLink to="/review" onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                          <span className="text-base">🌙</span> Review
+                        </NavLink>
+
+                        <div className="border-t border-border my-1" />
+
                         <NavLink to="/settings" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
                           <Settings size={15} />
                           Settings
                         </NavLink>
-                        <button onClick={() => { signOut(); setMenuOpen(false) }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors">
-                          <X size={15} />
+
+                        <button
+                          onClick={() => { signOut(); setMenuOpen(false) }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
+                        >
+                          <LogOut size={15} />
                           Sign Out
                         </button>
                       </nav>
@@ -165,10 +175,10 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </header>
 
-        {/* ── Desktop topbar — hidden on mobile ── */}
+        {/* Desktop topbar */}
         <DesktopTopbar />
 
-        {/* ── Time-travel banner — shown on both breakpoints ── */}
+        {/* Time-travel banner */}
         {isTimeTravel && (
           <div className="bg-timetravel/15 border-b border-timetravel/30 px-4 py-2 flex items-center justify-between">
             <span className="text-xs text-timetravel font-medium">
@@ -183,13 +193,10 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         )}
 
-        {/* ── Page content ── */}
+        {/* Page content */}
         <main className={clsx(
-          // Mobile: full-width constrained column with space for bottom nav
           'flex-1 w-full px-4 py-4 pb-28 overflow-x-hidden',
-          // Mobile centering (preserved exactly)
           'max-w-2xl mx-auto',
-          // Desktop: release the constraint, fill the remaining width
           'md:max-w-none md:mx-0 md:pb-6 md:px-6 md:py-6',
         )}>
           <div key={animKey} className="page-enter">
@@ -198,14 +205,14 @@ export function AppShell({ children }: AppShellProps) {
         </main>
       </div>
 
-      {/* ── Mobile-only floating elements ── */}
+      {/* InboxFAB — mobile only */}
       <div className="md:hidden">
         <InboxFAB />
       </div>
 
       <InstallBanner />
 
-      {/* ── Mobile bottom nav — hidden on desktop ── */}
+      {/* Bottom nav — mobile only */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -217,8 +224,10 @@ export function AppShell({ children }: AppShellProps) {
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                clsx('flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all',
-                  isActive ? 'text-accent' : 'text-text-muted hover:text-text-secondary')
+                clsx(
+                  'flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all',
+                  isActive ? 'text-accent' : 'text-text-muted hover:text-text-secondary'
+                )
               }
             >
               {({ isActive }) => (

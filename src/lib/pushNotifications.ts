@@ -1,23 +1,12 @@
-/**
- * Push notification client helpers.
- * The service worker (push-sw.js), Edge Function (send-push), and cron jobs
- * are already in place. This module handles:
- *  1. Registering the push service worker
- *  2. Requesting permission + subscribing
- *  3. Saving the subscription to Supabase push_subscriptions
- *  4. Unsubscribing / removing from DB
- */
 import { supabase } from './supabase'
 
-// Set in .env.local as VITE_VAPID_PUBLIC_KEY
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
   const rawData = atob(base64)
-  const arr = Uint8Array.from([...rawData].map(c => c.charCodeAt(0)))
-  return arr.buffer as ArrayBuffer
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0))).buffer as ArrayBuffer
 }
 
 export async function registerPushSW(): Promise<ServiceWorkerRegistration | null> {
@@ -31,17 +20,24 @@ export async function registerPushSW(): Promise<ServiceWorkerRegistration | null
   }
 }
 
-export async function subscribeToPush(userId: string): Promise<boolean> {
+export type PushResult =
+  | { ok: true }
+  | { ok: false; reason: 'no_vapid_key' | 'no_sw_support' | 'permission_denied' | 'sw_failed' | 'unknown' }
+
+export async function subscribeToPush(userId: string): Promise<PushResult> {
   if (!VAPID_PUBLIC_KEY) {
-    console.warn('[Push] VITE_VAPID_PUBLIC_KEY not set')
-    return false
+    return { ok: false, reason: 'no_vapid_key' }
   }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return { ok: false, reason: 'no_sw_support' }
+  }
+
   try {
     const reg = await registerPushSW()
-    if (!reg) return false
+    if (!reg) return { ok: false, reason: 'sw_failed' }
 
     const permission = await Notification.requestPermission()
-    if (permission !== 'granted') return false
+    if (permission !== 'granted') return { ok: false, reason: 'permission_denied' }
 
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
@@ -58,10 +54,10 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
       user_agent: navigator.userAgent,
     }, { onConflict: 'endpoint' })
 
-    return true
+    return { ok: true }
   } catch (e) {
     console.warn('[Push] Subscribe failed', e)
-    return false
+    return { ok: false, reason: 'unknown' }
   }
 }
 
@@ -93,8 +89,10 @@ export async function isPushSubscribed(): Promise<boolean> {
   }
 }
 
+// True only when the full push stack is available AND the VAPID key is configured
 export const pushSupported =
   typeof window !== 'undefined' &&
   'serviceWorker' in navigator &&
   'PushManager' in window &&
-  'Notification' in window
+  'Notification' in window &&
+  !!VAPID_PUBLIC_KEY
