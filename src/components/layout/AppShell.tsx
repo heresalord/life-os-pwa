@@ -12,6 +12,7 @@ import { InboxFAB } from '../inbox/InboxFAB'
 import { InstallBanner } from './InstallBanner'
 import { DesktopSidebar } from './DesktopSidebar'
 import { DesktopTopbar } from './DesktopTopbar'
+import { useNavSync } from '../../hooks/useNavSync'
 import clsx from 'clsx'
 
 // Full catalogue of navigable items (Home is always fixed as slot 1)
@@ -40,6 +41,9 @@ export function AppShell({ children }: AppShellProps) {
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [animKey, setAnimKey] = React.useState(location.pathname)
 
+  // Sync nav items to/from Supabase so changes persist across devices
+  useNavSync()
+
   // Bottom nav: Home + user-chosen items
   const dynamicNav = [
     HOME_NAV,
@@ -48,8 +52,7 @@ export function AppShell({ children }: AppShellProps) {
       .filter(Boolean) as typeof ALL_NAV_OPTIONS,
   ]
 
-  // Pages NOT in the bottom nav — these must stay reachable via the hamburger
-  // so nothing ever becomes inaccessible on mobile
+  // Pages NOT in the bottom nav — must stay reachable via the hamburger
   const hiddenPages = ALL_NAV_OPTIONS.filter(o => !navItems.includes(o.key))
 
   React.useEffect(() => {
@@ -61,10 +64,6 @@ export function AppShell({ children }: AppShellProps) {
 
   const displayName = profile?.display_name || 'You'
   const initials = displayName.slice(0, 2).toUpperCase()
-
-  // NOTE: Theme is applied synchronously in index.html and managed entirely by
-  // useAppStore. No effect here to avoid racing the locally-stored value with
-  // a stale DB read which caused the light/dark flash.
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-bg">
@@ -79,7 +78,6 @@ export function AppShell({ children }: AppShellProps) {
         <header className="md:hidden sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border">
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
 
-            {/* Brand + date picker */}
             <div className="flex flex-col leading-tight relative group">
               <span className="text-xs text-text-muted font-body uppercase tracking-widest">Life OS</span>
               <div className="relative">
@@ -105,7 +103,6 @@ export function AppShell({ children }: AppShellProps) {
                 <Search size={18} />
               </button>
 
-              {/* Avatar / hamburger menu */}
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen(v => !v)}
@@ -118,15 +115,12 @@ export function AppShell({ children }: AppShellProps) {
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                     <div className="absolute right-0 top-10 z-50 w-52 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
-
-                      {/* User info */}
                       <div className="px-4 py-3 border-b border-border">
                         <p className="text-sm text-text font-medium truncate">{displayName}</p>
                         <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
                       </div>
 
                       <nav className="py-1 max-h-72 overflow-y-auto">
-                        {/* Pages missing from the bottom nav — ensures nothing is stranded */}
                         {hiddenPages.map(({ to, icon: Icon, label }) => (
                           <NavLink
                             key={to}
@@ -141,14 +135,13 @@ export function AppShell({ children }: AppShellProps) {
 
                         <div className="border-t border-border my-1" />
 
-                        {/* Routines */}
                         <NavLink to="/morning" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <span className="text-base">☀️</span> Morning
+                          <span className="text-base leading-none">☀️</span> Morning
                         </NavLink>
                         <NavLink to="/review" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <span className="text-base">🌙</span> Review
+                          <span className="text-base leading-none">🌙</span> Review
                         </NavLink>
 
                         <div className="border-t border-border my-1" />
