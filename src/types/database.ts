@@ -124,6 +124,14 @@ export interface Database {
           skipped_at: string | null
           carried_from: string | null
           from_inbox_id: string | null
+          due_date: string | null
+          description: string | null
+          tags: Json
+          subtasks: Json
+          kanban_status: 'backlog' | 'todo' | 'in_progress' | 'done'
+          project_id: string | null
+          time_block_start: string | null
+          time_block_end: string | null
           created_at: string
         }
         Insert: {
@@ -138,6 +146,14 @@ export interface Database {
           skipped_at?: string | null
           carried_from?: string | null
           from_inbox_id?: string | null
+          due_date?: string | null
+          description?: string | null
+          tags?: Json
+          subtasks?: Json
+          kanban_status?: 'backlog' | 'todo' | 'in_progress' | 'done'
+          project_id?: string | null
+          time_block_start?: string | null
+          time_block_end?: string | null
           created_at?: string
         }
         Update: {
@@ -152,6 +168,14 @@ export interface Database {
           skipped_at?: string | null
           carried_from?: string | null
           from_inbox_id?: string | null
+          due_date?: string | null
+          description?: string | null
+          tags?: Json
+          subtasks?: Json
+          kanban_status?: 'backlog' | 'todo' | 'in_progress' | 'done'
+          project_id?: string | null
+          time_block_start?: string | null
+          time_block_end?: string | null
           created_at?: string
         }
       }
@@ -165,6 +189,9 @@ export interface Database {
           category: string
           method: string
           description: string | null
+          wallet_id: string | null
+          transfer_to_wallet_id: string | null
+          notes: string | null
           created_at: string
         }
         Insert: {
@@ -176,6 +203,9 @@ export interface Database {
           category: string
           method: string
           description?: string | null
+          wallet_id?: string | null
+          transfer_to_wallet_id?: string | null
+          notes?: string | null
           created_at?: string
         }
         Update: {
@@ -187,6 +217,9 @@ export interface Database {
           category?: string
           method?: string
           description?: string | null
+          wallet_id?: string | null
+          transfer_to_wallet_id?: string | null
+          notes?: string | null
           created_at?: string
         }
       }
@@ -492,6 +525,178 @@ export interface Database {
           keys?: Json
           user_agent?: string | null
           created_at?: string
+        }
+      }
+      wallets: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          type: 'cash' | 'bank' | 'credit' | 'savings'
+          currency: string
+          balance: number
+          color: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          type: 'cash' | 'bank' | 'credit' | 'savings'
+          currency: string
+          balance?: number
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          type?: 'cash' | 'bank' | 'credit' | 'savings'
+          currency?: string
+          balance?: number
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      budgets: {
+        Row: {
+          id: string
+          user_id: string
+          category: string
+          period: 'daily' | 'monthly' | 'yearly'
+          limit_amount: number
+          currency: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category: string
+          period: 'daily' | 'monthly' | 'yearly'
+          limit_amount: number
+          currency: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category?: string
+          period?: 'daily' | 'monthly' | 'yearly'
+          limit_amount?: number
+          currency?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      savings_goals: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          target: number
+          current: number
+          currency: string
+          deadline: string | null
+          color: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          target: number
+          current?: number
+          currency: string
+          deadline?: string | null
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          target?: number
+          current?: number
+          currency?: string
+          deadline?: string | null
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      debts: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          amount: number
+          type: 'i_owe' | 'owe_me'
+          due_date: string | null
+          paid: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          amount: number
+          type: 'i_owe' | 'owe_me'
+          due_date?: string | null
+          paid?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          amount?: number
+          type?: 'i_owe' | 'owe_me'
+          due_date?: string | null
+          paid?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      projects: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          color: string | null
+          description: string | null
+          archived: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          color?: string | null
+          description?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          color?: string | null
+          description?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
         }
       }
     }
