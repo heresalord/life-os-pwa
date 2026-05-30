@@ -6,8 +6,9 @@ import { supabase as supa } from '../lib/supabase'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function write(table: string, op: 'insert' | 'update' | 'delete', payload: any) {
+type AnyItem = { id: string; [key: string]: unknown }
+
+async function write(table: string, op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
   if (navigator.onLine) {
     let error = null
     if (op === 'insert')      ({ error } = await sbAny.from(table).insert([payload]))
@@ -22,6 +23,7 @@ async function write(table: string, op: 'insert' | 'update' | 'delete', payload:
 export function useInboxMutations() {
   const { user } = useAuth()
   const qc = useQueryClient()
+  const queryKey = ['inbox_items', user?.id]
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['inbox_items'] })
     qc.invalidateQueries({ queryKey: ['tasks'] })
@@ -36,7 +38,7 @@ export function useInboxMutations() {
       if (!user) return
       await db.inbox_items.update(id, updates)
       const updated = await db.inbox_items.get(id)
-      if (updated) await write('inbox_items', 'update', updated)
+      if (updated) await write('inbox_items', 'update', updated as Record<string, unknown>)
 
       if (target?.type === 'task') {
         const task = {
@@ -57,7 +59,18 @@ export function useInboxMutations() {
         await write('tasks', 'insert', task)
       }
     },
-    onSuccess: () => invalidate()
+    onMutate: async ({ id, updates }) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      qc.setQueryData<AnyItem[]>(queryKey, old =>
+        (old ?? []).map(item => item.id === id ? { ...item, ...updates } : item)
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidate(),
   })
 
   const deleteItem = useMutation({
@@ -65,7 +78,16 @@ export function useInboxMutations() {
       await db.inbox_items.delete(id)
       await write('inbox_items', 'delete', { id })
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['inbox_items'] })
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      qc.setQueryData<AnyItem[]>(queryKey, old => (old ?? []).filter(item => item.id !== id))
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['inbox_items'] }),
   })
 
   return { processItem, deleteItem }

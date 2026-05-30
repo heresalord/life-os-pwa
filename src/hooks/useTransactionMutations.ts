@@ -6,6 +6,8 @@ import { supabase as supa } from '../lib/supabase'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
+type AnyItem = { id: string; [key: string]: unknown }
+
 async function writeTx(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
   if (navigator.onLine) {
     let error = null
@@ -21,7 +23,8 @@ async function writeTx(op: 'insert' | 'update' | 'delete', payload: Record<strin
 export function useTransactionMutations(date: string) {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['transactions', date, user?.id] })
+  const queryKey = ['transactions', date, user?.id]
+  const invalidate = () => qc.invalidateQueries({ queryKey })
 
   const addTransaction = useMutation({
     mutationFn: async (payload: {
@@ -48,7 +51,27 @@ export function useTransactionMutations(date: string) {
       await writeTx('insert', tx)
       return tx
     },
-    onSuccess: () => invalidate()
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      const optimistic: AnyItem = {
+        id: `opt-${Date.now()}`,
+        user_id: user?.id,
+        date: payload.date,
+        amount: payload.amount,
+        type: payload.type,
+        category: payload.category,
+        method: payload.method || 'card',
+        description: payload.description || null,
+        created_at: new Date().toISOString(),
+      }
+      qc.setQueryData<AnyItem[]>(queryKey, old => [...(old ?? []), optimistic])
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidate(),
   })
 
   const deleteTransaction = useMutation({
@@ -56,7 +79,16 @@ export function useTransactionMutations(date: string) {
       await db.transactions.delete(id)
       await writeTx('delete', { id })
     },
-    onSuccess: () => invalidate()
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      qc.setQueryData<AnyItem[]>(queryKey, old => (old ?? []).filter(t => t.id !== id))
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidate(),
   })
 
   return { addTransaction, deleteTransaction }

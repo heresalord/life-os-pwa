@@ -2,15 +2,28 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { supabase as supa } from '../lib/supabase'
-const supabaseAny = supa as any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sbAny = supa as any
+
+type Task = { id: string; [key: string]: unknown }
+
+async function writeTask(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
+  if (navigator.onLine) {
+    let error = null
+    if (op === 'insert')      ({ error } = await sbAny.from('tasks').insert([payload]))
+    else if (op === 'update') ({ error } = await sbAny.from('tasks').update(payload).eq('id', payload.id))
+    else                      ({ error } = await sbAny.from('tasks').delete().eq('id', payload.id))
+    if (error) await enqueueSync('tasks', op, payload)
+  } else {
+    await enqueueSync('tasks', op, payload)
+  }
+}
 
 export function useTaskMutations(date: string) {
   const { user } = useAuth()
   const qc = useQueryClient()
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['tasks', date, user?.id] })
+  const queryKey = ['tasks', date, user?.id]
 
   const addTask = useMutation({
     mutationFn: async (payload: { title: string; priority: number | null; date: string }) => {
@@ -27,54 +40,73 @@ export function useTaskMutations(date: string) {
         skipped_at: null,
         carried_from: null,
         from_inbox_id: null,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       }
-      // Always write to local first (instant UI)
       await db.tasks.add(task as Parameters<typeof db.tasks.add>[0])
-
-      if (navigator.onLine) {
-        // Online: write directly to Supabase
-        const { error } = await supabaseAny.from('tasks').insert([task])
-        if (error) {
-          // Failed — queue for retry
-          await enqueueSync('tasks', 'insert', task)
-        }
-      } else {
-        // Offline: queue for later
-        await enqueueSync('tasks', 'insert', task)
-      }
+      await writeTask('insert', task)
       return task
     },
-    onSuccess: () => invalidate()
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<Task[]>(queryKey)
+      const optimistic: Task = {
+        id: `opt-${Date.now()}`,
+        user_id: user?.id,
+        date: payload.date,
+        title: payload.title,
+        completed: false,
+        skipped: false,
+        priority: payload.priority,
+        completed_at: null,
+        skipped_at: null,
+        carried_from: null,
+        from_inbox_id: null,
+        created_at: new Date().toISOString(),
+      }
+      qc.setQueryData<Task[]>(queryKey, old => [...(old ?? []), optimistic])
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey }),
   })
 
   const updateTask = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
       await db.tasks.update(id, updates)
       const updated = await db.tasks.get(id)
-
-      if (navigator.onLine) {
-        const { error } = await supabaseAny.from('tasks').update(updates).eq('id', id)
-        if (error) await enqueueSync('tasks', 'update', updated)
-      } else {
-        await enqueueSync('tasks', 'update', updated)
-      }
+      if (updated) await writeTask('update', updated as Record<string, unknown>)
     },
-    onSuccess: () => invalidate()
+    onMutate: async ({ id, updates }) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<Task[]>(queryKey)
+      qc.setQueryData<Task[]>(queryKey, old =>
+        (old ?? []).map(t => t.id === id ? { ...t, ...updates } : t)
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey }),
   })
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
       await db.tasks.delete(id)
-
-      if (navigator.onLine) {
-        const { error } = await supabaseAny.from('tasks').delete().eq('id', id)
-        if (error) await enqueueSync('tasks', 'delete', { id })
-      } else {
-        await enqueueSync('tasks', 'delete', { id })
-      }
+      await writeTask('delete', { id })
     },
-    onSuccess: () => invalidate()
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<Task[]>(queryKey)
+      qc.setQueryData<Task[]>(queryKey, old => (old ?? []).filter(t => t.id !== id))
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey }),
   })
 
   return { addTask, updateTask, deleteTask }

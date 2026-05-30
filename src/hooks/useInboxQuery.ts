@@ -8,13 +8,12 @@ export function useInboxQuery(processedOnly = false) {
   return useQuery({
     queryKey: ['inbox_items', processedOnly, user?.id],
     enabled: !!user,
-    staleTime: 0,
+    staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
         const { data, error } = await supabase
           .from('inbox_items').select('*')
-          .eq('user_id', user!.id)
-          .eq('processed', processedOnly)
+          .eq('user_id', user!.id).eq('processed', processedOnly)
           .order('captured_at', { ascending: false })
         if (error) throw error
         if (data) await db.inbox_items.bulkPut(data as Parameters<typeof db.inbox_items.bulkPut>[0])

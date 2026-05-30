@@ -8,23 +8,18 @@ export function useTasksQuery(date: string) {
   return useQuery({
     queryKey: ['tasks', date, user?.id],
     enabled: !!user,
-    staleTime: 0, // always consider stale so it refetches on focus/mount
+    staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
-        // Online: fetch from Supabase, update local cache
         const { data, error } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('date', date)
-          .eq('user_id', user!.id)
+          .from('tasks').select('*')
+          .eq('date', date).eq('user_id', user!.id)
           .order('created_at')
         if (error) throw error
         if (data) await db.tasks.bulkPut(data as Parameters<typeof db.tasks.bulkPut>[0])
         return data ?? []
-      } else {
-        // Offline: read from IndexedDB
-        return db.tasks.where('date').equals(date).sortBy('created_at')
       }
+      return db.tasks.where('date').equals(date).sortBy('created_at')
     }
   })
 }

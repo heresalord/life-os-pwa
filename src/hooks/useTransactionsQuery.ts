@@ -8,14 +8,12 @@ export function useTransactionsQuery(date: string) {
   return useQuery({
     queryKey: ['transactions', date, user?.id],
     enabled: !!user,
-    staleTime: 0,
+    staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
         const { data, error } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user!.id)
-          .eq('date', date)
+          .from('transactions').select('*')
+          .eq('user_id', user!.id).eq('date', date)
           .order('created_at', { ascending: false })
         if (error) throw error
         if (data) await db.transactions.bulkPut(data as Parameters<typeof db.transactions.bulkPut>[0])

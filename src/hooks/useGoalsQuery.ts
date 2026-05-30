@@ -8,7 +8,7 @@ export function useGoalsQuery(state = 'active') {
   return useQuery({
     queryKey: ['goals', state, user?.id],
     enabled: !!user,
-    staleTime: 0,
+    staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
         const { data, error } = await supabase

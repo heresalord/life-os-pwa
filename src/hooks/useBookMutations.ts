@@ -2,14 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { supabase as supa } from '../lib/supabase'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
+type AnyItem = { id: string; [key: string]: unknown }
 type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
 
-// Columns that exist in the Supabase books table.
-// cover_url lives only in local IndexedDB until a migration adds it remotely.
 const SUPABASE_BOOK_COLUMNS = [
   'id','user_id','title','author','status','started_at','finished_at',
   'current_page','total_pages','tags','reflection','abandon_reason',
@@ -22,23 +21,24 @@ function toSupabasePayload(payload: Record<string, unknown>) {
   )
 }
 
-async function writeBook(table: string, op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
+async function writeBook(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
   if (navigator.onLine) {
     let error = null
-    const safePayload = op !== 'delete' ? toSupabasePayload(payload) : payload
-    if (op === 'insert')       ({ error } = await sbAny.from(table).insert([safePayload]))
-    else if (op === 'update')  ({ error } = await sbAny.from(table).update(safePayload).eq('id', payload.id))
-    else                       ({ error } = await sbAny.from(table).delete().eq('id', payload.id))
-    if (error) await enqueueSync(table, op, payload)
+    const safe = op !== 'delete' ? toSupabasePayload(payload) : payload
+    if (op === 'insert')      ({ error } = await sbAny.from('books').insert([safe]))
+    else if (op === 'update') ({ error } = await sbAny.from('books').update(safe).eq('id', payload.id))
+    else                      ({ error } = await sbAny.from('books').delete().eq('id', payload.id))
+    if (error) await enqueueSync('books', op, payload)
   } else {
-    await enqueueSync(table, op, payload)
+    await enqueueSync('books', op, payload)
   }
 }
 
 export function useBookMutations() {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['books'] })
+  const queryKey = ['books', user?.id]
+  const invalidate = () => qc.invalidateQueries({ queryKey })
 
   const addBook = useMutation({
     mutationFn: async (payload: {
@@ -57,7 +57,7 @@ export function useBookMutations() {
         rating: null as number | null,
         reflection: null,
         abandon_reason: null,
-        started_at: payload.status === 'reading' ? new Date().toISOString().split('T')[0] : null,
+        started_at: payload.status === 'reading'  ? new Date().toISOString().split('T')[0] : null,
         finished_at: payload.status === 'finished' ? new Date().toISOString().split('T')[0] : null,
         tags: [],
         added_at: new Date().toISOString().split('T')[0],
@@ -65,39 +65,76 @@ export function useBookMutations() {
         updated_at: new Date().toISOString(),
       }
       await db.books.add(book as Parameters<typeof db.books.add>[0])
-      await writeBook('books', 'insert', book)
+      await writeBook('insert', book)
       return book
     },
-    onSuccess: () => invalidate()
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      const optimistic: AnyItem = {
+        id: `opt-${Date.now()}`,
+        user_id: user?.id,
+        title: payload.title,
+        author: payload.author || null,
+        total_pages: payload.total_pages || null,
+        cover_url: payload.cover_url || null,
+        current_page: 0,
+        status: payload.status,
+        rating: null,
+        reflection: null,
+        abandon_reason: null,
+        started_at: payload.status === 'reading'  ? new Date().toISOString().split('T')[0] : null,
+        finished_at: payload.status === 'finished' ? new Date().toISOString().split('T')[0] : null,
+        tags: [],
+        added_at: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      qc.setQueryData<AnyItem[]>(queryKey, old => [optimistic, ...(old ?? [])])
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidate(),
   })
 
   const updateBook = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
-      const withTimestamp = { ...updates, updated_at: new Date().toISOString() }
-      await db.books.update(id, withTimestamp)
+      const withTs = { ...updates, updated_at: new Date().toISOString() }
+      await db.books.update(id, withTs)
       const updated = await db.books.get(id)
-      if (updated) await writeBook('books', 'update', updated as Record<string, unknown>)
+      if (updated) await writeBook('update', updated as Record<string, unknown>)
     },
-    onSuccess: () => invalidate()
+    onMutate: async ({ id, updates }) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      qc.setQueryData<AnyItem[]>(queryKey, old =>
+        (old ?? []).map(b => b.id === id ? { ...b, ...updates, updated_at: new Date().toISOString() } : b)
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidate(),
   })
 
   const deleteBook = useMutation({
     mutationFn: async (id: string) => {
       await db.books.delete(id)
-      await writeBook('books', 'delete', { id })
+      await writeBook('delete', { id })
     },
-    onMutate: async (id: string) => {
-      await qc.cancelQueries({ queryKey: ['books'] })
-      const previous = qc.getQueryData<unknown[]>(['books', user?.id])
-      qc.setQueryData(['books', user?.id], (old: unknown[] = []) =>
-        (old as { id: string }[]).filter(b => b.id !== id)
-      )
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      qc.setQueryData<AnyItem[]>(queryKey, old => (old ?? []).filter(b => b.id !== id))
       return { previous }
     },
-    onError: (_err, _id, ctx) => {
-      if (ctx?.previous) qc.setQueryData(['books', user?.id], ctx.previous)
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
     },
-    onSuccess: () => invalidate()
+    onSettled: () => invalidate(),
   })
 
   return { addBook, updateBook, deleteBook }

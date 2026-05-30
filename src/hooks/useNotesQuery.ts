@@ -8,7 +8,7 @@ export function useNotesQuery(date?: string) {
   return useQuery({
     queryKey: ['notes', date, user?.id],
     enabled: !!user,
-    staleTime: 0,
+    staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
         let q = supabase.from('notes').select('*').eq('user_id', user!.id).order('created_at', { ascending: false })

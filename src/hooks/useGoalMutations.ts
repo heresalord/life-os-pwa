@@ -6,8 +6,9 @@ import { supabase as supa } from '../lib/supabase'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function write(table: string, op: 'insert' | 'update' | 'delete', payload: any) {
+type AnyItem = { id: string; [key: string]: unknown }
+
+async function write(table: string, op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
   if (navigator.onLine) {
     let error = null
     if (op === 'insert')      ({ error } = await sbAny.from(table).insert([payload]))
@@ -22,8 +23,12 @@ async function write(table: string, op: 'insert' | 'update' | 'delete', payload:
 export function useGoalMutations() {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const invalidateGoals = () => qc.invalidateQueries({ queryKey: ['goals'] })
+
+  // Invalidate all goal-related queries (any state, any user)
+  const invalidateGoals  = () => qc.invalidateQueries({ queryKey: ['goals'] })
   const invalidateEvents = () => qc.invalidateQueries({ queryKey: ['goal_events'] })
+  // The active-goals query key used by useGoalsQuery('active')
+  const activeKey = ['goals', 'active', user?.id]
 
   const addGoal = useMutation({
     mutationFn: async (payload: {
@@ -55,7 +60,32 @@ export function useGoalMutations() {
       await write('goals', 'insert', goal)
       return goal
     },
-    onSuccess: () => invalidateGoals()
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey: activeKey })
+      const previous = qc.getQueryData<AnyItem[]>(activeKey)
+      const optimistic: AnyItem = {
+        id: `opt-${Date.now()}`,
+        user_id: user?.id,
+        name: payload.name,
+        target: payload.target,
+        goal_type: payload.goal_type ?? 'general',
+        measurement_type: payload.measurement_type ?? 'count',
+        start_date: payload.start_date ?? null,
+        end_date: payload.end_date ?? null,
+        state: 'active',
+        is_completed: false,
+        sub_goals: [],
+        currency: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      qc.setQueryData<AnyItem[]>(activeKey, old => [optimistic, ...(old ?? [])])
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(activeKey, ctx.previous)
+    },
+    onSettled: () => invalidateGoals(),
   })
 
   const updateGoal = useMutation({
@@ -63,9 +93,20 @@ export function useGoalMutations() {
       const withTs = { ...updates, updated_at: new Date().toISOString() }
       await db.goals.update(id, withTs)
       const updated = await db.goals.get(id)
-      if (updated) await write('goals', 'update', updated)
+      if (updated) await write('goals', 'update', updated as Record<string, unknown>)
     },
-    onSuccess: () => invalidateGoals()
+    onMutate: async ({ id, updates }) => {
+      await qc.cancelQueries({ queryKey: ['goals'] })
+      const previous = qc.getQueryData<AnyItem[]>(activeKey)
+      qc.setQueryData<AnyItem[]>(activeKey, old =>
+        (old ?? []).map(g => g.id === id ? { ...g, ...updates, updated_at: new Date().toISOString() } : g)
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(activeKey, ctx.previous)
+    },
+    onSettled: () => invalidateGoals(),
   })
 
   const deleteGoal = useMutation({
@@ -73,7 +114,16 @@ export function useGoalMutations() {
       await db.goals.delete(id)
       await write('goals', 'delete', { id })
     },
-    onSuccess: () => invalidateGoals()
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ['goals'] })
+      const previous = qc.getQueryData<AnyItem[]>(activeKey)
+      qc.setQueryData<AnyItem[]>(activeKey, old => (old ?? []).filter(g => g.id !== id))
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(activeKey, ctx.previous)
+    },
+    onSettled: () => invalidateGoals(),
   })
 
   const addEvent = useMutation({
@@ -102,14 +152,34 @@ export function useGoalMutations() {
       }
       await db.goal_events.add(event as Parameters<typeof db.goal_events.add>[0])
       await write('goal_events', 'insert', event)
-      // Also bump the parent goal's updated_at so dashboard reflects recent activity
       const tsUpdate = { updated_at: now }
       await db.goals.update(payload.goal_id, tsUpdate)
       const updatedGoal = await db.goals.get(payload.goal_id)
-      if (updatedGoal) await write('goals', 'update', updatedGoal)
+      if (updatedGoal) await write('goals', 'update', updatedGoal as Record<string, unknown>)
       return event
     },
-    onSuccess: () => { invalidateEvents(); invalidateGoals() }
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey: ['goal_events'] })
+      const eventsKey = ['goal_events', user?.id]
+      const previous = qc.getQueryData<AnyItem[]>(eventsKey)
+      const optimistic: AnyItem = {
+        id: `opt-${Date.now()}`,
+        user_id: user?.id,
+        goal_id: payload.goal_id,
+        sub_goal_id: null,
+        date: payload.date,
+        value: payload.value,
+        event_type: payload.event_type ?? 'add',
+        note: payload.note ?? null,
+        created_at: new Date().toISOString(),
+      }
+      qc.setQueryData<AnyItem[]>(eventsKey, old => [...(old ?? []), optimistic])
+      return { previous, eventsKey }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(ctx.eventsKey, ctx.previous)
+    },
+    onSettled: () => { invalidateEvents(); invalidateGoals() },
   })
 
   return { addGoal, updateGoal, deleteGoal, addEvent }

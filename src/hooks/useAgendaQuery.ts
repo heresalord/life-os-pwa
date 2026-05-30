@@ -8,7 +8,7 @@ export function useAgendaQuery(date: string) {
   return useQuery({
     queryKey: ['agenda_blocks', date, user?.id],
     enabled: !!user,
-    staleTime: 0,
+    staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
         const { data, error } = await supabase

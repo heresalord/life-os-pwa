@@ -6,8 +6,9 @@ import { supabase as supa } from '../lib/supabase'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function writeAgenda(op: 'insert' | 'update' | 'delete', payload: any) {
+type AnyItem = { id: string; [key: string]: unknown }
+
+async function writeAgenda(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
   if (navigator.onLine) {
     let error = null
     if (op === 'insert')      ({ error } = await sbAny.from('agenda_blocks').insert([payload]))
@@ -22,7 +23,8 @@ async function writeAgenda(op: 'insert' | 'update' | 'delete', payload: any) {
 export function useAgendaMutations(date: string) {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['agenda_blocks', date, user?.id] })
+  const queryKey = ['agenda_blocks', date, user?.id]
+  const invalidate = () => qc.invalidateQueries({ queryKey })
 
   const addBlock = useMutation({
     mutationFn: async (payload: { description: string; start_time: string; end_time: string; date: string }) => {
@@ -40,16 +42,45 @@ export function useAgendaMutations(date: string) {
       await writeAgenda('insert', block)
       return block
     },
-    onSuccess: () => invalidate()
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      const optimistic: AnyItem = {
+        id: `opt-${Date.now()}`,
+        user_id: user?.id,
+        date: payload.date,
+        description: payload.description,
+        start_time: payload.start_time,
+        end_time: payload.end_time,
+        created_at: new Date().toISOString(),
+      }
+      qc.setQueryData<AnyItem[]>(queryKey, old => [...(old ?? []), optimistic])
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidate(),
   })
 
   const updateBlock = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
       await db.agenda_blocks.update(id, updates)
       const updated = await db.agenda_blocks.get(id)
-      if (updated) await writeAgenda('update', updated)
+      if (updated) await writeAgenda('update', updated as Record<string, unknown>)
     },
-    onSuccess: () => invalidate()
+    onMutate: async ({ id, updates }) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      qc.setQueryData<AnyItem[]>(queryKey, old =>
+        (old ?? []).map(b => b.id === id ? { ...b, ...updates } : b)
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidate(),
   })
 
   const deleteBlock = useMutation({
@@ -57,7 +88,16 @@ export function useAgendaMutations(date: string) {
       await db.agenda_blocks.delete(id)
       await writeAgenda('delete', { id })
     },
-    onSuccess: () => invalidate()
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      qc.setQueryData<AnyItem[]>(queryKey, old => (old ?? []).filter(b => b.id !== id))
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidate(),
   })
 
   return { addBlock, updateBlock, deleteBlock }
