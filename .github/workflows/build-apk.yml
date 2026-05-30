@@ -3,7 +3,11 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-  workflow_dispatch: # lets you trigger a build manually from the GitHub UI
+  workflow_dispatch:
+
+env:
+  # Force Node.js 24 so all actions work on current GitHub runners
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -25,12 +29,11 @@ jobs:
         run: npm ci
 
       # ── 3. Env vars ────────────────────────────────────────────────────
-      # These come from GitHub → Settings → Secrets and variables → Actions
       - name: Write .env file
         run: |
-          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}"             >> .env
-          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}"   >> .env
-          echo "VITE_VAPID_PUBLIC_KEY=${{ secrets.VITE_VAPID_PUBLIC_KEY }}"     >> .env
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}"           >> .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+          echo "VITE_VAPID_PUBLIC_KEY=${{ secrets.VITE_VAPID_PUBLIC_KEY }}"   >> .env
 
       # ── 4. Web build ───────────────────────────────────────────────────
       - name: Build web app (Vite)
@@ -44,8 +47,15 @@ jobs:
           java-version: '21'
 
       # ── 6. Android SDK ────────────────────────────────────────────────
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # ubuntu-latest already has the Android SDK installed at $ANDROID_SDK_ROOT.
+      # We just need to make sure SDK 36 + matching build-tools are present.
+      - name: Install Android SDK 36 + build-tools
+        run: |
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
       # ── 7. Capacitor sync ─────────────────────────────────────────────
       - name: Sync Capacitor → Android
@@ -55,6 +65,8 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
 
       # ── 9. Upload artifact ────────────────────────────────────────────
       - name: Upload APK
