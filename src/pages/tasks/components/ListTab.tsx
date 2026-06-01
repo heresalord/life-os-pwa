@@ -12,6 +12,7 @@ import { CheckSquare, History } from 'lucide-react'
 import type { Task } from '../../../db/schema'
 
 type Tab = 'today' | 'history'
+interface Subtask { id: string; title: string; completed: boolean }
 
 export function ListTab() {
   const { selectedDate } = useAppStore()
@@ -51,18 +52,23 @@ export function ListTab() {
     updateTask.mutate({ id, updates: { skipped: !current, completed: false, skipped_at: !current ? new Date().toISOString() : null } })
 
   const handleDelete = (id: string) => deleteTask.mutate(id)
-  const handleEdit   = (id: string, newTitle: string) =>
+
+  const handleEdit = (id: string, newTitle: string) =>
     updateTask.mutate({ id, updates: { title: newTitle } })
 
-  const renderTask = (t: Task, draggableProps?: Parameters<typeof TaskItem>[0]['dragHandleProps']) => (
+  const handleUpdateSubtasks = (id: string, subtasks: Subtask[]) =>
+    updateTask.mutate({ id, updates: { subtasks } })
+
+  const renderTask = (t: Task, dragHandleProps?: Parameters<typeof TaskItem>[0]['dragHandleProps']) => (
     <TaskItem
       key={t.id}
       task={t as Parameters<typeof TaskItem>[0]['task']}
-      dragHandleProps={draggableProps}
+      dragHandleProps={dragHandleProps}
       onToggleComplete={handleToggleComplete}
       onToggleSkip={handleToggleSkip}
       onDelete={handleDelete}
       onEdit={handleEdit}
+      onUpdateSubtasks={handleUpdateSubtasks}
     />
   )
 
@@ -124,32 +130,30 @@ export function ListTab() {
   )
 
   return (
-    <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start lg:max-w-5xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="space-y-5">
+        {/* Mobile: tab switcher */}
         <div className="flex p-1 bg-surface-2 border border-border rounded-xl lg:hidden">
           <button onClick={() => setTab('today')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-lg transition-colors ${
-              tab === 'today' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
-            }`}>
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-lg transition-colors ${tab === 'today' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
             <CheckSquare size={15} /> Today
           </button>
           <button onClick={() => setTab('history')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-lg transition-colors ${
-              tab === 'history' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
-            }`}>
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-lg transition-colors ${tab === 'history' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
             <History size={15} /> History
           </button>
         </div>
 
+        {/* Mobile: content driven by tab */}
         <div className="lg:hidden">
           {tab === 'history' ? <TaskHistory /> : todayContent}
         </div>
 
-        <div className="hidden lg:block">
-          {todayContent}
-        </div>
+        {/* Desktop: always show today */}
+        <div className="hidden lg:block">{todayContent}</div>
       </div>
 
+      {/* Desktop: history panel always visible */}
       <div className="hidden lg:block sticky top-20">
         <div className="space-y-4">
           <div className="flex items-center gap-2">

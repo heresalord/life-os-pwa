@@ -24,18 +24,17 @@ export function useGoalMutations() {
   const { user } = useAuth()
   const qc = useQueryClient()
 
-  // Invalidate all goal-related queries (any state, any user)
   const invalidateGoals  = () => qc.invalidateQueries({ queryKey: ['goals'] })
   const invalidateEvents = () => qc.invalidateQueries({ queryKey: ['goal_events'] })
-  // The active-goals query key used by useGoalsQuery('active')
+  // Active-goals key used by useGoalsQuery('active')
   const activeKey = ['goals', 'active', user?.id]
 
   const addGoal = useMutation({
     mutationFn: async (payload: {
       name: string
       target: number
-      goal_type?: string
-      measurement_type?: string
+      goal_type?: 'year' | 'general' | 'binary'
+      measurement_type?: 'count' | 'currency' | 'time' | 'percentage' | 'binary'
       start_date?: string
       end_date?: string
     }) => {
@@ -152,33 +151,16 @@ export function useGoalMutations() {
       }
       await db.goal_events.add(event as Parameters<typeof db.goal_events.add>[0])
       await write('goal_events', 'insert', event)
+      // Touch the goal's updated_at so queries re-order correctly
       const tsUpdate = { updated_at: now }
       await db.goals.update(payload.goal_id, tsUpdate)
       const updatedGoal = await db.goals.get(payload.goal_id)
       if (updatedGoal) await write('goals', 'update', updatedGoal as Record<string, unknown>)
       return event
     },
-    onMutate: async (payload) => {
-      await qc.cancelQueries({ queryKey: ['goal_events'] })
-      const eventsKey = ['goal_events', user?.id]
-      const previous = qc.getQueryData<AnyItem[]>(eventsKey)
-      const optimistic: AnyItem = {
-        id: `opt-${Date.now()}`,
-        user_id: user?.id,
-        goal_id: payload.goal_id,
-        sub_goal_id: null,
-        date: payload.date,
-        value: payload.value,
-        event_type: payload.event_type ?? 'add',
-        note: payload.note ?? null,
-        created_at: new Date().toISOString(),
-      }
-      qc.setQueryData<AnyItem[]>(eventsKey, old => [...(old ?? []), optimistic])
-      return { previous, eventsKey }
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous !== undefined) qc.setQueryData(ctx.eventsKey, ctx.previous)
-    },
+    // No optimistic update on events — the goal_events queryKey includes
+    // a dynamic goalIds array so we can't target the right cache entry here.
+    // Invalidation is fast (reads from IndexedDB first) so the UX is fine.
     onSettled: () => { invalidateEvents(); invalidateGoals() },
   })
 

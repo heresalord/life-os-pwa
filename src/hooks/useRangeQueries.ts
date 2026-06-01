@@ -8,7 +8,7 @@ export function useTransactionsRange(from: string, to: string) {
   return useQuery({
     queryKey: ['transactions_range', from, to, user?.id],
     enabled: !!user && !!from && !!to,
-    staleTime: 0,
+    staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
         const { data, error } = await supabase
@@ -17,14 +17,15 @@ export function useTransactionsRange(from: string, to: string) {
           .eq('user_id', user!.id)
           .gte('date', from)
           .lte('date', to)
-          .order('date', { ascending: true })
+          .order('created_at', { ascending: false })
         if (error) throw error
         if (data) await db.transactions.bulkPut(data as Parameters<typeof db.transactions.bulkPut>[0])
         return data ?? []
       }
       return db.transactions
         .where('date').between(from, to, true, true)
-        .sortBy('date')
+        .reverse()
+        .sortBy('created_at')
     }
   })
 }
@@ -34,7 +35,7 @@ export function useDailyRecordsRange(from: string, to: string) {
   return useQuery({
     queryKey: ['daily_records_range', from, to, user?.id],
     enabled: !!user && !!from && !!to,
-    staleTime: 0,
+    staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
         const { data, error } = await supabase
