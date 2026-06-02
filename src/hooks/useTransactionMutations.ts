@@ -102,7 +102,7 @@ export function useTransactionMutations(date: string) {
         category: payload.category,
         method: payload.method || 'card',
         description: payload.description || null,
-        wallet_id: payload.method || null, // Correctly save the selected wallet/account UUID
+        wallet_id: payload.method && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method) ? payload.method : null,
         transfer_to_wallet_id: null,
         notes: null,
         created_at,
@@ -128,7 +128,7 @@ export function useTransactionMutations(date: string) {
         category: payload.category,
         method: payload.method || 'card',
         description: payload.description || null,
-        wallet_id: payload.method || null,
+        wallet_id: payload.method && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method) ? payload.method : null,
         notes: null,
         created_at: payload.time
           ? new Date(`${payload.date}T${payload.time}:00`).toISOString()

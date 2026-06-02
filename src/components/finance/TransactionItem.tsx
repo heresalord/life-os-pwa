@@ -55,11 +55,12 @@ export function TransactionItem({ transaction, onDelete, currency }: Transaction
 
         {/* Main row */}
         <div
+          onClick={() => { if (!swiped) setEditOpen(true) }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={clsx(
-            'relative flex items-center justify-between p-4 bg-surface transition-transform duration-200 ease-out',
+            'relative flex items-center justify-between p-4 bg-surface transition-transform duration-200 ease-out cursor-pointer hover:bg-surface-2/20 select-none',
             swiped ? '-translate-x-32' : 'translate-x-0'
           )}
         >

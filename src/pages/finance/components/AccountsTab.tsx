@@ -20,7 +20,7 @@ const WALLET_TYPES = [
 
 const WALLET_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#a78bfa', '#f87171', '#34d399', '#fb923c']
 
-type SheetMode = 'add_account' | 'transfer' | null
+type SheetMode = 'add_account' | 'transfer' | 'edit_account' | null
 
 // ── Add Account Sheet ────────────────────────────────────────────────────────
 function AddAccountSheet({ currency, onClose }: { currency: string; onClose: () => void }) {
@@ -76,6 +76,103 @@ function AddAccountSheet({ currency, onClose }: { currency: string; onClose: () 
         <button onClick={handleAdd} disabled={!name.trim() || addWallet.isPending}
           className="flex-[2] py-3 bg-accent text-bg font-medium rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-50">
           {addWallet.isPending ? 'Adding…' : 'Add Account'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Edit Account Sheet ────────────────────────────────────────────────────────
+function EditAccountSheet({
+  wallet,
+  currency,
+  onClose,
+}: {
+  wallet: Wallet
+  currency: string
+  onClose: () => void
+}) {
+  const { timezone } = useAppStore()
+  const today = getUserLocalDate(timezone)
+  const { updateWallet } = useFinanceMutations()
+  const { addTransaction } = useTransactionMutations(today)
+  const [name, setName]     = useState(wallet.name)
+  const [balance, setBalance] = useState(String(wallet.balance))
+  const [type, setType]     = useState<'bank' | 'cash' | 'credit' | 'savings'>(wallet.type)
+  const [color, setColor]   = useState(wallet.color || WALLET_COLORS[0])
+
+  const handleSave = () => {
+    if (!name.trim()) return
+
+    const newBalanceVal = Number(balance)
+    const oldBalanceVal = Number(wallet.balance)
+    const diff = newBalanceVal - oldBalanceVal
+
+    // 1. Update basic wallet info
+    updateWallet.mutate({
+      id: wallet.id,
+      updates: { name: name.trim(), type, color },
+    })
+
+    // 2. If the balance has changed, record an adjustment transaction
+    if (diff !== 0) {
+      const typeOfAdj = diff > 0 ? 'income' : 'expense'
+      addTransaction.mutate({
+        amount: Math.abs(diff),
+        type: typeOfAdj,
+        category: 'adjustment',
+        description: `Balance adjustment for ${name}`,
+        date: today,
+        method: wallet.id,
+      })
+    }
+
+    onClose()
+  }
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-text text-base">Edit Account</h3>
+      <input type="text" placeholder="Account name" value={name} onChange={e => setName(e.target.value)}
+        className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent outline-none" />
+      <div>
+        <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Type</label>
+        <div className="grid grid-cols-4 gap-2">
+          {WALLET_TYPES.map(t => {
+            const Icon = t.icon
+            return (
+              <button key={t.value} onClick={() => setType(t.value)}
+                className={clsx('flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border text-xs font-medium transition-all',
+                  type === t.value ? 'bg-accent/10 border-accent text-accent' : 'border-border text-text-muted hover:text-text')}>
+                <Icon size={18} />{t.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Balance ({currency})</label>
+        <input type="number" step="0.01" value={balance} onChange={e => setBalance(e.target.value)}
+          className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent outline-none" />
+        <p className="text-[10px] text-text-muted mt-1 leading-normal">
+          Changing this balance will automatically log an "adjustment" transaction to record the difference.
+        </p>
+      </div>
+      <div>
+        <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Color</label>
+        <div className="flex gap-2">
+          {WALLET_COLORS.map(c => (
+            <button key={c} onClick={() => setColor(c)}
+              className={clsx('w-7 h-7 rounded-full transition-transform', color === c ? 'scale-125 ring-2 ring-offset-2 ring-offset-surface ring-white/30' : 'hover:scale-110')}
+              style={{ backgroundColor: c }} />
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-3 pt-2">
+        <button onClick={onClose} className="flex-1 py-3 bg-surface-2 text-text font-medium rounded-xl hover:bg-muted transition-colors">Cancel</button>
+        <button onClick={handleSave} disabled={!name.trim() || updateWallet.isPending}
+          className="flex-[2] py-3 bg-accent text-bg font-medium rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-50">
+          {updateWallet.isPending ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
     </div>
@@ -173,6 +270,7 @@ export function AccountsTab({ currency }: { currency: string }) {
   const { data: wallets = [] } = useWallets()
   const { deleteWallet } = useFinanceMutations()
   const [sheet, setSheet] = useState<SheetMode>(null)
+  const [editingWallet, setEditingWallet] = useState<Wallet | null>(null)
 
   const liquidAccounts  = wallets.filter(w => w.type === 'bank' || w.type === 'cash')
   const savingsAccounts = wallets.filter(w => w.type === 'savings')
@@ -193,7 +291,8 @@ export function AccountsTab({ currency }: { currency: string }) {
         {list.map((w: Wallet) => {
           const TypeIcon = WALLET_TYPES.find(t => t.value === w.type)?.icon ?? WalletIcon
           return (
-            <div key={w.id} className="flex items-center gap-3 p-4 bg-surface border border-border rounded-xl group transition-all hover:bg-surface-2/40">
+            <div key={w.id} onClick={() => { setEditingWallet(w); setSheet('edit_account') }}
+              className="flex items-center gap-3 p-4 bg-surface border border-border rounded-xl group transition-all hover:bg-surface-2/40 cursor-pointer select-none">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{ backgroundColor: (w.color || '#4ade80') + '15' }}>
                 <TypeIcon size={18} style={{ color: w.color || '#4ade80' }} />
@@ -208,7 +307,8 @@ export function AccountsTab({ currency }: { currency: string }) {
                 </p>
                 <p className="text-[10px] text-text-muted">{w.currency || currency}</p>
               </div>
-              <button onClick={() => {
+              <button onClick={(e) => {
+                e.stopPropagation()
                 if (window.confirm(`Delete account "${w.name}"? Transactions using it will remain but won't be associated.`)) {
                   deleteWallet.mutate(w.id)
                 }
@@ -283,6 +383,15 @@ export function AccountsTab({ currency }: { currency: string }) {
       </Sheet>
       <Sheet open={sheet === 'transfer'} onClose={() => setSheet(null)}>
         <TransferSheet wallets={wallets} currency={currency} onClose={() => setSheet(null)} />
+      </Sheet>
+      <Sheet open={sheet === 'edit_account' && editingWallet !== null} onClose={() => { setSheet(null); setEditingWallet(null) }}>
+        {editingWallet && (
+          <EditAccountSheet
+            wallet={editingWallet}
+            currency={currency}
+            onClose={() => { setSheet(null); setEditingWallet(null) }}
+          />
+        )}
       </Sheet>
     </div>
   )

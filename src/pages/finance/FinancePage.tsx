@@ -89,7 +89,7 @@ export function FinancePage() {
   }, [referenceDate, period])
 
   return (
-    <div className="space-y-4 lg:max-w-5xl">
+    <div className="space-y-4 lg:max-w-5xl px-4 md:px-0">
       <header>
         <h1 className="text-2xl font-display text-text">Finance</h1>
       </header>
@@ -106,16 +106,16 @@ export function FinancePage() {
               key={tab.value}
               onClick={() => setActive(tab.value)}
               className={clsx(
-                'flex items-center justify-center gap-1.5 py-2.5 rounded-xl transition-all duration-200 font-medium w-full',
+                'flex items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all duration-200 font-medium w-full text-xs sm:text-sm',
                 isActive
                   ? 'bg-surface text-text shadow-sm'
                   : 'text-text-muted hover:text-text-secondary'
               )}
             >
-              <Icon size={17} strokeWidth={isActive ? 2.5 : 1.75} />
+              <Icon size={16} strokeWidth={isActive ? 2.5 : 1.75} />
               {/* Label: always visible on sm+, only on active on mobile */}
               <span className={clsx(
-                'text-sm',
+                'text-xs sm:text-sm',
                 isActive ? 'inline' : 'hidden sm:inline'
               )}>
                 {tab.label}

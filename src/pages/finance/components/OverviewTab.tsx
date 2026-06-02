@@ -22,22 +22,22 @@ function MiniBarChart({
   if (!show) return null
 
   return (
-    <div className="flex items-end gap-px h-16">
+    <div className="flex items-end w-full h-16 gap-0.5 sm:gap-1">
       {data.map(d => {
         const hasExpense = showType !== 'income' && d.expense > 0
         const hasIncome = showType !== 'expense' && d.income > 0
 
         return (
-          <div key={d.date} className="flex-1 flex flex-col-reverse gap-px items-stretch justify-start" style={{ maxWidth: 16 }}>
+          <div key={d.date} className="flex-1 flex flex-col-reverse gap-0.5 items-stretch justify-start">
             {hasExpense && (
               <div
-                className="bg-accent/60 rounded-sm transition-all"
+                className="bg-accent/60 rounded transition-all"
                 style={{ height: `${(d.expense / maxVal) * 100}%` }}
               />
             )}
             {hasIncome && (
               <div
-                className="bg-success/50 rounded-sm transition-all"
+                className="bg-success/50 rounded transition-all"
                 style={{ height: `${(d.income / maxVal) * 100}%` }}
               />
             )}
@@ -106,10 +106,27 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
   const income   = txns.filter((t: Transaction) => t.type === 'income').reduce((s, t)  => s + Number(t.amount), 0)
   const net      = income - expenses
 
-  // Chart data — cap at 31 bars (monthly max)
+  // Chart data — cap at 31 bars (monthly max) or 12 bars (annual max)
   const chartData = useMemo(() => {
     if (period === 'day') return []
     const start = new Date(from + 'T12:00:00')
+    
+    if (period === 'year') {
+      const result = []
+      for (let m = 0; m < 12; m++) {
+        const yearStr = start.getFullYear()
+        const monthNum = String(m + 1).padStart(2, '0')
+        const monthPrefix = `${yearStr}-${monthNum}`
+        const monthTxns = txns.filter((t: Transaction) => t.date.startsWith(monthPrefix))
+        result.push({
+          date: monthPrefix,
+          expense: monthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
+          income:  monthTxns.filter(t => t.type === 'income').reduce((s, t)  => s + Number(t.amount), 0),
+        })
+      }
+      return result
+    }
+
     const end   = new Date(to   + 'T12:00:00')
     const days  = eachDayOfInterval({ start, end })
     return days.map(d => {
