@@ -6,10 +6,12 @@ import { useAppStore } from '../../../store/useAppStore'
 import { getUserLocalDate } from '../../../lib/dateUtils'
 import type { Wallet } from '../../../db/schema'
 import {
-  Plus, Trash2, ArrowLeftRight,
-  Landmark, CreditCard, Wallet as WalletIcon, PiggyBank
+  Plus, ArrowLeftRight,
+  Landmark, CreditCard, Wallet as WalletIcon, PiggyBank,
+  Archive, RotateCcw
 } from 'lucide-react'
 import clsx from 'clsx'
+import * as Dialog from '@radix-ui/react-dialog'
 
 const WALLET_TYPES = [
   { value: 'bank',    label: 'Bank',    icon: Landmark   },
@@ -116,14 +118,13 @@ function EditAccountSheet({
 
     // 2. If the balance has changed, record an adjustment transaction
     if (diff !== 0) {
-      const typeOfAdj = diff > 0 ? 'income' : 'expense'
       addTransaction.mutate({
-        amount: Math.abs(diff),
-        type: typeOfAdj,
+        amount: diff, // signed: positive = balance added, negative = balance reduced
+        type: 'adjustment',
         category: 'adjustment',
         description: `Balance adjustment for ${name}`,
         date: today,
-        method: wallet.id,
+        wallet_id: wallet.id,
       })
     }
 
@@ -196,8 +197,8 @@ function TransferSheet({ wallets, currency, onClose }: { wallets: Wallet[]; curr
     const toWallet   = wallets.find(w => w.id === toId)
 
     // Record two transactions - these automatically update wallet balances in useTransactionMutations
-    addTransaction.mutate({ amount: val, type: 'expense', category: 'transfer', description: `Transfer to ${toWallet?.name}`, date: today, method: fromId })
-    addTransaction.mutate({ amount: val, type: 'income',  category: 'transfer', description: `Transfer from ${fromWallet?.name}`, date: today, method: toId })
+    addTransaction.mutate({ amount: val, type: 'expense', category: 'transfer', description: `Transfer to ${toWallet?.name}`, date: today, wallet_id: fromId })
+    addTransaction.mutate({ amount: val, type: 'income',  category: 'transfer', description: `Transfer from ${fromWallet?.name}`, date: today, wallet_id: toId })
 
     onClose()
   }
@@ -268,13 +269,18 @@ import React from 'react'
 
 export function AccountsTab({ currency }: { currency: string }) {
   const { data: wallets = [] } = useWallets()
-  const { deleteWallet } = useFinanceMutations()
+  const { updateWallet } = useFinanceMutations()
   const [sheet, setSheet] = useState<SheetMode>(null)
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null)
+  const [archivingWallet, setArchivingWallet] = useState<Wallet | null>(null)
+  const [unarchivingWallet, setUnarchivingWallet] = useState<Wallet | null>(null)
 
-  const liquidAccounts  = wallets.filter(w => w.type === 'bank' || w.type === 'cash')
-  const savingsAccounts = wallets.filter(w => w.type === 'savings')
-  const debtAccounts    = wallets.filter(w => w.type === 'credit')
+  const activeWallets = wallets.filter(w => !w.archived)
+  const archivedWallets = wallets.filter(w => w.archived)
+
+  const liquidAccounts  = activeWallets.filter(w => w.type === 'bank' || w.type === 'cash')
+  const savingsAccounts = activeWallets.filter(w => w.type === 'savings')
+  const debtAccounts    = activeWallets.filter(w => w.type === 'credit')
 
   const liquidBalance  = liquidAccounts.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
   const savingsBalance = savingsAccounts.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
@@ -309,12 +315,11 @@ export function AccountsTab({ currency }: { currency: string }) {
               </div>
               <button onClick={(e) => {
                 e.stopPropagation()
-                if (window.confirm(`Delete account "${w.name}"? Transactions using it will remain but won't be associated.`)) {
-                  deleteWallet.mutate(w.id)
-                }
+                setArchivingWallet(w)
               }}
-                className="p-1.5 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-danger/10">
-                <Trash2 size={14} />
+                title="Archive account"
+                className="p-1.5 text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-accent/10">
+                <Archive size={14} />
               </button>
             </div>
           )
@@ -377,12 +382,48 @@ export function AccountsTab({ currency }: { currency: string }) {
         {renderWalletList(debtAccounts, 'No debt accounts or credit cards yet.')}
       </section>
 
+      {/* ── Category: Archived Accounts ── */}
+      {archivedWallets.length > 0 && (
+        <section className="space-y-3 pt-2">
+          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Archived Accounts</h2>
+          <div className="space-y-2">
+            {archivedWallets.map((w: Wallet) => {
+              const TypeIcon = WALLET_TYPES.find(t => t.value === w.type)?.icon ?? WalletIcon
+              return (
+                <div key={w.id}
+                  className="flex items-center gap-3 p-4 bg-surface/50 border border-border/65 rounded-xl group transition-all opacity-75 select-none">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: (w.color || '#4ade80') + '10' }}>
+                    <TypeIcon size={18} style={{ color: w.color || '#4ade80' }} className="grayscale opacity-60" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-text-secondary truncate text-sm line-through decoration-text-muted">{w.name}</p>
+                    <p className="text-xs text-text-muted capitalize">Archived {w.type === 'credit' ? 'Debt / Credit' : w.type}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0 pr-2">
+                    <p className="font-semibold text-sm text-text-muted">
+                      {w.type === 'credit' ? '-' : ''}{Number(w.balance).toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-text-muted">{w.currency || currency}</p>
+                  </div>
+                  <button onClick={() => setUnarchivingWallet(w)}
+                    title="Unarchive account"
+                    className="p-1.5 text-text-muted hover:text-accent rounded-lg hover:bg-accent/10 transition-colors">
+                    <RotateCcw size={14} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {/* ── Sheets ── */}
       <Sheet open={sheet === 'add_account'} onClose={() => setSheet(null)}>
         <AddAccountSheet currency={currency} onClose={() => setSheet(null)} />
       </Sheet>
       <Sheet open={sheet === 'transfer'} onClose={() => setSheet(null)}>
-        <TransferSheet wallets={wallets} currency={currency} onClose={() => setSheet(null)} />
+        <TransferSheet wallets={activeWallets} currency={currency} onClose={() => setSheet(null)} />
       </Sheet>
       <Sheet open={sheet === 'edit_account' && editingWallet !== null} onClose={() => { setSheet(null); setEditingWallet(null) }}>
         {editingWallet && (
@@ -393,6 +434,80 @@ export function AccountsTab({ currency }: { currency: string }) {
           />
         )}
       </Sheet>
+
+      {/* Archive Confirmation Sheet */}
+      <Dialog.Root open={archivingWallet !== null} onOpenChange={v => { if (!v) setArchivingWallet(null) }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
+          <Dialog.Content
+            className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm sm:rounded-2xl sm:border"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
+            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-5 sm:hidden" />
+            <Dialog.Title className="text-base font-medium text-text mb-1">Archive account?</Dialog.Title>
+            {archivingWallet && (
+              <p className="text-sm text-text-secondary mb-5">
+                Archive <span className="font-medium text-text">"{archivingWallet.name}"</span>?
+                It will be hidden from new transaction forms, but all historical transactions will be kept.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setArchivingWallet(null)}
+                className="flex-1 py-3 bg-surface-2 text-text font-medium rounded-xl hover:bg-muted transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (archivingWallet) {
+                    updateWallet.mutate({ id: archivingWallet.id, updates: { archived: true } })
+                    setArchivingWallet(null)
+                  }
+                }}
+                className="flex-[2] py-3 bg-accent/15 text-accent font-medium rounded-xl hover:bg-accent/25 transition-colors"
+              >
+                Archive
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* Unarchive Confirmation Sheet */}
+      <Dialog.Root open={unarchivingWallet !== null} onOpenChange={v => { if (!v) setUnarchivingWallet(null) }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
+          <Dialog.Content
+            className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm sm:rounded-2xl sm:border"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
+            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-5 sm:hidden" />
+            <Dialog.Title className="text-base font-medium text-text mb-1">Restore account?</Dialog.Title>
+            {unarchivingWallet && (
+              <p className="text-sm text-text-secondary mb-5">
+                Restore <span className="font-medium text-text">"{unarchivingWallet.name}"</span>?
+                It will be active again and show up in all account selectors.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setUnarchivingWallet(null)}
+                className="flex-1 py-3 bg-surface-2 text-text font-medium rounded-xl hover:bg-muted transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (unarchivingWallet) {
+                    updateWallet.mutate({ id: unarchivingWallet.id, updates: { archived: false } })
+                    setUnarchivingWallet(null)
+                  }
+                }}
+                className="flex-[2] py-3 bg-accent text-bg font-medium rounded-xl hover:bg-accent-dim transition-colors"
+              >
+                Restore
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   )
 }

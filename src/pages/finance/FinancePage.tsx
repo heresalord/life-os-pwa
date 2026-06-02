@@ -89,7 +89,7 @@ export function FinancePage() {
   }, [referenceDate, period])
 
   return (
-    <div className="space-y-4 lg:max-w-5xl px-4 md:px-0">
+    <div className="space-y-4 lg:max-w-5xl">
       <header>
         <h1 className="text-2xl font-display text-text">Finance</h1>
       </header>

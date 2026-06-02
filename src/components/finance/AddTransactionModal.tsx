@@ -20,6 +20,8 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
   const expCats = settings?.expense_categories?.length ? settings.expense_categories : DEFAULT_CATEGORIES.expense
   const incCats = settings?.income_categories?.length ? settings.income_categories : DEFAULT_CATEGORIES.income
 
+  const activeWallets = wallets.filter(w => !w.archived)
+
   const [open, setOpen]             = useState(false)
   const [type, setType]             = useState<'expense' | 'income' | 'transfer'>('expense')
   const [amount, setAmount]         = useState('')
@@ -28,7 +30,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
   const [description, setDescription] = useState('')
   const [txDate, setTxDate]         = useState(date || todayStr())
   const [txTime, setTxTime]         = useState(nowTimeStr())
-  const [walletId, setWalletId]     = useState<string>(wallets[0]?.id ?? '')
+  const [walletId, setWalletId]     = useState<string>('')
   const [transferToId, setTransferToId] = useState<string>('')
 
   const { addTransaction } = useTransactionMutations(txDate)
@@ -37,8 +39,9 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
     if (v) {
       setTxDate(date || todayStr())
       setTxTime(nowTimeStr())
-      setWalletId(wallets[0]?.id ?? '')
-      setTransferToId(wallets[1]?.id ?? wallets[0]?.id ?? '')
+      const active = wallets.filter(w => !w.archived)
+      setWalletId(active[0]?.id ?? '')
+      setTransferToId(active[1]?.id ?? active[0]?.id ?? '')
     }
     setOpen(v)
   }
@@ -61,7 +64,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
         description: `Transfer to ${toWallet?.name || 'Account'}`,
         date: txDate,
         time: txTime,
-        method: walletId
+        wallet_id: walletId
       })
 
       // Add income to destination account
@@ -72,7 +75,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
         description: `Transfer from ${fromWallet?.name || 'Account'}`,
         date: txDate,
         time: txTime,
-        method: transferToId
+        wallet_id: transferToId
       })
     } else {
       const feeVal = parseFloat(fee) || 0
@@ -86,7 +89,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
         description: description.trim() || undefined,
         date: txDate,
         time: txTime,
-        method: walletId || undefined
+        wallet_id: walletId || undefined
       })
     }
 
@@ -181,25 +184,25 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
                   <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">From Account</label>
                   <select value={walletId} onChange={e => setWalletId(e.target.value)}
                     className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-accent outline-none appearance-none">
-                    {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    {activeWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">To Account</label>
                   <select value={transferToId} onChange={e => setTransferToId(e.target.value)}
                     className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-accent outline-none appearance-none">
-                    {wallets.filter(w => w.id !== walletId).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    {activeWallets.filter(w => w.id !== walletId).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </div>
               </div>
             ) : (
-              wallets.length > 0 && (
+              activeWallets.length > 0 && (
                 <div>
                   <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Account</label>
                   <select value={walletId} onChange={e => setWalletId(e.target.value)}
                     className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
                     <option value="">No account</option>
-                    {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    {activeWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </div>
               )

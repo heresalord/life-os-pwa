@@ -28,6 +28,8 @@ export function TransactionItem({ transaction, onDelete, currency }: Transaction
   const handleTouchEnd = () => { touchStartX.current = null }
 
   const isIncome = transaction.type === 'income'
+  const isAdjustment = transaction.type === 'adjustment'
+  const adjPositive = isAdjustment && Number(transaction.amount) >= 0
 
   // Extract time from created_at for display
   const timeStr = transaction.created_at
@@ -69,9 +71,13 @@ export function TransactionItem({ transaction, onDelete, currency }: Transaction
               <span className="text-sm font-medium text-text capitalize">{transaction.category}</span>
               <span className={clsx(
                 'text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded',
-                isIncome ? 'bg-success/15 text-success' : 'bg-surface-2 text-text-muted'
+                isAdjustment
+                  ? 'bg-amber-400/15 text-amber-400'
+                  : isIncome
+                  ? 'bg-success/15 text-success'
+                  : 'bg-surface-2 text-text-muted'
               )}>
-                {transaction.type}
+                {isAdjustment ? 'Adjustment' : transaction.type}
               </span>
             </div>
             {transaction.description && (
@@ -85,9 +91,14 @@ export function TransactionItem({ transaction, onDelete, currency }: Transaction
 
           <div className={clsx(
             'text-base font-display font-medium flex-shrink-0',
-            isIncome ? 'text-success' : 'text-text'
+            isAdjustment
+              ? adjPositive ? 'text-amber-400' : 'text-amber-400'
+              : isIncome ? 'text-success' : 'text-text'
           )}>
-            {isIncome ? '+' : '-'}{Number(transaction.amount).toFixed(2)}{' '}
+            {isAdjustment
+              ? (Number(transaction.amount) >= 0 ? '+' : '') + Number(transaction.amount).toFixed(2)
+              : (isIncome ? '+' : '-') + Math.abs(Number(transaction.amount)).toFixed(2)
+            }{' '}
             <span className="text-xs text-text-muted">{currency}</span>
           </div>
         </div>
@@ -128,7 +139,10 @@ export function TransactionItem({ transaction, onDelete, currency }: Transaction
             <Dialog.Title className="text-base font-medium text-text mb-1">Delete transaction?</Dialog.Title>
             <p className="text-sm text-text-secondary mb-5">
               <span className="font-medium text-text capitalize">{transaction.category}</span>
-              {' · '}{isIncome ? '+' : '-'}{Number(transaction.amount).toFixed(2)} {currency}
+              {' · '}{isAdjustment
+                ? ((Number(transaction.amount) >= 0 ? '+' : '') + Number(transaction.amount).toFixed(2))
+                : (isIncome ? '+' : '-') + Math.abs(Number(transaction.amount)).toFixed(2)
+              } {currency}
               {' · '}{transaction.date}{timeStr ? ` at ${timeStr}` : ''}
             </p>
             <div className="flex gap-3">

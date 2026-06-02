@@ -11,7 +11,7 @@ import { getUserLocalDate } from '../../../lib/dateUtils'
 import type { Transaction } from '../../../db/schema'
 import clsx from 'clsx'
 
-type TypeFilter = 'all' | 'expense' | 'income'
+type TypeFilter = 'all' | 'expense' | 'income' | 'adjustment'
 
 interface TransactionsTabProps {
   currency: string
@@ -60,8 +60,9 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
   }, [filtered])
 
   const totals = useMemo(() => ({
-    expense: filtered.filter((t: Transaction) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
-    income:  filtered.filter((t: Transaction) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0),
+    expense:    filtered.filter((t: Transaction) => t.type === 'expense'    && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
+    income:     filtered.filter((t: Transaction) => t.type === 'income'     && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
+    adjustment: filtered.filter((t: Transaction) => t.type === 'adjustment'                            ).reduce((s, t) => s + Number(t.amount), 0),
   }), [filtered])
 
   return (
@@ -87,7 +88,7 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
 
         {/* Type Filter */}
         <div className="flex bg-surface border border-border rounded-xl p-0.5">
-          {(['all', 'expense', 'income'] as TypeFilter[]).map(t => (
+          {(['all', 'expense', 'income', 'adjustment'] as TypeFilter[]).map(t => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
@@ -124,13 +125,18 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
 
       {/* Summary chips */}
       {filtered.length > 0 && (
-        <div className="flex gap-3 text-sm">
+        <div className="flex flex-wrap gap-2 text-sm">
           <span className="px-3 py-1 bg-danger/10 text-danger rounded-full font-medium">
             −{totals.expense.toFixed(2)} {currency}
           </span>
           {totals.income > 0 && (
             <span className="px-3 py-1 bg-success/10 text-success rounded-full font-medium">
               +{totals.income.toFixed(2)} {currency}
+            </span>
+          )}
+          {totals.adjustment !== 0 && (
+            <span className="px-3 py-1 bg-amber-400/10 text-amber-400 rounded-full font-medium">
+              {totals.adjustment >= 0 ? '+' : ''}{totals.adjustment.toFixed(2)} {currency} adj.
             </span>
           )}
           <span className="px-3 py-1 bg-surface-2 text-text-muted rounded-full">

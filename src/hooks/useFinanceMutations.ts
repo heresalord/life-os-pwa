@@ -25,10 +25,10 @@ export function useFinanceMutations() {
 
   // ── Wallets ──────────────────────────────────────────────────────────
   const addWallet = useMutation({
-    mutationFn: async (wallet: Omit<Wallet, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+    mutationFn: async (wallet: Omit<Wallet, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'archived'> & { archived?: boolean }) => {
       if (!user) return
       const now = new Date().toISOString()
-      const newWallet = { ...wallet, id: crypto.randomUUID(), user_id: user.id, created_at: now, updated_at: now } as Wallet
+      const newWallet = { ...wallet, id: crypto.randomUUID(), user_id: user.id, archived: wallet.archived ?? false, created_at: now, updated_at: now } as Wallet
       await db.wallets.add(newWallet)
       await write('wallets', 'insert', newWallet as Record<string, unknown>)
       return newWallet
@@ -71,6 +71,16 @@ export function useFinanceMutations() {
     mutationFn: async (id: string) => {
       await db.budgets.delete(id)
       await write('budgets', 'delete', { id })
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['budgets'] }),
+  })
+
+  const updateBudget = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Pick<Budget, 'category' | 'period' | 'limit_amount'>> }) => {
+      const withTs = { ...updates, updated_at: new Date().toISOString() }
+      await db.budgets.update(id, withTs)
+      const updated = await db.budgets.get(id)
+      if (updated) await write('budgets', 'update', updated as Record<string, unknown>)
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['budgets'] }),
   })
@@ -149,7 +159,7 @@ export function useFinanceMutations() {
 
   return {
     addWallet, updateWallet, deleteWallet,
-    addBudget, deleteBudget,
+    addBudget, deleteBudget, updateBudget,
     addSavingsGoal, updateSavingsGoal, deleteSavingsGoal,
     addDebt, updateDebt, deleteDebt, toggleDebtPaid,
   }

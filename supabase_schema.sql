@@ -291,6 +291,7 @@ create table if not exists wallets (
   currency text not null,
   balance numeric(14,2) default 0,
   color text,
+  archived boolean not null default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

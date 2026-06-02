@@ -23,7 +23,10 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
   const expCats = settings?.expense_categories?.length ? settings.expense_categories : DEFAULT_CATEGORIES.expense
   const incCats = settings?.income_categories?.length ? settings.income_categories : DEFAULT_CATEGORIES.income
 
-  const [type, setType]           = useState<'expense' | 'income'>(transaction.type as 'expense' | 'income')
+  const visibleWallets = wallets.filter(w => !w.archived || w.id === transaction.wallet_id)
+
+  const [type, setType]           = useState<'expense' | 'income' | 'adjustment'>(transaction.type as 'expense' | 'income' | 'adjustment')
+  const isAdjustment               = type === 'adjustment'
   const [amount, setAmount]       = useState(String(transaction.amount))
   const [category, setCategory]   = useState(transaction.category)
   const [description, setDescription] = useState(transaction.description ?? '')
@@ -31,21 +34,19 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
   const [txTime, setTxTime]       = useState(
     transaction.created_at ? new Date(transaction.created_at).toTimeString().slice(0, 5) : '00:00'
   )
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [walletId, setWalletId]   = useState<string>((transaction as any).wallet_id ?? '')
+  const [walletId, setWalletId]   = useState<string>(transaction.wallet_id ?? '')
 
   const { updateTransaction } = useTransactionMutations(transaction.date)
 
   useEffect(() => {
     if (open) {
-      setType(transaction.type as 'expense' | 'income')
+      setType(transaction.type as 'expense' | 'income' | 'adjustment')
       setAmount(String(transaction.amount))
       setCategory(transaction.category)
       setDescription(transaction.description ?? '')
       setTxDate(transaction.date)
       setTxTime(transaction.created_at ? new Date(transaction.created_at).toTimeString().slice(0, 5) : '00:00')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setWalletId((transaction as any).wallet_id ?? '')
+      setWalletId(transaction.wallet_id ?? '')
     }
   }, [open, transaction])
 
@@ -81,13 +82,21 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Type */}
+            {/* Type — read-only for adjustments, toggleable otherwise */}
+            {isAdjustment ? (
+              <div className="flex p-1 bg-surface-2 rounded-lg">
+                <div className="flex-1 py-2 text-sm font-medium text-center text-amber-400 bg-amber-400/10 rounded-md">
+                  Adjustment
+                </div>
+              </div>
+            ) : (
             <div className="flex p-1 bg-surface-2 rounded-lg">
               <button type="button" onClick={() => { setType('expense'); setCategory(expCats[0]) }}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${type === 'expense' ? 'bg-surface text-text shadow-sm' : 'text-text-muted'}`}>Expense</button>
               <button type="button" onClick={() => { setType('income'); setCategory(incCats[0]) }}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${type === 'income' ? 'bg-success/20 text-success shadow-sm' : 'text-text-muted'}`}>Income</button>
             </div>
+            )}
 
             {/* Amount */}
             <div>
@@ -110,7 +119,8 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
               </div>
             </div>
 
-            {/* Category */}
+            {/* Category — hidden for adjustments */}
+            {!isAdjustment && (
             <div>
               <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Category</label>
               <select value={category} onChange={e => setCategory(e.target.value)}
@@ -118,15 +128,16 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
                 {(type === 'expense' ? expCats : incCats).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+            )}
 
             {/* Wallet / Account */}
-            {wallets.length > 0 && (
+            {visibleWallets.length > 0 && (
               <div>
                 <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Account</label>
                 <select value={walletId} onChange={e => setWalletId(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
                   <option value="">No account</option>
-                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  {visibleWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </div>
             )}
@@ -139,7 +150,7 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
             </div>
 
             <button type="submit" disabled={!amount || updateTransaction.isPending}
-              className={`w-full py-3.5 text-bg font-medium rounded-xl transition-colors disabled:opacity-50 ${type === 'income' ? 'bg-success hover:bg-success/90' : 'bg-accent hover:bg-accent-dim'}`}>
+              className={`w-full py-3.5 text-bg font-medium rounded-xl transition-colors disabled:opacity-50 ${isAdjustment ? 'bg-amber-500 hover:bg-amber-400' : type === 'income' ? 'bg-success hover:bg-success/90' : 'bg-accent hover:bg-accent-dim'}`}>
               {updateTransaction.isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </form>

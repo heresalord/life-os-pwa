@@ -3,6 +3,7 @@ import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import { supabase as supa } from '../lib/supabase'
+import type { Wallet } from '../db/schema'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
@@ -32,15 +33,18 @@ async function writeTx(op: 'insert' | 'update' | 'delete', payload: Record<strin
 async function adjustWalletBalance(
   walletId: string,
   amount: number,
-  type: 'income' | 'expense',
+  type: 'income' | 'expense' | 'adjustment',
   operation: 'add' | 'remove'
 ) {
   const wallet = await db.wallets.get(walletId)
   if (!wallet) return
 
-  let diff = amount
-  if (type === 'expense') {
-    diff = -amount
+  let diff: number
+  if (type === 'adjustment') {
+    // amount is signed for adjustments: positive = balance went up, negative = balance went down
+    diff = amount
+  } else {
+    diff = type === 'expense' ? -amount : amount
   }
   if (operation === 'remove') {
     diff = -diff
@@ -56,10 +60,11 @@ async function adjustWalletBalance(
   const updatedWallet = await db.wallets.get(walletId)
   if (updatedWallet) {
     if (navigator.onLine) {
-      await sbAny.from('wallets').update({
+      const { error } = await sbAny.from('wallets').update({
         balance: newBalance,
         updated_at: updatedWallet.updated_at
       }).eq('id', walletId)
+      if (error) await enqueueSync('wallets', 'update', updatedWallet as Record<string, unknown>)
     } else {
       await enqueueSync('wallets', 'update', updatedWallet as Record<string, unknown>)
     }
@@ -81,8 +86,9 @@ export function useTransactionMutations(date: string) {
   const addTransaction = useMutation({
     mutationFn: async (payload: {
       amount: number
-      type: 'income' | 'expense'
+      type: 'income' | 'expense' | 'adjustment'
       category: string
+      wallet_id?: string | null
       method?: string
       description?: string
       date: string
@@ -93,6 +99,24 @@ export function useTransactionMutations(date: string) {
         ? new Date(`${payload.date}T${payload.time}:00`).toISOString()
         : new Date().toISOString()
 
+      let walletId: string | null = payload.wallet_id || null
+      // compatibility fallback if UUID was passed as method:
+      if (!walletId && payload.method && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method)) {
+        walletId = payload.method
+      }
+
+      let resolvedMethod = 'card'
+      if (walletId) {
+        const wallet = await db.wallets.get(walletId)
+        if (wallet) {
+          if (wallet.type === 'cash') resolvedMethod = 'cash'
+          else if (wallet.type === 'credit') resolvedMethod = 'card'
+          else if (wallet.type === 'bank' || wallet.type === 'savings') resolvedMethod = 'bank transfer'
+        }
+      } else if (payload.method && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method)) {
+        resolvedMethod = payload.method
+      }
+
       const tx = {
         id: crypto.randomUUID(),
         user_id: user.id,
@@ -100,9 +124,9 @@ export function useTransactionMutations(date: string) {
         amount: payload.amount,
         type: payload.type,
         category: payload.category,
-        method: payload.method || 'card',
+        method: resolvedMethod,
         description: payload.description || null,
-        wallet_id: payload.method && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method) ? payload.method : null,
+        wallet_id: walletId,
         transfer_to_wallet_id: null,
         notes: null,
         created_at,
@@ -112,13 +136,32 @@ export function useTransactionMutations(date: string) {
 
       // Auto-adjust the associated wallet balance
       if (tx.wallet_id) {
-        await adjustWalletBalance(tx.wallet_id, tx.amount, tx.type as 'income' | 'expense', 'add')
+        await adjustWalletBalance(tx.wallet_id, tx.amount, tx.type as 'income' | 'expense' | 'adjustment', 'add')
       }
       return tx
     },
     onMutate: async (payload) => {
       await qc.cancelQueries({ queryKey })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
+
+      let walletId: string | null = payload.wallet_id || null
+      if (!walletId && payload.method && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method)) {
+        walletId = payload.method
+      }
+
+      let resolvedMethod = 'card'
+      if (walletId) {
+        const cachedWallets = qc.getQueryData<Wallet[]>(['wallets']) || []
+        const wallet = cachedWallets.find(w => w.id === walletId)
+        if (wallet) {
+          if (wallet.type === 'cash') resolvedMethod = 'cash'
+          else if (wallet.type === 'credit') resolvedMethod = 'card'
+          else if (wallet.type === 'bank' || wallet.type === 'savings') resolvedMethod = 'bank transfer'
+        }
+      } else if (payload.method && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method)) {
+        resolvedMethod = payload.method
+      }
+
       const optimistic: AnyItem = {
         id: `opt-${Date.now()}`,
         user_id: user?.id,
@@ -126,9 +169,9 @@ export function useTransactionMutations(date: string) {
         amount: payload.amount,
         type: payload.type,
         category: payload.category,
-        method: payload.method || 'card',
+        method: resolvedMethod,
         description: payload.description || null,
-        wallet_id: payload.method && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method) ? payload.method : null,
+        wallet_id: walletId,
         notes: null,
         created_at: payload.time
           ? new Date(`${payload.date}T${payload.time}:00`).toISOString()
@@ -160,6 +203,22 @@ export function useTransactionMutations(date: string) {
         }
         delete updates.time
       }
+
+      // Automatically update method if wallet_id is changed
+      if ('wallet_id' in updates) {
+        const newWalletId = updates.wallet_id as string | null
+        let resolvedMethod = 'card'
+        if (newWalletId) {
+          const wallet = await db.wallets.get(newWalletId)
+          if (wallet) {
+            if (wallet.type === 'cash') resolvedMethod = 'cash'
+            else if (wallet.type === 'credit') resolvedMethod = 'card'
+            else if (wallet.type === 'bank' || wallet.type === 'savings') resolvedMethod = 'bank transfer'
+          }
+        }
+        updates.method = resolvedMethod
+      }
+
       await db.transactions.update(id, updates)
       const updated = await db.transactions.get(id)
       if (updated) {
@@ -167,23 +226,40 @@ export function useTransactionMutations(date: string) {
 
         // Revert old wallet balance impact and apply new balance impact
         if (existing.wallet_id) {
-          await adjustWalletBalance(existing.wallet_id, Number(existing.amount), existing.type as 'income' | 'expense', 'remove')
+          await adjustWalletBalance(existing.wallet_id, Number(existing.amount), existing.type as 'income' | 'expense' | 'adjustment', 'remove')
         }
         if (updated.wallet_id) {
-          await adjustWalletBalance(updated.wallet_id, Number(updated.amount), updated.type as 'income' | 'expense', 'add')
+          await adjustWalletBalance(updated.wallet_id, Number(updated.amount), updated.type as 'income' | 'expense' | 'adjustment', 'add')
         }
       }
     },
     onMutate: async ({ id, updates }) => {
       await qc.cancelQueries({ queryKey: ['transactions'] })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
+
+      const refinedUpdates = { ...updates }
+      if ('wallet_id' in refinedUpdates) {
+        const newWalletId = refinedUpdates.wallet_id as string | null
+        let resolvedMethod = 'card'
+        if (newWalletId) {
+          const cachedWallets = qc.getQueryData<Wallet[]>(['wallets']) || []
+          const wallet = cachedWallets.find(w => w.id === newWalletId)
+          if (wallet) {
+            if (wallet.type === 'cash') resolvedMethod = 'cash'
+            else if (wallet.type === 'credit') resolvedMethod = 'card'
+            else if (wallet.type === 'bank' || wallet.type === 'savings') resolvedMethod = 'bank transfer'
+          }
+        }
+        refinedUpdates.method = resolvedMethod
+      }
+
       qc.setQueriesData<AnyItem[]>(
         { queryKey: ['transactions'] },
-        old => (old ?? []).map(t => t.id === id ? { ...t, ...updates } : t)
+        old => (old ?? []).map(t => t.id === id ? { ...t, ...refinedUpdates } : t)
       )
       qc.setQueriesData<AnyItem[]>(
         { queryKey: ['transactions_range'] },
-        old => (old ?? []).map(t => t.id === id ? { ...t, ...updates } : t)
+        old => (old ?? []).map(t => t.id === id ? { ...t, ...refinedUpdates } : t)
       )
       return { previous }
     },
@@ -201,7 +277,7 @@ export function useTransactionMutations(date: string) {
 
       // Auto-revert the associated wallet balance
       if (tx && tx.wallet_id) {
-        await adjustWalletBalance(tx.wallet_id, Number(tx.amount), tx.type as 'income' | 'expense', 'remove')
+        await adjustWalletBalance(tx.wallet_id, Number(tx.amount), tx.type as 'income' | 'expense' | 'adjustment', 'remove')
       }
     },
     onMutate: async (id) => {

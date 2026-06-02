@@ -60,7 +60,7 @@ function CategoryList({
   type: 'expense' | 'income'
   currency: string
 }) {
-  const filtered = txns.filter(t => t.type === type)
+  const filtered = txns.filter(t => t.type === type && t.category !== 'transfer')
   const total    = filtered.reduce((s, t) => s + Number(t.amount), 0)
   if (!filtered.length) return <p className="text-xs text-text-muted text-center py-4">No {type}s in this period</p>
 
@@ -102,9 +102,10 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
   const [detail, setDetail] = useState<'expense' | 'income' | null>(null)
   const { data: txns = [], isLoading } = useTransactionsRange(from, to)
 
-  const expenses = txns.filter((t: Transaction) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
-  const income   = txns.filter((t: Transaction) => t.type === 'income').reduce((s, t)  => s + Number(t.amount), 0)
-  const net      = income - expenses
+  const expenses    = txns.filter((t: Transaction) => t.type === 'expense'   && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0)
+  const income      = txns.filter((t: Transaction) => t.type === 'income'    && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0)
+  const adjustments = txns.filter((t: Transaction) => t.type === 'adjustment'                           ).reduce((s, t) => s + Number(t.amount), 0)
+  const net         = income - expenses + adjustments
 
   // Chart data — cap at 31 bars (monthly max) or 12 bars (annual max)
   const chartData = useMemo(() => {
@@ -120,8 +121,8 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
         const monthTxns = txns.filter((t: Transaction) => t.date.startsWith(monthPrefix))
         result.push({
           date: monthPrefix,
-          expense: monthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
-          income:  monthTxns.filter(t => t.type === 'income').reduce((s, t)  => s + Number(t.amount), 0),
+          expense: monthTxns.filter(t => t.type === 'expense' && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
+          income:  monthTxns.filter(t => t.type === 'income'  && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
         })
       }
       return result
@@ -134,8 +135,8 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
       const dayTxns = txns.filter((t: Transaction) => t.date === ds)
       return {
         date: ds,
-        expense: dayTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
-        income:  dayTxns.filter(t => t.type === 'income').reduce((s, t)  => s + Number(t.amount), 0),
+        expense: dayTxns.filter(t => t.type === 'expense' && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
+        income:  dayTxns.filter(t => t.type === 'income'  && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
       }
     })
   }, [txns, from, to, period])
@@ -212,6 +213,19 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
               <p className="text-xs text-text-muted">{currency}</p>
             </button>
           </div>
+
+          {/* Adjustments row (only shown when non-zero) */}
+          {adjustments !== 0 && (
+            <div className="flex items-center justify-between px-4 py-3 bg-amber-400/8 border border-amber-400/20 rounded-2xl">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                <span className="text-xs text-text-muted uppercase tracking-wider">Adjustments</span>
+              </div>
+              <span className={clsx('text-sm font-medium', adjustments >= 0 ? 'text-amber-400' : 'text-amber-400')}>
+                {adjustments >= 0 ? '+' : ''}{adjustments.toFixed(2)} {currency}
+              </span>
+            </div>
+          )}
 
           {/* Expandable breakdown */}
           {detail && (

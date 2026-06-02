@@ -24,8 +24,8 @@ export function useTransactionsRange(from: string, to: string) {
       }
       return db.transactions
         .where('date').between(from, to, true, true)
-        .reverse()
-        .sortBy('created_at')
+        .toArray()
+        .then(txns => txns.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
     }
   })
 }

@@ -184,7 +184,7 @@ export interface Database {
           id: string
           user_id: string
           date: string
-          type: 'expense' | 'income'
+          type: 'expense' | 'income' | 'adjustment'
           amount: number
           category: string
           method: string
@@ -198,7 +198,7 @@ export interface Database {
           id?: string
           user_id: string
           date: string
-          type: 'expense' | 'income'
+          type: 'expense' | 'income' | 'adjustment'
           amount: number
           category: string
           method: string
@@ -212,7 +212,7 @@ export interface Database {
           id?: string
           user_id?: string
           date?: string
-          type?: 'expense' | 'income'
+          type?: 'expense' | 'income' | 'adjustment'
           amount?: number
           category?: string
           method?: string
@@ -536,6 +536,7 @@ export interface Database {
           currency: string
           balance: number
           color: string | null
+          archived: boolean
           created_at: string
           updated_at: string
         }
@@ -547,6 +548,7 @@ export interface Database {
           currency: string
           balance?: number
           color?: string | null
+          archived?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -558,6 +560,7 @@ export interface Database {
           currency?: string
           balance?: number
           color?: string | null
+          archived?: boolean
           created_at?: string
           updated_at?: string
         }
