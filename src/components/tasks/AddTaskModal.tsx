@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Plus, X, CalendarDays, AlignLeft } from 'lucide-react'
+import { Plus, X, CalendarDays, AlignLeft, Clock } from 'lucide-react'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import type { AddTaskPayload } from '../../hooks/useTaskMutations'
 
@@ -25,6 +25,8 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
   const [priority, setPriority]   = useState<number | null>(null)
   const [dueDate, setDueDate]     = useState('')
   const [description, setDescription] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime]     = useState('')
   const [showExtra, setShowExtra] = useState(false)
 
   const { addTask } = useTaskMutations(date)
@@ -34,12 +36,14 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
     setPriority(null)
     setDueDate('')
     setDescription('')
+    setStartTime('')
+    setEndTime('')
     setShowExtra(false)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim() || isTimeInvalid) return
 
     const payload: AddTaskPayload = {
       title: title.trim(),
@@ -48,12 +52,16 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
       due_date: dueDate || null,
       description: description.trim() || null,
       kanban_status: defaultKanbanStatus ?? 'todo',
+      time_block_start: startTime || null,
+      time_block_end: endTime || null,
     }
     addTask.mutate(payload)
     reset()
     setOpen(false)
     onAdded?.()
   }
+
+  const isTimeInvalid = (!!startTime && !!endTime && startTime >= endTime) || (!startTime && !!endTime)
 
   return (
     <Dialog.Root open={open} onOpenChange={v => { setOpen(v); if (!v) reset() }}>
@@ -108,6 +116,30 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
                 className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
             </div>
 
+            {/* Time Block (optional) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider flex items-center gap-1">
+                  <Clock size={12} /> Start Time (opt)
+                </label>
+                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider flex items-center gap-1">
+                  <Clock size={12} /> End Time (opt)
+                </label>
+                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+              </div>
+            </div>
+            {startTime && endTime && startTime >= endTime && (
+              <p className="text-xs text-danger">End time must be after start time.</p>
+            )}
+            {!startTime && endTime && (
+              <p className="text-xs text-danger">Start time is required if end time is specified.</p>
+            )}
+
             {/* Description (toggle) */}
             {showExtra ? (
               <div>
@@ -129,7 +161,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
               </button>
             )}
 
-            <button type="submit" disabled={!title.trim() || addTask.isPending}
+            <button type="submit" disabled={!title.trim() || addTask.isPending || isTimeInvalid}
               className="w-full bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
               {addTask.isPending ? 'Adding…' : 'Add Task'}
             </button>
