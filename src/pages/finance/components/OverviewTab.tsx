@@ -1,65 +1,89 @@
-import { useMemo } from 'react'
-import { TrendingDown, TrendingUp, Wallet as WalletIcon } from 'lucide-react'
-import { format, subDays, eachDayOfInterval } from 'date-fns'
-import { useAppStore } from '../../../store/useAppStore'
-import { getUserLocalDate } from '../../../lib/dateUtils'
+import { useState, useMemo } from 'react'
+import { format, eachDayOfInterval } from 'date-fns'
+import { TrendingDown, TrendingUp, ChevronDown } from 'lucide-react'
 import { useTransactionsRange } from '../../../hooks/useRangeQueries'
-import { useUserSettings } from '../../../hooks/useUserSettings'
-import { useWallets } from '../../../hooks/useFinanceQueries'
-import type { Wallet } from '../../../db/schema'
+import type { Transaction } from '../../../db/schema'
+import clsx from 'clsx'
 
-function BarChart({ data, currency }: { data: { date: string; expense: number; income: number }[]; currency: string }) {
-  const maxVal = Math.max(...data.map(d => Math.max(d.expense, d.income)), 1)
+function MiniBarChart({
+  data,
+  showType,
+}: {
+  data: { date: string; expense: number; income: number }[]
+  showType: 'expense' | 'income' | 'both'
+}) {
+  const maxVal = useMemo(() => {
+    if (showType === 'expense') return Math.max(...data.map(d => d.expense), 1)
+    if (showType === 'income') return Math.max(...data.map(d => d.income), 1)
+    return Math.max(...data.map(d => d.expense + d.income), 1)
+  }, [data, showType])
+
+  const show = data.filter(d => d.expense > 0 || d.income > 0).length > 0
+  if (!show) return null
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-end gap-1 h-28">
-        {data.map(d => (
-          <div key={d.date} className="flex-1 flex flex-col items-center gap-0.5 h-full justify-end">
-            <div className="w-full flex gap-0.5 items-end h-full justify-center">
-              {d.income > 0 && <div className="flex-1 bg-success/50 rounded-t-sm" style={{ height: `${(d.income / maxVal) * 100}%` }} />}
-              {d.expense > 0 && <div className="flex-1 bg-accent/60 rounded-t-sm" style={{ height: `${(d.expense / maxVal) * 100}%` }} />}
-              {d.income === 0 && d.expense === 0 && <div className="flex-1 bg-surface-2 rounded-t-sm h-1" />}
-            </div>
+    <div className="flex items-end gap-px h-16">
+      {data.map(d => {
+        const hasExpense = showType !== 'income' && d.expense > 0
+        const hasIncome = showType !== 'expense' && d.income > 0
+
+        return (
+          <div key={d.date} className="flex-1 flex flex-col-reverse gap-px items-stretch justify-start" style={{ maxWidth: 16 }}>
+            {hasExpense && (
+              <div
+                className="bg-accent/60 rounded-sm transition-all"
+                style={{ height: `${(d.expense / maxVal) * 100}%` }}
+              />
+            )}
+            {hasIncome && (
+              <div
+                className="bg-success/50 rounded-sm transition-all"
+                style={{ height: `${(d.income / maxVal) * 100}%` }}
+              />
+            )}
+            {!hasExpense && !hasIncome && (
+              <div className="bg-surface-2 rounded-sm" style={{ height: '4px' }} />
+            )}
           </div>
-        ))}
-      </div>
-      <div className="flex items-end gap-1">
-        {data.map(d => (
-          <div key={d.date} className="flex-1 text-center">
-            <span className="text-[9px] text-text-muted">{format(new Date(d.date + 'T12:00:00'), 'dd')}</span>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-4 text-xs text-text-muted">
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-accent/60 inline-block" />Expense</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-success/50 inline-block" />Income</span>
-        <span className="ml-auto">{currency}</span>
-      </div>
+        )
+      })}
     </div>
   )
 }
 
-function CategoryBreakdown({ txns, type, currency }: {
-  txns: { category: string; amount: number; type: string }[]
+function CategoryList({
+  txns,
+  type,
+  currency,
+}: {
+  txns: Transaction[]
   type: 'expense' | 'income'
   currency: string
 }) {
   const filtered = txns.filter(t => t.type === type)
-  const total = filtered.reduce((s, t) => s + Number(t.amount), 0)
+  const total    = filtered.reduce((s, t) => s + Number(t.amount), 0)
+  if (!filtered.length) return <p className="text-xs text-text-muted text-center py-4">No {type}s in this period</p>
+
   const byCategory: Record<string, number> = {}
   for (const t of filtered) byCategory[t.category] = (byCategory[t.category] || 0) + Number(t.amount)
   const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1])
-  if (!sorted.length) return null
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {sorted.map(([cat, amt]) => (
         <div key={cat}>
-          <div className="flex justify-between text-xs mb-1">
+          <div className="flex justify-between text-sm mb-1">
             <span className="text-text capitalize">{cat}</span>
-            <span className="text-text-secondary">{amt.toFixed(2)} {currency} · {Math.round((amt / total) * 100)}%</span>
+            <span className="text-text-secondary tabular-nums">
+              {amt.toFixed(2)} <span className="text-text-muted text-xs">{currency}</span>
+              <span className="text-text-muted text-xs ml-1">· {Math.round((amt / total) * 100)}%</span>
+            </span>
           </div>
-          <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full ${type === 'expense' ? 'bg-accent/60' : 'bg-success/50'}`} style={{ width: `${(amt / total) * 100}%` }} />
+          <div className="h-1 bg-surface-2 rounded-full overflow-hidden">
+            <div
+              className={clsx('h-full rounded-full transition-all duration-500', type === 'expense' ? 'bg-accent/70' : 'bg-success/60')}
+              style={{ width: `${(amt / total) * 100}%` }}
+            />
           </div>
         </div>
       ))}
@@ -67,108 +91,121 @@ function CategoryBreakdown({ txns, type, currency }: {
   )
 }
 
-export function OverviewTab({ currency }: { currency: string }) {
-  const { timezone } = useAppStore()
-  const today = getUserLocalDate(timezone)
-  const monthFrom = getUserLocalDate(timezone, subDays(new Date(today + 'T12:00:00'), 29))
-  const { data: monthTxns = [] } = useTransactionsRange(monthFrom, today)
-  const { data: settings } = useUserSettings()
-  const { data: wallets = [] } = useWallets()
+interface OverviewTabProps {
+  currency: string
+  from: string
+  to: string
+  period: 'day' | 'week' | 'month' | 'year'
+}
 
-  const budget = settings?.daily_budget ?? 100
-  const expenses  = monthTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
-  const income    = monthTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
-  const net       = income - expenses
-  const budgetTotal = budget * 30
-  const budgetPct   = Math.min((expenses / budgetTotal) * 100, 100)
-  const over        = expenses > budgetTotal
-  const netBalance  = wallets.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
+export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
+  const [detail, setDetail] = useState<'expense' | 'income' | null>(null)
+  const { data: txns = [], isLoading } = useTransactionsRange(from, to)
 
+  const expenses = txns.filter((t: Transaction) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+  const income   = txns.filter((t: Transaction) => t.type === 'income').reduce((s, t)  => s + Number(t.amount), 0)
+  const net      = income - expenses
+
+  // Chart data — cap at 31 bars (monthly max)
   const chartData = useMemo(() => {
-    const days = eachDayOfInterval({ start: new Date(monthFrom + 'T12:00:00'), end: new Date(today + 'T12:00:00') })
+    if (period === 'day') return []
+    const start = new Date(from + 'T12:00:00')
+    const end   = new Date(to   + 'T12:00:00')
+    const days  = eachDayOfInterval({ start, end })
     return days.map(d => {
-      const dateStr = format(d, 'yyyy-MM-dd')
-      const dayTxns = monthTxns.filter(t => t.date === dateStr)
+      const ds      = format(d, 'yyyy-MM-dd')
+      const dayTxns = txns.filter((t: Transaction) => t.date === ds)
       return {
-        date: dateStr,
+        date: ds,
         expense: dayTxns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
-        income:  dayTxns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0),
+        income:  dayTxns.filter(t => t.type === 'income').reduce((s, t)  => s + Number(t.amount), 0),
       }
     })
-  }, [monthTxns, today, monthFrom])
+  }, [txns, from, to, period])
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Net balance hero */}
-      <div className="bg-gradient-to-br from-surface to-surface-2 border border-border rounded-2xl p-6">
-        <p className="text-sm font-medium text-text-muted flex items-center gap-2 mb-2">
-          <WalletIcon size={16} /> Total Net Balance
-        </p>
-        <p className="text-4xl font-display font-medium text-text">
-          {netBalance.toFixed(2)} <span className="text-xl text-text-muted">{currency}</span>
-        </p>
-        {wallets.length > 0 && (
-          <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
-            {wallets.map((w: Wallet) => (
-              <div key={w.id} className="flex-shrink-0 bg-surface border border-border rounded-lg px-3 py-2 flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: w.color || '#4ade80' }} />
-                <div>
-                  <p className="text-[10px] text-text-muted uppercase tracking-wide">{w.name}</p>
-                  <p className="text-sm font-medium text-text">{Number(w.balance).toFixed(2)} {w.currency}</p>
+    <div className="space-y-5 animate-in fade-in duration-200">
+      {isLoading ? (
+        <div className="flex justify-center p-8"><div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>
+      ) : (
+        <>
+          {/* Net cashflow hero */}
+          <div className="bg-surface border border-border rounded-2xl p-5">
+            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Net Cashflow</p>
+            <p className={clsx('text-4xl font-display font-medium', net >= 0 ? 'text-success' : 'text-danger')}>
+              {net >= 0 ? '+' : ''}{net.toFixed(2)}{' '}
+              <span className="text-lg text-text-muted font-body font-normal">{currency}</span>
+            </p>
+
+            {/* Mini chart inside hero */}
+            {chartData.length > 0 && (
+              <div className="mt-4">
+                <MiniBarChart data={chartData} showType={detail || 'both'} />
+                <div className="flex justify-between text-[10px] text-text-muted mt-1">
+                  <span>{format(new Date(from + 'T12:00:00'), 'MMM d')}</span>
+                  <span className="flex gap-3">
+                    {(detail !== 'income') && (
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-sm bg-accent/60 inline-block" />Spent
+                      </span>
+                    )}
+                    {(detail !== 'expense') && (
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-sm bg-success/50 inline-block" />Earned
+                      </span>
+                    )}
+                  </span>
+                  <span>{format(new Date(to + 'T12:00:00'), 'MMM d')}</span>
                 </div>
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-surface border border-border rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-3"><TrendingDown size={16} className="text-accent" /><span className="text-xs text-text-muted uppercase tracking-wider">Spent (30d)</span></div>
-          <p className="text-2xl lg:text-3xl font-display font-medium text-text">{expenses.toFixed(2)}</p>
-          <p className="text-xs text-text-muted mt-1">{currency}</p>
-        </div>
-        <div className="bg-surface border border-border rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-3"><TrendingUp size={16} className="text-success" /><span className="text-xs text-text-muted uppercase tracking-wider">Earned (30d)</span></div>
-          <p className="text-2xl lg:text-3xl font-display font-medium text-success">{income > 0 ? '+' : ''}{income.toFixed(2)}</p>
-          <p className="text-xs text-text-muted mt-1">{currency}</p>
-        </div>
-        <div className="hidden lg:block bg-surface border border-border rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-3"><WalletIcon size={16} className={over ? 'text-warning' : 'text-text-muted'} /><span className="text-xs text-text-muted uppercase tracking-wider">Net (30d)</span></div>
-          <p className={`text-3xl font-display font-medium ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net >= 0 ? '+' : ''}{net.toFixed(2)}</p>
-          <div className="mt-2">
-            <div className="flex justify-between text-xs text-text-muted mb-1">
-              <span>Budget {Math.round(budgetPct)}%</span>
-              {over && <span className="text-warning font-medium">Over</span>}
-            </div>
-            <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${over ? 'bg-warning/80' : 'bg-accent/80'}`} style={{ width: `${budgetPct}%` }} />
-            </div>
+          {/* Clickable stat cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setDetail(detail === 'expense' ? null : 'expense')}
+              className={clsx(
+                'text-left p-4 rounded-2xl border transition-all',
+                detail === 'expense' ? 'bg-accent/10 border-accent/40' : 'bg-surface border-border hover:bg-surface-2'
+              )}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingDown size={15} className="text-accent" />
+                <span className="text-xs text-text-muted uppercase tracking-wider">Spent</span>
+                <ChevronDown size={13} className={clsx('ml-auto text-text-muted transition-transform', detail === 'expense' && 'rotate-180')} />
+              </div>
+              <p className="text-xl font-display font-medium text-text">{expenses.toFixed(2)}</p>
+              <p className="text-xs text-text-muted">{currency}</p>
+            </button>
+
+            <button
+              onClick={() => setDetail(detail === 'income' ? null : 'income')}
+              className={clsx(
+                'text-left p-4 rounded-2xl border transition-all',
+                detail === 'income' ? 'bg-success/10 border-success/40' : 'bg-surface border-border hover:bg-surface-2'
+              )}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp size={15} className="text-success" />
+                <span className="text-xs text-text-muted uppercase tracking-wider">Earned</span>
+                <ChevronDown size={13} className={clsx('ml-auto text-text-muted transition-transform', detail === 'income' && 'rotate-180')} />
+              </div>
+              <p className="text-xl font-display font-medium text-success">{income.toFixed(2)}</p>
+              <p className="text-xs text-text-muted">{currency}</p>
+            </button>
           </div>
-        </div>
-      </div>
 
-      {chartData.length > 0 && (
-        <div className="bg-surface border border-border rounded-2xl p-5">
-          <h2 className="text-xs text-text-muted uppercase tracking-wider mb-4">Daily breakdown (30 days)</h2>
-          <BarChart data={chartData} currency={currency} />
-        </div>
-      )}
-
-      {monthTxns.length > 0 && (
-        <div className="bg-surface border border-border rounded-2xl p-5 space-y-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
-          <div className="space-y-3">
-            <h2 className="text-sm font-medium text-text">Expenses by category</h2>
-            <CategoryBreakdown txns={monthTxns as any} type="expense" currency={currency} />
-          </div>
-          {income > 0 && (
-            <div className="space-y-3 border-t border-border pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6">
-              <h2 className="text-sm font-medium text-text">Income by category</h2>
-              <CategoryBreakdown txns={monthTxns as any} type="income" currency={currency} />
+          {/* Expandable breakdown */}
+          {detail && (
+            <div className="bg-surface border border-border rounded-2xl p-5 animate-in fade-in slide-in-from-top-2 duration-200">
+              <h3 className="text-sm font-medium text-text mb-4 capitalize">
+                {detail === 'expense' ? 'Spending' : 'Income'} breakdown
+              </h3>
+              <CategoryList txns={txns as Transaction[]} type={detail} currency={currency} />
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )

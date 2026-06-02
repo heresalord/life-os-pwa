@@ -11,10 +11,7 @@ export function FinancePanel() {
   const expenses = txns.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
   const income   = txns.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
   const net      = income - expenses
-  const budget   = settings?.daily_budget ?? 100
-  const budgetPct = Math.min((expenses / budget) * 100, 100)
   const currency  = settings?.currency ?? 'USD'
-  const over      = expenses > budget
 
   const fmt = (n: number) => n.toFixed(2)
 
@@ -37,20 +34,6 @@ export function FinancePanel() {
         <div>
           <p className="text-xs text-text-muted">Spent</p>
           <p className="text-text font-medium">{fmt(expenses)}</p>
-        </div>
-      </div>
-
-      {/* Budget bar */}
-      <div>
-        <div className="flex justify-between text-xs text-text-muted mb-1">
-          <span>Daily budget</span>
-          <span className={over ? 'text-warning' : ''}>{fmt(expenses)} / {fmt(budget)} {currency}</span>
-        </div>
-        <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${over ? 'bg-warning/70' : 'bg-accent/60'}`}
-            style={{ width: `${budgetPct}%` }}
-          />
         </div>
       </div>
 

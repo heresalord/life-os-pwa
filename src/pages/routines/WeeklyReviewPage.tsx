@@ -36,7 +36,6 @@ export function WeeklyReviewPage() {
   const { timezone } = useAppStore()
   const { data: settings } = useUserSettings()
   const currency = settings?.currency ?? 'USD'
-  const budget = (settings?.daily_budget ?? 100) * 7
 
   const today = getUserLocalDate(timezone)
   const from  = getUserLocalDate(timezone, subDays(new Date(today + 'T12:00:00'), 6))
@@ -95,9 +94,7 @@ export function WeeklyReviewPage() {
         <div className="bg-surface border border-border rounded-2xl p-4 text-center">
           <p className="text-2xl font-display font-medium text-text">{totalExpenses.toFixed(0)}</p>
           <p className="text-xs text-text-muted mt-1">Spent {currency}</p>
-          <p className={`text-[10px] ${totalExpenses > budget ? 'text-warning' : 'text-text-muted'}`}>
-            {totalExpenses > budget ? 'Over' : 'Under'} budget
-          </p>
+          <p className="text-[10px] text-text-muted">This week</p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 text-center">
           <p className="text-2xl font-display">

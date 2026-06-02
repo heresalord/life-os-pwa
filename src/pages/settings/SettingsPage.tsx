@@ -133,7 +133,6 @@ export function SettingsPage() {
   const { data: settings, upsert } = useUserSettings()
   const { theme, setTheme, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours } = useAppStore()
 
-  const [budget, setBudget] = useState('100')
   const [currency, setCurrency] = useState('USD')
   const [displayName, setDisplayName] = useState('')
   const [expenseCats, setExpenseCats] = useState<string[]>(['food', 'transport', 'utilities', 'entertainment', 'shopping', 'health', 'other'])
@@ -175,7 +174,6 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (settings) {
-      setBudget(settings.daily_budget?.toString() || '100')
       setCurrency(settings.currency || 'USD')
       if (settings.expense_categories?.length) setExpenseCats(settings.expense_categories)
       if (settings.income_categories?.length) setIncomeCats(settings.income_categories)
@@ -198,7 +196,6 @@ export function SettingsPage() {
         await supabaseAny.from('user_profiles').update({ display_name: displayName }).eq('id', user.id)
       }
       await upsert.mutateAsync({
-        daily_budget: parseFloat(budget) || 100,
         currency,
         theme,
         expense_categories: expenseCats,
@@ -350,28 +347,17 @@ export function SettingsPage() {
       {/* Finance */}
       <section className="bg-surface border border-border rounded-2xl p-5 space-y-4">
         <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider">Finance</h2>
-        <div className="flex gap-3">
-          <div className="w-28">
-            <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Currency</label>
-            <select
-              value={currency}
-              onChange={e => setCurrency(e.target.value)}
-              className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-text focus:border-accent focus:outline-none appearance-none text-sm"
-            >
-              {['USD','EUR','GBP','XOF','NGN','GHS','JPY','INR','CAD','AUD'].map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1">
-            <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Daily Budget</label>
-            <input
-              type="number"
-              value={budget}
-              onChange={e => setBudget(e.target.value)}
-              className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none"
-            />
-          </div>
+        <div>
+          <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Currency</label>
+          <select
+            value={currency}
+            onChange={e => setCurrency(e.target.value)}
+            className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none text-sm"
+          >
+            {['USD','EUR','GBP','XOF','NGN','GHS','JPY','INR','CAD','AUD'].map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
         <CategoryEditor label="Expense Categories" categories={expenseCats} onChange={setExpenseCats} />
         <CategoryEditor label="Income Categories"  categories={incomeCats}  onChange={setIncomeCats}  />

@@ -20,7 +20,6 @@ export function OnboardingFlow() {
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
   const [currency, setCurrency] = useState('USD')
-  const [budget, setBudget] = useState('100')
   const [morningTime, setMorningTime] = useState('07:00')
   const [nightTime, setNightTime] = useState('21:00')
 
@@ -37,7 +36,6 @@ export function OnboardingFlow() {
       await userSettingsApi.upsert({
         user_id: user.id,
         currency,
-        daily_budget: parseFloat(budget) || 100,
         morning_reminder_time: morningTime,
         night_reminder_time: nightTime,
         notifications_enabled: false,
@@ -138,24 +136,17 @@ export function OnboardingFlow() {
         {step === 3 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg text-text font-medium mb-1">Finance awareness</h2>
-              <p className="text-text-secondary text-sm mb-4">A loose daily budget to stay aware — not to judge.</p>
-              <div className="flex gap-3">
-                <div className="w-28">
-                  <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Currency</label>
-                  <input type="text" value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} maxLength={3}
-                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-text focus:border-accent focus:outline-none text-center uppercase font-medium" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Daily Budget</label>
-                  <input type="number" value={budget} onChange={e => setBudget(e.target.value)} min="0"
-                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
-                </div>
+              <h2 className="text-lg text-text font-medium mb-1">Currency selection</h2>
+              <p className="text-text-secondary text-sm mb-4">Choose your primary currency for transactions and accounts.</p>
+              <div>
+                <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Currency</label>
+                <input type="text" value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} maxLength={3}
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none text-center uppercase font-medium" />
               </div>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setStep(2)} className="flex-1 bg-surface-2 text-text font-medium rounded-xl py-3 hover:bg-muted transition-colors">Back</button>
-              <button onClick={() => currency && budget && setStep(4)} disabled={!currency || !budget}
+              <button onClick={() => currency && setStep(4)} disabled={!currency}
                 className="flex-[2] bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">Continue</button>
             </div>
           </div>

@@ -5,31 +5,29 @@ import { useTransactionMutations } from '../../../hooks/useTransactionMutations'
 import { TransactionItem } from '../../../components/finance/TransactionItem'
 import { AddTransactionModal } from '../../../components/finance/AddTransactionModal'
 import { EmptyState } from '../../../components/EmptyState'
-import { DollarSign, ChevronDown } from 'lucide-react'
+import { DollarSign, ChevronDown, Search } from 'lucide-react'
 import { useAppStore } from '../../../store/useAppStore'
 import { getUserLocalDate } from '../../../lib/dateUtils'
 import type { Transaction } from '../../../db/schema'
+import clsx from 'clsx'
 
 type TypeFilter = 'all' | 'expense' | 'income'
-type RangeFilter = '7d' | '30d' | '90d' | 'all'
 
-const RANGE_LABELS: Record<RangeFilter, string> = {
-  '7d': '7 days', '30d': '30 days', '90d': '90 days', 'all': 'All time',
+interface TransactionsTabProps {
+  currency: string
+  from: string
+  to: string
 }
 
-export function TransactionsTab({ currency }: { currency: string }) {
+export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
   const { selectedDate, timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [rangeFilter, setRangeFilter] = useState<RangeFilter>('30d')
   const [search, setSearch] = useState('')
 
-  const daysMap: Record<RangeFilter, number> = { '7d': 7, '30d': 30, '90d': 90, 'all': 3650 }
-  const from = getUserLocalDate(timezone, subDays(new Date(today + 'T12:00:00'), daysMap[rangeFilter]))
-
-  const { data: txns = [], isLoading } = useTransactionsRange(from, today)
+  const { data: txns = [], isLoading } = useTransactionsRange(from, to)
   const { deleteTransaction } = useTransactionMutations(selectedDate)
 
   // All unique categories from loaded transactions
@@ -68,47 +66,61 @@ export function TransactionsTab({ currency }: { currency: string }) {
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Add button */}
-      <AddTransactionModal date={selectedDate} />
+      {/* Floating Action Button for Mobile */}
+      <div className="md:hidden fixed bottom-20 right-4 z-40">
+        <AddTransactionModal date={selectedDate} isFAB />
+      </div>
+
+      {/* Normal Dashed Button for Desktop */}
+      <div className="hidden md:block">
+        <AddTransactionModal date={selectedDate} />
+      </div>
 
       {/* Filters bar */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Search */}
-        <input
-          type="text"
-          placeholder="Search…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[140px] bg-surface border border-border rounded-xl px-4 py-2 text-sm text-text focus:border-accent/50 outline-none"
-        />
-
-        {/* Time range */}
-        <div className="relative">
-          <select value={rangeFilter} onChange={e => setRangeFilter(e.target.value as RangeFilter)}
-            className="appearance-none bg-surface border border-border rounded-xl pl-3 pr-8 py-2 text-sm text-text focus:border-accent outline-none cursor-pointer">
-            {(Object.keys(RANGE_LABELS) as RangeFilter[]).map(r => (
-              <option key={r} value={r}>{RANGE_LABELS[r]}</option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+        <div className="relative flex-1 min-w-[140px]">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input
+            type="text"
+            placeholder="Search activity..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-surface border border-border rounded-xl pl-9 pr-4 py-2 text-sm text-text placeholder-text-muted focus:border-accent/40 focus:bg-surface-2 transition-all outline-none"
+          />
         </div>
 
-        {/* Type */}
-        <div className="flex bg-surface border border-border rounded-xl overflow-hidden">
+        {/* Type Filter */}
+        <div className="flex bg-surface border border-border rounded-xl p-0.5">
           {(['all', 'expense', 'income'] as TypeFilter[]).map(t => (
-            <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-3 py-2 text-sm capitalize transition-colors ${typeFilter === t ? 'bg-surface-2 text-text font-medium' : 'text-text-muted hover:text-text'}`}>
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={clsx(
+                'px-3 py-1.5 text-xs font-medium rounded-lg capitalize transition-all',
+                typeFilter === t
+                  ? 'bg-surface-2 text-text shadow-sm'
+                  : 'text-text-muted hover:text-text-secondary'
+              )}
+            >
               {t}
             </button>
           ))}
         </div>
 
-        {/* Category */}
+        {/* Category Filter */}
         {allCategories.length > 2 && (
           <div className="relative">
-            <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-              className="appearance-none bg-surface border border-border rounded-xl pl-3 pr-8 py-2 text-sm text-text capitalize focus:border-accent outline-none cursor-pointer">
-              {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              className="appearance-none bg-surface border border-border rounded-xl pl-3 pr-8 py-2 text-xs font-medium text-text capitalize focus:border-accent outline-none cursor-pointer"
+            >
+              {allCategories.map(c => (
+                <option key={c} value={c}>
+                  {c === 'all' ? 'All Categories' : c}
+                </option>
+              ))}
             </select>
             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
           </div>

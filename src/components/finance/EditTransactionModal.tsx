@@ -62,7 +62,7 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
         description: description.trim() || null,
         date: txDate,
         time: txTime,
-        ...(walletId ? { wallet_id: walletId } : {}),
+        wallet_id: walletId || null,
       },
     })
     onClose()
@@ -119,13 +119,13 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
               </select>
             </div>
 
-            {/* Wallet */}
+            {/* Wallet / Account */}
             {wallets.length > 0 && (
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Wallet</label>
+                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Account</label>
                 <select value={walletId} onChange={e => setWalletId(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
-                  <option value="">No wallet</option>
+                  <option value="">No account</option>
                   {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </div>
