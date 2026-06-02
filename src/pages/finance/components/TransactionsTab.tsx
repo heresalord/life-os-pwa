@@ -66,13 +66,8 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Floating Action Button for Mobile */}
-      <div className="md:hidden fixed bottom-20 right-4 z-40">
-        <AddTransactionModal date={selectedDate} isFAB />
-      </div>
-
-      {/* Normal Dashed Button for Desktop */}
-      <div className="hidden md:block">
+      {/* Add Transaction Button at the top */}
+      <div>
         <AddTransactionModal date={selectedDate} />
       </div>
 
