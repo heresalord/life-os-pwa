@@ -3,6 +3,7 @@ import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import { supabase as supa } from '../lib/supabase'
+import { syncDayScore } from '../lib/scoreUtils'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
@@ -68,6 +69,7 @@ export function useTaskMutations(date: string) {
       }
       await db.tasks.add(task as Parameters<typeof db.tasks.add>[0])
       await writeTask('insert', task)
+      await syncDayScore(user.id, task.date)
       return task
     },
     onMutate: async (payload) => {
@@ -108,7 +110,10 @@ export function useTaskMutations(date: string) {
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
       await db.tasks.update(id, updates)
       const updated = await db.tasks.get(id)
-      if (updated) await writeTask('update', updated as Record<string, unknown>)
+      if (updated && user) {
+        await writeTask('update', updated as Record<string, unknown>)
+        await syncDayScore(user.id, updated.date)
+      }
     },
     onMutate: async ({ id, updates }) => {
       await qc.cancelQueries({ queryKey: ['tasks'] })
@@ -128,8 +133,12 @@ export function useTaskMutations(date: string) {
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
+      const task = await db.tasks.get(id)
       await db.tasks.delete(id)
       await writeTask('delete', { id })
+      if (task && user) {
+        await syncDayScore(user.id, task.date)
+      }
     },
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ['tasks'] })

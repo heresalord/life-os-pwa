@@ -55,14 +55,25 @@ create policy "Users access own settings" on user_settings
 -- 3. DAILY RECORDS
 -- ========================================================
 create table daily_records (
-  id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references auth.users(id) on delete cascade,
-  date        date not null,
-  mood        smallint check (mood between 1 and 5),
-  intent      text,
-  reflections jsonb default '{}',
-  created_at  timestamptz default now(),
-  updated_at  timestamptz default now(),
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  date             date not null,
+  mood             smallint check (mood between 1 and 5),
+  intent           text,
+  reflections      jsonb default '{}',
+  energy_am        smallint check (energy_am between 1 and 5),
+  energy_pm        smallint check (energy_pm between 1 and 5),
+  gratitude        jsonb default '[]'::jsonb,
+  win_of_day       varchar(280),
+  went_well        text,
+  do_differently   text,
+  tomorrow_focus   text,
+  morning_complete boolean not null default false,
+  evening_complete boolean not null default false,
+  day_score        smallint check (day_score between 0 and 100) default 0,
+  journal          text,
+  created_at       timestamptz default now(),
+  updated_at       timestamptz default now(),
   unique(user_id, date)
 );
 

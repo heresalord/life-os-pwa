@@ -2,7 +2,7 @@ import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
-  CalendarDays, Inbox, FileText, Search, Settings, LogOut
+  CalendarDays, Inbox, FileText, Search, Settings, LogOut, Heart
 } from 'lucide-react'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useAuth } from '../../hooks/useAuth'
@@ -16,6 +16,7 @@ import { useNavSync } from '../../hooks/useNavSync'
 import clsx from 'clsx'
 
 export const ALL_NAV_OPTIONS = [
+  { key: 'day',     to: '/day',     icon: Heart,        label: 'Daily Log' },
   { key: 'tasks',   to: '/tasks',   icon: CheckSquare,  label: 'Tasks'   },
   { key: 'finance', to: '/finance', icon: DollarSign,   label: 'Finance' },
   { key: 'goals',   to: '/goals',   icon: Target,       label: 'Goals'   },
@@ -137,13 +138,13 @@ export function AppShell({ children }: AppShellProps) {
 
                         <div className="border-t border-border my-1" />
 
-                        <NavLink to="/morning" onClick={() => setMenuOpen(false)}
+                        <NavLink to="/day?guided=morning" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <span className="text-base leading-none">☀️</span> Morning
+                          <span className="text-base leading-none">☀️</span> Start Morning
                         </NavLink>
-                        <NavLink to="/review" onClick={() => setMenuOpen(false)}
+                        <NavLink to="/day?guided=evening" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <span className="text-base leading-none">🌙</span> Review
+                          <span className="text-base leading-none">🌙</span> Start Evening
                         </NavLink>
 
                         <div className="border-t border-border my-1" />

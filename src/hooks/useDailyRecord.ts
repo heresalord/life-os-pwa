@@ -4,6 +4,7 @@ import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import { supabase as supa } from '../lib/supabase'
+import { calculateDayScore } from '../lib/scoreUtils'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sbAny = supa as any
 
@@ -33,12 +34,20 @@ export function useDailyRecord(date: string) {
     mutationFn: async (payload: Record<string, unknown>) => {
       if (!user) return
       const existing = await db.daily_records.where('date').equals(date).first()
+      const tasks = await db.tasks.where('date').equals(date).toArray()
+      
+      const mood = payload.mood !== undefined ? (payload.mood as number | null) : (existing?.mood ?? null)
+      const energy_am = payload.energy_am !== undefined ? (payload.energy_am as number | null) : (existing?.energy_am ?? null)
+      const energy_pm = payload.energy_pm !== undefined ? (payload.energy_pm as number | null) : (existing?.energy_pm ?? null)
+      const score = calculateDayScore(tasks, mood, energy_am, energy_pm)
+
       const record = {
         ...(existing ?? {}),
         ...payload,
         id: existing?.id ?? crypto.randomUUID(),
         user_id: user.id,
         date,
+        day_score: score,
         updated_at: new Date().toISOString(),
         created_at: existing?.created_at ?? new Date().toISOString(),
       }

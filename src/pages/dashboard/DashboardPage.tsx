@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { Sun, Moon } from 'lucide-react'
 import { YearProgressBar } from '../../components/dashboard/YearProgressBar'
 import { FocusTasksPanel } from '../../components/dashboard/FocusTasksPanel'
@@ -7,6 +6,7 @@ import { NotesInboxPanel } from '../../components/dashboard/NotesInboxPanel'
 import { MoodGoalsBooksPanel } from '../../components/dashboard/MoodGoalsBooksPanel'
 import { QuotesWidget } from '../../components/dashboard/QuotesWidget'
 import { useAuth } from '../../hooks/useAuth'
+import { DailyLogWidget } from '../../components/dashboard/DailyLogWidget'
 
 const getGreeting = () => {
   const h = new Date().getHours()
@@ -17,7 +17,6 @@ const getGreeting = () => {
 
 export function DashboardPage() {
   const { profile } = useAuth()
-  const navigate = useNavigate()
   const { text: greeting, icon } = getGreeting()
 
   return (
@@ -27,38 +26,24 @@ export function DashboardPage() {
       {/* ── Left / main column ── */}
       <div className="space-y-4">
 
-        {/* Greeting */}
-        <div className="flex items-center justify-between pt-1">
-          <div>
-            <div className="flex items-center gap-1.5 text-text-secondary text-sm mb-0.5">
-              {icon}
-              <span>{greeting}</span>
+          {/* Greeting */}
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <div className="flex items-center gap-1.5 text-text-secondary text-sm mb-0.5">
+                {icon}
+                <span>{greeting}</span>
+              </div>
+              <h2 className="text-2xl font-display text-text">
+                {profile?.display_name ?? 'Welcome'}
+              </h2>
             </div>
-            <h2 className="text-2xl font-display text-text">
-              {profile?.display_name ?? 'Welcome'}
-            </h2>
           </div>
-          {/* Morning / Review buttons — hidden on desktop (live in the topbar there) */}
-          <div className="flex gap-2 lg:hidden">
-            <button
-              id="dashboard-morning-btn"
-              onClick={() => navigate('/morning')}
-              className="text-xs px-3 py-1.5 bg-warning/15 text-warning rounded-full hover:bg-warning/25 transition-colors"
-            >
-              Morning
-            </button>
-            <button
-              id="dashboard-review-btn"
-              onClick={() => navigate('/review')}
-              className="text-xs px-3 py-1.5 bg-info/15 text-info rounded-full hover:bg-info/25 transition-colors"
-            >
-              Review
-            </button>
-          </div>
-        </div>
 
         {/* Year progress */}
         <YearProgressBar />
+
+        {/* Daily Log Routine Widget */}
+        <DailyLogWidget />
 
         {/* Finance + NotesInbox — shown here on mobile/tablet, moved to right panel on desktop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:hidden">

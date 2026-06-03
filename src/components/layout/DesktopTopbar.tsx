@@ -19,8 +19,8 @@ const pathTitleMap: Record<string, string> = {
   '/notes':    'Notes Journal',
   '/search':   'Search Workspace',
   '/settings': 'Settings',
-  '/morning':  'Morning Ritual',
-  '/review':   'Weekly Review',
+  '/day':      'Daily Log',
+  '/day/history': 'Wellbeing History',
 }
 
 const secondaryNav = [
@@ -63,14 +63,14 @@ export function DesktopTopbar() {
         {/* Quick-access routine buttons */}
         <div className="hidden lg:flex gap-2">
           <button
-            onClick={() => navigate('/morning')}
+            onClick={() => navigate('/day?guided=morning')}
             className="text-xs px-3 py-1.5 bg-warning/10 text-warning border border-warning/20 rounded-full hover:bg-warning/20 transition-all font-medium flex items-center gap-1"
           >
             <Sun size={12} />
             Morning
           </button>
           <button
-            onClick={() => navigate('/review')}
+            onClick={() => navigate('/day?guided=evening')}
             className="text-xs px-3 py-1.5 bg-info/10 text-info border border-info/20 rounded-full hover:bg-info/20 transition-all font-medium flex items-center gap-1"
           >
             <Moon size={12} />

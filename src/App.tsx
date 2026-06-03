@@ -18,8 +18,8 @@ const InboxPage = React.lazy(() => import('./pages/inbox/InboxPage').then(m => (
 const NotesPage = React.lazy(() => import('./pages/notes/NotesPage').then(m => ({ default: m.NotesPage })))
 const SearchPage = React.lazy(() => import('./pages/search/SearchPage').then(m => ({ default: m.SearchPage })))
 const SettingsPage = React.lazy(() => import('./pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
-const MorningPage = React.lazy(() => import('./pages/routines/MorningPage').then(m => ({ default: m.MorningPage })))
-const ReviewPage = React.lazy(() => import('./pages/routines/ReviewPage').then(m => ({ default: m.ReviewPage })))
+const DailyLogPage = React.lazy(() => import('./pages/day/DailyLogPage').then(m => ({ default: m.DailyLogPage })))
+const DailyLogHistoryPage = React.lazy(() => import('./pages/day/DailyLogHistoryPage').then(m => ({ default: m.DailyLogHistoryPage })))
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-bg">
@@ -56,8 +56,9 @@ function App() {
                 <AppShell>
                   <Routes>
                     <Route path="/"         element={<DashboardPage />} />
-                    <Route path="/morning"  element={<MorningPage />} />
-                    <Route path="/review"   element={<ReviewPage />} />
+                    <Route path="/day"      element={<DailyLogPage />} />
+                    <Route path="/day/history" element={<DailyLogHistoryPage />} />
+                    <Route path="/day/:date" element={<DailyLogPage />} />
                     <Route path="/tasks"    element={<TasksPage />} />
                     <Route path="/finance"  element={<FinancePage />} />
                     <Route path="/goals"    element={<GoalsPage />} />

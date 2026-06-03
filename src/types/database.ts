@@ -87,6 +87,17 @@ export interface Database {
           mood: number | null
           intent: string | null
           reflections: Json
+          energy_am: number | null
+          energy_pm: number | null
+          gratitude: Json
+          win_of_day: string | null
+          went_well: string | null
+          do_differently: string | null
+          tomorrow_focus: string | null
+          morning_complete: boolean
+          evening_complete: boolean
+          day_score: number | null
+          journal: string | null
           created_at: string
           updated_at: string
         }
@@ -97,6 +108,17 @@ export interface Database {
           mood?: number | null
           intent?: string | null
           reflections?: Json
+          energy_am?: number | null
+          energy_pm?: number | null
+          gratitude?: Json
+          win_of_day?: string | null
+          went_well?: string | null
+          do_differently?: string | null
+          tomorrow_focus?: string | null
+          morning_complete?: boolean
+          evening_complete?: boolean
+          day_score?: number | null
+          journal?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -107,6 +129,17 @@ export interface Database {
           mood?: number | null
           intent?: string | null
           reflections?: Json
+          energy_am?: number | null
+          energy_pm?: number | null
+          gratitude?: Json
+          win_of_day?: string | null
+          went_well?: string | null
+          do_differently?: string | null
+          tomorrow_focus?: string | null
+          morning_complete?: boolean
+          evening_complete?: boolean
+          day_score?: number | null
+          journal?: string | null
           created_at?: string
           updated_at?: string
         }
