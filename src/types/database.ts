@@ -237,6 +237,11 @@ export interface Database {
           state: 'active' | 'paused' | 'completed' | 'abandoned'
           is_completed: boolean
           sub_goals: Json
+          tracker_type: 'target' | 'habit' | 'average' | 'project'
+          category: string | null
+          habit_schedule: Json
+          habit_streak: number
+          last_checkin: string | null
           created_at: string
           updated_at: string
         }
@@ -253,6 +258,11 @@ export interface Database {
           state?: 'active' | 'paused' | 'completed' | 'abandoned'
           is_completed?: boolean
           sub_goals?: Json
+          tracker_type?: 'target' | 'habit' | 'average' | 'project'
+          category?: string | null
+          habit_schedule?: Json
+          habit_streak?: number
+          last_checkin?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -269,6 +279,11 @@ export interface Database {
           state?: 'active' | 'paused' | 'completed' | 'abandoned'
           is_completed?: boolean
           sub_goals?: Json
+          tracker_type?: 'target' | 'habit' | 'average' | 'project'
+          category?: string | null
+          habit_schedule?: Json
+          habit_streak?: number
+          last_checkin?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -315,6 +330,67 @@ export interface Database {
           old_target?: number | null
           new_target?: number | null
           created_at?: string
+        }
+      }
+      habit_logs: {
+        Row: {
+          id: string
+          user_id: string
+          goal_id: string
+          date: string
+          value: number
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          goal_id: string
+          date: string
+          value?: number
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          goal_id?: string
+          date?: string
+          value?: number
+          note?: string | null
+          created_at?: string
+        }
+      }
+      milestones: {
+        Row: {
+          id: string
+          user_id: string
+          goal_id: string
+          title: string
+          completed: boolean
+          due_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          goal_id: string
+          title: string
+          completed?: boolean
+          due_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          goal_id?: string
+          title?: string
+          completed?: boolean
+          due_date?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
       books: {

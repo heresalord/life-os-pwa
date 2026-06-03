@@ -1,74 +1,161 @@
-import { useState, useRef, useEffect } from 'react'
-import { Plus, Minus, ChevronDown, ChevronUp, Check, Archive, Flame, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Flame,
+  Trash2,
+  Calendar,
+  Activity,
+  Dumbbell,
+  DollarSign,
+  BookOpen,
+  Briefcase,
+  Users,
+  Compass,
+  Palette,
+  Map,
+  Target as TargetIcon,
+  Milestone as MilestoneIcon,
+  ChevronRight
+} from 'lucide-react'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
+import { useHabitLogsQuery, useMilestonesQuery } from '../../hooks/useGoalsQuery'
+import { useGoalEventsQuery } from '../../hooks/useGoalEventsQuery'
 import { haptic } from '../../lib/haptic'
 import type { Goal } from '../../db/schema'
 import clsx from 'clsx'
+import { startOfWeek, endOfWeek, eachDayOfInterval, format, isSameDay } from 'date-fns'
 
-function MiniProgressRing({ pct, size = 40 }: { pct: number; size?: number }) {
-  const r = (size - 6) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ - (pct / 100) * circ
-  return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--theme-surface-2)" strokeWidth={5} />
-      <circle
-        cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke={pct >= 100 ? 'var(--theme-success)' : 'var(--theme-accent)'}
-        strokeWidth={5}
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        className="transition-all duration-700 ease-out"
-      />
-    </svg>
-  )
+const CATEGORY_ICONS: Record<string, any> = {
+  Health: Activity,
+  Fitness: Dumbbell,
+  Finance: DollarSign,
+  Learning: BookOpen,
+  Career: Briefcase,
+  Relationships: Users,
+  Mindfulness: Compass,
+  Creative: Palette,
+  Travel: Map,
+  Routine: Calendar,
 }
 
-export function GoalItem({ goal, progress, date }: { goal: Goal; progress: number; date: string }) {
-  const { addEvent, updateGoal, deleteGoal } = useGoalMutations()
+const CATEGORY_COLORS: Record<string, string> = {
+  Health: 'text-info bg-info/10 border-info/20',
+  Fitness: 'text-danger bg-danger/10 border-danger/20',
+  Finance: 'text-success bg-success/10 border-success/20',
+  Learning: 'text-accent bg-accent/10 border-accent/20',
+  Career: 'text-warning bg-warning/10 border-warning/20',
+  Relationships: 'text-info bg-info/10 border-info/20',
+  Mindfulness: 'text-accent bg-accent/10 border-accent/20',
+  Creative: 'text-warning bg-warning/10 border-warning/20',
+  Travel: 'text-success bg-success/10 border-success/20',
+  Routine: 'text-accent bg-accent/10 border-accent/20',
+}
+
+export function GoalItem({ goal }: { goal: Goal }) {
+  const navigate = useNavigate()
+  const {
+    updateGoal,
+    deleteGoal,
+    addEvent,
+    addHabitLog,
+    deleteHabitLog,
+    toggleMilestone
+  } = useGoalMutations()
+
   const [expanded, setExpanded] = useState(false)
   const [logValue, setLogValue] = useState('1')
   const [showLog, setShowLog] = useState(false)
-  const [justCompleted, setJustCompleted] = useState(false)
-  const [confettiDots, setConfettiDots] = useState<{ id: number; color: string; angle: number }[]>([])
-  const prevPct = useRef(0)
 
-  const target = goal.target || 1
-  const pct = Math.min(Math.round((progress / target) * 100), 100)
-  const isComplete = progress >= target
+  // Fetch sub-data based on tracker type
+  const { data: milestones = [] } = useMilestonesQuery(goal.tracker_type === 'project' ? goal.id : undefined)
+  const { data: habitLogs = [] } = useHabitLogsQuery(goal.tracker_type === 'habit' ? goal.id : undefined)
+  const { data: events = [] } = useGoalEventsQuery(
+    (goal.tracker_type === 'target' || goal.tracker_type === 'average') ? [goal.id] : []
+  )
 
-  // Fire confetti when goal just crossed 100%
-  useEffect(() => {
-    if (pct >= 100 && prevPct.current < 100) {
-      haptic('success')
-      setJustCompleted(true)
-      const colors = ['var(--theme-success)', 'var(--theme-accent)', 'var(--theme-warning)', '#f472b6']
-      setConfettiDots(
-        Array.from({ length: 8 }, (_, i) => ({
-          id: Date.now() + i,
-          color: colors[i % colors.length],
-          angle: (i / 8) * 360,
-        }))
-      )
-      setTimeout(() => { setJustCompleted(false); setConfettiDots([]) }, 800)
-    }
-    prevPct.current = pct
-  }, [pct])
+  // 1. Calculate values based on tracker type
+  const targetVal = goal.target || 1
 
+  // Target tracker: sum of events
+  const targetProgress = events
+    .filter(e => e.goal_id === goal.id)
+    .reduce((sum, e) => {
+      if (e.event_type === 'add')      return sum + (e.value || 0)
+      if (e.event_type === 'subtract') return sum - (e.value || 0)
+      return sum
+    }, 0)
+
+  // Average tracker: average of events
+  const avgLogs = events.filter(e => e.goal_id === goal.id)
+  const averageProgress = avgLogs.length
+    ? Math.round((avgLogs.reduce((sum, e) => sum + e.value, 0) / avgLogs.length) * 10) / 10
+    : 0
+
+  // Project tracker: percentage of completed milestones
+  const totalMilestones = milestones.length
+  const completedMilestones = milestones.filter(m => m.completed).length
+  const projectPct = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0
+
+  // Overall progress percentage for visual progress bars
+  const pct =
+    goal.tracker_type === 'target' ? Math.min(Math.round((targetProgress / targetVal) * 100), 100)
+    : goal.tracker_type === 'average' ? Math.min(Math.round((averageProgress / targetVal) * 100), 100)
+    : goal.tracker_type === 'project' ? projectPct
+    : 0
+
+  const isComplete =
+    goal.tracker_type === 'target' ? targetProgress >= targetVal
+    : goal.tracker_type === 'average' ? averageProgress >= targetVal
+    : goal.tracker_type === 'project' ? (totalMilestones > 0 && completedMilestones === totalMilestones)
+    : goal.tracker_type === 'habit' ? goal.habit_streak > 0 && goal.last_checkin === format(new Date(), 'yyyy-MM-dd')
+    : false
+
+  // Format unit label
   const unitLabel =
-    goal.measurement_type === 'currency' && goal.currency ? goal.currency
+    goal.measurement_type === 'currency' ? '$'
     : goal.measurement_type === 'time' ? 'hrs'
     : goal.measurement_type === 'percentage' ? '%'
-    : ''
+    : 'units'
 
-  const goalTypeBadge = goal.goal_type === 'year' ? '📅 Year' : goal.goal_type === 'binary' ? '✓ Binary' : '🎯 General'
+  // Categories & Icons
+  const CatIcon = CATEGORIES_MAP_ICON(goal.category)
+  const catColor = CATEGORY_COLORS[goal.category || ''] || 'text-text-secondary bg-surface-2 border-border/40'
 
+  function CATEGORIES_MAP_ICON(catName: string | null) {
+    if (!catName) return TargetIcon
+    return CATEGORY_ICONS[catName] || TargetIcon
+  }
+
+  // Toggle habit check-in for a specific date in the week grid
+  const handleHabitToggle = (dateStr: string, currentStatus: 'check' | 'fail' | 'none') => {
+    haptic('light')
+    if (currentStatus === 'none') {
+      // none -> check
+      addHabitLog.mutate({ goal_id: goal.id, date: dateStr, value: 1 })
+    } else if (currentStatus === 'check') {
+      // check -> fail
+      addHabitLog.mutate({ goal_id: goal.id, date: dateStr, value: 0 })
+    } else {
+      // fail -> none (delete)
+      deleteHabitLog.mutate({ goal_id: goal.id, date: dateStr })
+    }
+  }
+
+  // Handle Target/Average value logging
   const handleLog = (direction: 'add' | 'subtract') => {
     const val = parseFloat(logValue) || 1
     if (val <= 0) return
     haptic('medium')
-    addEvent.mutate({ goal_id: goal.id, date, value: val, event_type: direction })
+    addEvent.mutate({
+      goal_id: goal.id,
+      date: format(new Date(), 'yyyy-MM-dd'),
+      value: val,
+      event_type: direction
+    })
     setShowLog(false)
   }
 
@@ -80,169 +167,274 @@ export function GoalItem({ goal, progress, date }: { goal: Goal; progress: numbe
     updateGoal.mutate({ id: goal.id, updates: { state: 'abandoned' } })
   }
 
+  // Weekdays grid calculator for Habit (Mon -> Sun of current week)
+  const renderWeeklyGrid = () => {
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 }) // Monday
+    const end = endOfWeek(new Date(), { weekStartsOn: 1 }) // Sunday
+    const days = eachDayOfInterval({ start, end })
+
+    return (
+      <div className="grid grid-cols-7 gap-1 mt-3">
+        {days.map(d => {
+          const dateStr = format(d, 'yyyy-MM-dd')
+          const log = habitLogs.find(l => l.date === dateStr)
+          
+          const status = log === undefined ? 'none' : log.value === 1 ? 'check' : 'fail'
+          const label = format(d, 'eeeeee') // M, T, W...
+          const isTodayDate = isSameDay(d, new Date())
+
+          return (
+            <button
+              key={dateStr}
+              type="button"
+              onClick={() => handleHabitToggle(dateStr, status)}
+              className={clsx(
+                'flex flex-col items-center justify-center p-2 rounded-xl border text-[10px] font-bold transition-all duration-200 aspect-square',
+                status === 'check' ? 'bg-success/15 border-success/40 text-success'
+                : status === 'fail' ? 'bg-danger/15 border-danger/40 text-danger'
+                : 'bg-surface-2 border-border/80 text-text-muted hover:border-text-secondary hover:text-text',
+                isTodayDate && 'ring-2 ring-accent ring-offset-2 ring-offset-bg'
+              )}
+            >
+              <span className="uppercase text-[9px] opacity-60 tracking-wider mb-1">{label}</span>
+              <span className="text-xs">
+                {status === 'check' ? '✓' : status === 'fail' ? '✗' : '-'}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className={clsx(
-      'bg-surface border rounded-2xl overflow-hidden transition-all duration-300',
-      isComplete ? 'border-success/40' : 'border-border'
+      'bg-surface border rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 hover:shadow-md relative overflow-hidden group',
+      isComplete ? 'border-success/30 ring-1 ring-success/10' : 'border-border'
     )}>
-      {/* Main row */}
-      <div className="p-4 flex items-center gap-3">
-        {/* Progress ring + confetti */}
-        <div className="relative flex-shrink-0">
-          <div className={justCompleted ? 'goal-complete-ring' : ''}>
-            <MiniProgressRing pct={pct} size={44} />
-          </div>
-          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold text-text-secondary rotate-0">
-            {pct}%
-          </span>
-          {confettiDots.map(dot => (
-            <span
-              key={dot.id}
-              className="confetti-dot"
-              style={{
-                backgroundColor: dot.color,
-                left: `calc(50% + ${Math.cos((dot.angle * Math.PI) / 180) * 20}px)`,
-                top:  `calc(50% + ${Math.sin((dot.angle * Math.PI) / 180) * 20}px)`,
-                animationDelay: `${(dot.angle / 360) * 80}ms`,
-              }}
-            />
-          ))}
-        </div>
+      {/* Top badges */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <span className={clsx(
+          'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border',
+          catColor
+        )}>
+          <CatIcon size={10} />
+          {goal.category || 'General'}
+        </span>
 
-        {/* Name + stats */}
-        <div className="flex-1 min-w-0" onClick={() => setExpanded(v => !v)}>
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-text leading-tight truncate">{goal.name}</h3>
-            {isComplete && (
-              <span className="flex-shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-success/15 text-success">
-                DONE
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-bold text-text-secondary uppercase bg-surface-2 border border-border px-2 py-0.5 rounded-full tracking-wider">
+            {goal.tracker_type}
+          </span>
+          <button
+            onClick={() => navigate(`/goals/${goal.id}`)}
+            className="text-text-secondary hover:text-accent p-1 rounded-full hover:bg-surface-2 transition-colors"
+            title="View Details"
+          >
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* Goal Title / Link */}
+      <div className="flex-1 cursor-pointer" onClick={() => navigate(`/goals/${goal.id}`)}>
+        <h3 className="text-sm font-semibold text-text group-hover:text-accent transition-colors leading-snug flex items-center gap-1">
+          {goal.name}
+          {isComplete && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-success/15 text-success">
+              DONE
+            </span>
+          )}
+        </h3>
+
+        {/* Target/Average Stats */}
+        {goal.tracker_type === 'target' && (
+          <p className="text-xs text-text-muted mt-1">
+            <span className="font-semibold text-text-secondary">{targetProgress.toLocaleString()}</span> / {targetVal.toLocaleString()} {unitLabel}
+          </p>
+        )}
+
+        {goal.tracker_type === 'average' && (
+          <p className="text-xs text-text-muted mt-1">
+            Current: <span className="font-semibold text-text-secondary">{averageProgress}</span> {unitLabel} (Target: {targetVal} {unitLabel})
+          </p>
+        )}
+
+        {goal.tracker_type === 'project' && (
+          <p className="text-xs text-text-muted mt-1">
+            Milestones: <span className="font-semibold text-text-secondary">{completedMilestones}</span> of {totalMilestones} ({projectPct}%)
+          </p>
+        )}
+
+        {/* Habit Streak Display */}
+        {goal.tracker_type === 'habit' && (
+          <div className="flex items-center gap-3 mt-1.5">
+            <div className="flex items-center gap-1 text-xs text-text font-medium bg-warning/10 border border-warning/20 text-warning px-2.5 py-0.5 rounded-full">
+              <Flame size={12} className="fill-warning" />
+              <span>{goal.habit_streak} day streak</span>
+            </div>
+            {goal.last_checkin && (
+              <span className="text-[10px] text-text-muted">
+                Last checkin: {goal.last_checkin}
               </span>
             )}
           </div>
-          <p className="text-xs text-text-muted mt-0.5">
-            {progress.toLocaleString()} / {target.toLocaleString()} {unitLabel}
-            <span className="mx-1.5 opacity-40">·</span>
-            <span className="opacity-70">{goalTypeBadge}</span>
+        )}
+      </div>
+
+      {/* Dynamic Visual Tracker */}
+      {goal.tracker_type === 'habit' && (
+        <div className="mt-2">
+          {renderWeeklyGrid()}
+        </div>
+      )}
+
+      {(goal.tracker_type === 'target' || goal.tracker_type === 'average' || goal.tracker_type === 'project') && (
+        <div className="space-y-1.5 mt-4">
+          <div className="flex items-center justify-between text-[10px] font-semibold text-text-secondary">
+            <span>Progress</span>
+            <span>{pct}%</span>
+          </div>
+          <div className="h-2 bg-surface-2 border border-border/50 rounded-full overflow-hidden">
+            <div
+              className={clsx(
+                'h-full rounded-full transition-all duration-700 ease-out',
+                isComplete ? 'bg-success' : 'bg-accent/80'
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Top 3 Milestones check-off for projects */}
+      {goal.tracker_type === 'project' && milestones.length > 0 && (
+        <div className="mt-3.5 space-y-1 bg-surface-2/40 border border-border/40 p-2.5 rounded-xl">
+          <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center gap-1">
+            <MilestoneIcon size={9} /> Milestones Quick Checklist
           </p>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {!isComplete && (
-            <>
-              <button
-                onClick={() => setShowLog(v => !v)}
-                className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center hover:bg-accent/25 transition-colors"
-                title="Log progress"
-              >
-                <Flame size={15} strokeWidth={2} />
-              </button>
-            </>
+          {milestones.slice(0, 3).map(m => (
+            <button
+              key={m.id}
+              onClick={() => toggleMilestone.mutate({ id: m.id, completed: !m.completed })}
+              className="w-full flex items-center gap-2 text-left text-xs text-text hover:bg-surface rounded-lg p-1.5 transition-colors border border-transparent hover:border-border/50"
+            >
+              <div className={clsx(
+                'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors',
+                m.completed ? 'bg-success border-success text-bg' : 'border-border bg-surface'
+              )}>
+                {m.completed && <Check size={10} strokeWidth={3} />}
+              </div>
+              <span className={clsx(
+                'truncate flex-1',
+                m.completed && 'line-through text-text-muted'
+              )}>
+                {m.title}
+              </span>
+            </button>
+          ))}
+          {milestones.length > 3 && (
+            <button
+              onClick={() => navigate(`/goals/${goal.id}`)}
+              className="text-[10px] text-accent font-semibold hover:underline mt-1 block pl-1"
+            >
+              + {milestones.length - 3} more milestones
+            </button>
           )}
-          <button
-            onClick={() => setExpanded(v => !v)}
-            className="w-8 h-8 rounded-full bg-surface-2 text-text-muted flex items-center justify-center hover:text-text transition-colors"
-          >
-            {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </button>
         </div>
+      )}
+
+      {/* SMART Info block ( measurable target + deadline ) */}
+      <div className="mt-4 pt-3.5 border-t border-border/50 flex items-center justify-between text-[11px] text-text-muted">
+        <span className="flex items-center gap-1 truncate max-w-[60%]">
+          🎯 <span className="truncate">Target: {targetVal} {goal.measurement_type !== 'binary' ? unitLabel : ''}</span>
+        </span>
+        {goal.end_date ? (
+          <span className="flex items-center gap-1 flex-shrink-0 text-text-secondary">
+            📅 {goal.end_date}
+          </span>
+        ) : (
+          <span className="text-[10px] opacity-60">No deadline</span>
+        )}
       </div>
 
-      {/* Progress bar */}
-      <div className="px-4 pb-1">
-        <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
-          <div
-            className={clsx(
-              'h-full rounded-full transition-all duration-700 ease-out',
-              isComplete ? 'bg-success' : 'bg-accent/70'
-            )}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Log value panel */}
-      {showLog && (
-        <div className="px-4 pb-3 pt-2 border-t border-border/50 flex items-center gap-2 bg-surface-2/50">
-          <span className="text-xs text-text-muted flex-shrink-0">Log</span>
-          <input
-            type="number"
-            min="0.1"
-            step="0.1"
-            value={logValue}
-            onChange={e => setLogValue(e.target.value)}
-            className="flex-1 min-w-0 bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-text focus:border-accent focus:outline-none text-center"
-          />
-          <span className="text-xs text-text-muted flex-shrink-0">{unitLabel}</span>
+      {/* Quick Add log panel for Target and Average */}
+      {(goal.tracker_type === 'target' || goal.tracker_type === 'average') && !isComplete && (
+        <div className="absolute right-3 bottom-[48px]">
           <button
-            onClick={() => handleLog('subtract')}
-            className="w-8 h-8 rounded-full bg-danger/10 text-danger flex items-center justify-center hover:bg-danger/20 transition-colors"
-            title="Subtract"
+            onClick={() => setShowLog(v => !v)}
+            className="w-8 h-8 rounded-full bg-accent/10 border border-accent/20 text-accent flex items-center justify-center hover:bg-accent/20 hover:scale-105 active:scale-95 transition-all shadow-sm"
+            title="Log progress"
           >
-            <Minus size={14} />
-          </button>
-          <button
-            onClick={() => handleLog('add')}
-            className="w-8 h-8 rounded-full bg-success/10 text-success flex items-center justify-center hover:bg-success/20 transition-colors"
-            title="Add"
-          >
-            <Plus size={14} />
+            <Plus size={15} strokeWidth={2.5} />
           </button>
         </div>
       )}
 
-      {/* Expanded section */}
+      {showLog && (
+        <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-200">
+          <input
+            type="number"
+            min="0.1"
+            step="any"
+            value={logValue}
+            onChange={e => setLogValue(e.target.value)}
+            className="flex-1 min-w-0 bg-surface-2 border border-border rounded-lg px-2.5 py-1.5 text-xs text-text focus:border-accent focus:outline-none text-center"
+          />
+          <span className="text-[10px] text-text-muted">{unitLabel}</span>
+          <button
+            onClick={() => handleLog('subtract')}
+            className="px-2.5 py-1.5 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
+          >
+            Minus
+          </button>
+          <button
+            onClick={() => handleLog('add')}
+            className="px-2.5 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-semibold"
+          >
+            Add
+          </button>
+        </div>
+      )}
+
+      {/* Expand controls for other actions */}
+      <div className="mt-2.5 flex justify-end">
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="text-[10px] font-semibold text-text-muted hover:text-text flex items-center gap-0.5 transition-colors"
+        >
+          {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          {expanded ? 'Hide actions' : 'More actions'}
+        </button>
+      </div>
+
       {expanded && (
-        <div className="border-t border-border/50 px-4 py-3 space-y-3 bg-surface-2/30">
-          {/* Dates */}
-          {(goal.start_date || goal.end_date) && (
-            <div className="flex gap-4 text-xs text-text-muted">
-              {goal.start_date && <span>Start: <span className="text-text">{goal.start_date}</span></span>}
-              {goal.end_date && <span>End: <span className="text-text">{goal.end_date}</span></span>}
-            </div>
-          )}
-
-          {/* Sub-goals */}
-          {Array.isArray(goal.sub_goals) && (goal.sub_goals as any[]).length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Sub-goals</p>
-              {(goal.sub_goals as any[]).map((sg: any, i: number) => (
-                <div key={i} className="flex items-center gap-2 text-xs text-text bg-surface rounded-lg px-3 py-2 border border-border/50">
-                  <div className={clsx(
-                    'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors',
-                    sg.completed ? 'bg-success border-success' : 'border-border'
-                  )}>
-                    {sg.completed && <Check size={9} strokeWidth={3} className="text-bg" />}
-                  </div>
-                  <span className={sg.completed ? 'line-through text-text-muted' : ''}>{sg.title || sg.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-2 pt-1">
-            {!isComplete && (
-              <button
-                onClick={handleMarkComplete}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-success bg-success/10 border border-success/20 rounded-xl hover:bg-success/20 transition-colors"
-              >
-                <Check size={13} /> Mark Complete
-              </button>
-            )}
+        <div className="mt-2 pt-2 border-t border-border/40 flex items-center gap-2 animate-in fade-in duration-200">
+          {!isComplete && (
             <button
-              onClick={handleArchive}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-text-muted bg-surface border border-border rounded-xl hover:text-text hover:bg-muted transition-colors"
+              onClick={handleMarkComplete}
+              className="flex-1 py-1.5 text-[10px] font-bold text-success bg-success/10 border border-success/20 rounded-xl hover:bg-success/20 transition-colors text-center"
             >
-              <Archive size={13} /> Archive
+              ✓ Complete
             </button>
-            <button
-              onClick={() => deleteGoal.mutate(goal.id)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-danger bg-danger/10 border border-danger/20 rounded-xl hover:bg-danger/20 transition-colors ml-auto"
-            >
-              <Trash2 size={13} /> Delete
-            </button>
-          </div>
+          )}
+          <button
+            onClick={handleArchive}
+            className="flex-1 py-1.5 text-[10px] font-bold text-text-secondary bg-surface-2 border border-border rounded-xl hover:text-text hover:bg-muted transition-colors text-center"
+          >
+            Archive
+          </button>
+          <button
+            onClick={() => {
+              if (window.confirm('Delete this goal permanently?')) {
+                deleteGoal.mutate(goal.id)
+              }
+            }}
+            className="p-1.5 text-danger bg-danger/10 border border-danger/20 rounded-xl hover:bg-danger/20 transition-colors"
+            title="Delete"
+          >
+            <Trash2 size={12} />
+          </button>
         </div>
       )}
     </div>
