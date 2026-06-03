@@ -41,7 +41,6 @@ async function adjustWalletBalance(
 
   let diff: number
   if (type === 'adjustment') {
-    // amount is signed for adjustments: positive = balance went up, negative = balance went down
     diff = amount
   } else {
     diff = type === 'expense' ? -amount : amount
@@ -56,7 +55,6 @@ async function adjustWalletBalance(
     updated_at: new Date().toISOString()
   })
 
-  // Sync the updated wallet balance to Supabase
   const updatedWallet = await db.wallets.get(walletId)
   if (updatedWallet) {
     if (navigator.onLine) {
@@ -80,7 +78,7 @@ export function useTransactionMutations(date: string) {
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['transactions'] })
     qc.invalidateQueries({ queryKey: ['transactions_range'] })
-    qc.invalidateQueries({ queryKey: ['wallets'] }) // Invalidate wallets to show updated balances
+    qc.invalidateQueries({ queryKey: ['wallets'] })
   }
 
   const addTransaction = useMutation({
@@ -100,7 +98,6 @@ export function useTransactionMutations(date: string) {
         : new Date().toISOString()
 
       let walletId: string | null = payload.wallet_id || null
-      // compatibility fallback if UUID was passed as method:
       if (!walletId && payload.method && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.method)) {
         walletId = payload.method
       }
@@ -134,14 +131,15 @@ export function useTransactionMutations(date: string) {
       await db.transactions.add(tx as Parameters<typeof db.transactions.add>[0])
       await writeTx('insert', tx)
 
-      // Auto-adjust the associated wallet balance
       if (tx.wallet_id) {
         await adjustWalletBalance(tx.wallet_id, tx.amount, tx.type as 'income' | 'expense' | 'adjustment', 'add')
       }
       return tx
     },
     onMutate: async (payload) => {
+      // Cancel both the date-specific query and all range queries
       await qc.cancelQueries({ queryKey })
+      await qc.cancelQueries({ queryKey: ['transactions_range'] })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
 
       let walletId: string | null = payload.wallet_id || null
@@ -177,11 +175,34 @@ export function useTransactionMutations(date: string) {
           ? new Date(`${payload.date}T${payload.time}:00`).toISOString()
           : new Date().toISOString(),
       }
+
+      // Optimistic update: date-specific cache
       qc.setQueryData<AnyItem[]>(queryKey, old => [...(old ?? []), optimistic])
-      return { previous }
+
+      // Optimistic update: inject into every transactions_range cache whose
+      // [from, to] window covers the transaction's date.
+      // TransactionsTab reads from these range queries — without this the new
+      // transaction would not appear until the background Supabase refetch.
+      const previousRanges: Array<{ queryKey: readonly unknown[]; data: AnyItem[] | undefined }> = []
+      qc.getQueryCache().findAll({ queryKey: ['transactions_range'] }).forEach(query => {
+        const [, from, to] = query.queryKey as [string, string, string, string]
+        if (from && to && payload.date >= from && payload.date <= to) {
+          previousRanges.push({ queryKey: query.queryKey, data: query.state.data as AnyItem[] | undefined })
+          qc.setQueryData<AnyItem[]>(query.queryKey as string[], (old) => {
+            const base = old ?? []
+            return [...base, optimistic].sort(
+              (a, b) => new Date(b.created_at as string).getTime() - new Date(a.created_at as string).getTime()
+            )
+          })
+        }
+      })
+
+      return { previous, previousRanges }
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+      // Roll back range caches
+      ctx?.previousRanges?.forEach(({ queryKey: qk, data }) => qc.setQueryData(qk, data))
     },
     onSettled: () => invalidateAll(),
   })
@@ -204,7 +225,6 @@ export function useTransactionMutations(date: string) {
         delete updates.time
       }
 
-      // Automatically update method if wallet_id is changed
       if ('wallet_id' in updates) {
         const newWalletId = updates.wallet_id as string | null
         let resolvedMethod = 'card'
@@ -224,7 +244,6 @@ export function useTransactionMutations(date: string) {
       if (updated) {
         await writeTx('update', updated as Record<string, unknown>)
 
-        // Revert old wallet balance impact and apply new balance impact
         if (existing.wallet_id) {
           await adjustWalletBalance(existing.wallet_id, Number(existing.amount), existing.type as 'income' | 'expense' | 'adjustment', 'remove')
         }
@@ -235,6 +254,7 @@ export function useTransactionMutations(date: string) {
     },
     onMutate: async ({ id, updates }) => {
       await qc.cancelQueries({ queryKey: ['transactions'] })
+      await qc.cancelQueries({ queryKey: ['transactions_range'] })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
 
       const refinedUpdates = { ...updates }
@@ -275,7 +295,6 @@ export function useTransactionMutations(date: string) {
       await db.transactions.delete(id)
       await writeTx('delete', { id })
 
-      // Auto-revert the associated wallet balance
       if (tx && tx.wallet_id) {
         await adjustWalletBalance(tx.wallet_id, Number(tx.amount), tx.type as 'income' | 'expense' | 'adjustment', 'remove')
       }

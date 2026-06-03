@@ -29,10 +29,16 @@ export default defineConfig({
       workbox: {
         importScripts: ['push-sw.js'],
         runtimeCaching: [
+          // ── Supabase REST API ────────────────────────────────────────────────
+          // Use NetworkOnly so the service worker NEVER caches API responses.
+          // The app already uses Dexie (IndexedDB) for offline support, so we
+          // don't need the service worker to cache these. Without this fix the
+          // service worker's 3-second timeout caused it to serve stale cached
+          // responses for refetches triggered right after mutations, making
+          // changes appear to "disappear" until the user refreshed.
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/,
-            handler: 'NetworkFirst',
-            options: { cacheName: 'supabase-api', networkTimeoutSeconds: 3 },
+            handler: 'NetworkOnly',
           },
           {
             urlPattern: /\/$/,
