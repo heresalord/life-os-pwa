@@ -44,6 +44,7 @@ create table user_settings (
   morning_reminder_time time,
   night_reminder_time   time,
   notifications_enabled boolean default false,
+  dashboard_widgets     jsonb default '[]'::jsonb,
   updated_at            timestamptz default now()
 );
 

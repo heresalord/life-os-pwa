@@ -1,92 +1,482 @@
-import { Sun, Moon } from 'lucide-react'
-import { YearProgressBar } from '../../components/dashboard/YearProgressBar'
-import { FocusTasksPanel } from '../../components/dashboard/FocusTasksPanel'
-import { FinancePanel } from '../../components/dashboard/FinancePanel'
-import { NotesInboxPanel } from '../../components/dashboard/NotesInboxPanel'
-import { MoodGoalsBooksPanel } from '../../components/dashboard/MoodGoalsBooksPanel'
-import { QuotesWidget } from '../../components/dashboard/QuotesWidget'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import {
+  Sun,
+  Moon,
+  Edit2,
+  Check,
+  RotateCcw,
+  Plus,
+  GripVertical,
+  X,
+} from 'lucide-react'
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { useAuth } from '../../hooks/useAuth'
-import { DailyLogWidget } from '../../components/dashboard/DailyLogWidget'
+import { useUserSettings } from '../../hooks/useUserSettings'
+import { haptic } from '../../lib/haptic'
+import { YearProgressWidget } from '../../components/dashboard/widgets/YearProgressWidget'
+import { TasksTodayWidget } from '../../components/dashboard/widgets/TasksTodayWidget'
+import { FinanceSnapshotWidget } from '../../components/dashboard/widgets/FinanceSnapshotWidget'
+import { GoalProgressWidget } from '../../components/dashboard/widgets/GoalProgressWidget'
+import { HabitStreakWidget } from '../../components/dashboard/widgets/HabitStreakWidget'
+import { DailyLogQuickWidget } from '../../components/dashboard/widgets/DailyLogQuickWidget'
+import { QuoteWidget } from '../../components/dashboard/widgets/QuoteWidget'
+import { RecentNotesWidget } from '../../components/dashboard/widgets/RecentNotesWidget'
+import { UpcomingBlocksWidget } from '../../components/dashboard/widgets/UpcomingBlocksWidget'
+import { WellbeingHeatmapWidget } from '../../components/dashboard/widgets/WellbeingHeatmapWidget'
 
-const getGreeting = () => {
-  const h = new Date().getHours()
-  if (h < 12) return { text: 'Good morning', icon: <Sun size={16} className="text-warning" /> }
-  if (h < 18) return { text: 'Good afternoon', icon: <Sun size={16} className="text-accent" /> }
-  return { text: 'Good evening', icon: <Moon size={16} className="text-info" /> }
+import 'react-grid-layout/css/styles.css'
+import 'react-resizable/css/styles.css'
+
+// @types/react-grid-layout uses `export =` which makes both named imports and
+// namespace destructuring fail in ESM TypeScript. Using `require` + `as any`
+// reaches the runtime exports (Responsive, WidthProvider) without type errors.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const RGL = require('react-grid-layout') as any
+const ResponsiveGridLayout = RGL.WidthProvider(RGL.Responsive)
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface DashboardWidgetPref {
+  id: string
+  order: number
+  size: { w: number; h: number }
+  x: number
+  y: number
+  visible: boolean
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const WIDGET_METADATA: {
+  id: string
+  label: string
+  defaultSize: { w: number; h: number }
+  minSize: { w: number; h: number }
+}[] = [
+  { id: 'year_progress',    label: 'Year Progress Bar',     defaultSize: { w: 12, h: 2 }, minSize: { w: 4, h: 2 } },
+  { id: 'daily_log_quick',  label: 'Daily Log Quick Entry', defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
+  { id: 'tasks_today',      label: "Today's Focus Tasks",   defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
+  { id: 'finance_snapshot', label: 'Finance Snapshot',      defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
+  { id: 'goals_progress',   label: 'Goal Progress',         defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
+  { id: 'habits_grid',      label: 'Habit Streak Grid',     defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
+  { id: 'upcoming_blocks',  label: 'Upcoming Agenda',       defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
+  { id: 'recent_notes',     label: 'Recent Notes',          defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
+  { id: 'quote_of_day',     label: 'Quote of the Day',      defaultSize: { w: 6,  h: 3 }, minSize: { w: 4, h: 2 } },
+  { id: 'wellbeing_heatmap',label: 'Wellbeing Heatmap',     defaultSize: { w: 12, h: 3 }, minSize: { w: 6, h: 3 } },
+]
+
+const WIDGET_COMPONENTS: Record<string, React.ComponentType> = {
+  year_progress:     YearProgressWidget,
+  tasks_today:       TasksTodayWidget,
+  finance_snapshot:  FinanceSnapshotWidget,
+  goals_progress:    GoalProgressWidget,
+  habits_grid:       HabitStreakWidget,
+  daily_log_quick:   DailyLogQuickWidget,
+  quote_of_day:      QuoteWidget,
+  recent_notes:      RecentNotesWidget,
+  upcoming_blocks:   UpcomingBlocksWidget,
+  wellbeing_heatmap: WellbeingHeatmapWidget,
+}
+
+const DEFAULT_WIDGET_PREFS: DashboardWidgetPref[] = [
+  { id: 'year_progress',    order: 0, size: { w: 12, h: 2 }, x: 0, y: 0,  visible: true },
+  { id: 'daily_log_quick',  order: 1, size: { w: 6,  h: 4 }, x: 0, y: 2,  visible: true },
+  { id: 'tasks_today',      order: 2, size: { w: 6,  h: 4 }, x: 6, y: 2,  visible: true },
+  { id: 'finance_snapshot', order: 3, size: { w: 6,  h: 4 }, x: 0, y: 6,  visible: true },
+  { id: 'goals_progress',   order: 4, size: { w: 6,  h: 4 }, x: 6, y: 6,  visible: true },
+  { id: 'habits_grid',      order: 5, size: { w: 6,  h: 4 }, x: 0, y: 10, visible: true },
+  { id: 'upcoming_blocks',  order: 6, size: { w: 6,  h: 4 }, x: 6, y: 10, visible: true },
+  { id: 'recent_notes',     order: 7, size: { w: 6,  h: 4 }, x: 0, y: 14, visible: true },
+  { id: 'quote_of_day',     order: 8, size: { w: 6,  h: 3 }, x: 6, y: 14, visible: true },
+  { id: 'wellbeing_heatmap',order: 9, size: { w: 12, h: 3 }, x: 0, y: 17, visible: true },
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return { text: 'Good morning',   icon: <Sun  size={16} className="text-warning" /> }
+  if (h < 18) return { text: 'Good afternoon', icon: <Sun  size={16} className="text-accent"  /> }
+  return             { text: 'Good evening',   icon: <Moon size={16} className="text-info"    /> }
+}
+
+function mergeWithDefaults(saved: DashboardWidgetPref[]): DashboardWidgetPref[] {
+  const savedIds = new Set(saved.map(w => w.id))
+  const newWidgets = DEFAULT_WIDGET_PREFS
+    .filter(w => !savedIds.has(w.id))
+    .map((w, i) => ({ ...w, order: saved.length + i }))
+  return [...saved, ...newWidgets]
+}
+
+// ─── Long-press hook ──────────────────────────────────────────────────────────
+
+function useLongPress(onLongPress: () => void, delay = 600) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const firedRef = useRef(false)
+
+  const start = useCallback(() => {
+    firedRef.current = false
+    timerRef.current = setTimeout(() => {
+      firedRef.current = true
+      onLongPress()
+    }, delay)
+  }, [onLongPress, delay])
+
+  const cancel = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+  }, [])
+
+  const handleClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (firedRef.current) e.stopPropagation()
+  }, [])
+
+  return {
+    onTouchStart: start,
+    onTouchEnd:   cancel,
+    onTouchMove:  cancel,
+    onMouseDown:  start,
+    onMouseUp:    cancel,
+    onMouseLeave: cancel,
+    onClick:      handleClick,
+  }
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function WidgetSkeleton() {
+  return (
+    <div className="bg-surface border border-border rounded-2xl animate-pulse" style={{ height: 200 }}>
+      <div className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-surface-2 rounded" />
+          <div className="h-3 w-28 bg-surface-2 rounded" />
+        </div>
+        <div className="space-y-2 pt-2">
+          <div className="h-2 bg-surface-2 rounded w-full" />
+          <div className="h-2 bg-surface-2 rounded w-4/5" />
+          <div className="h-2 bg-surface-2 rounded w-3/5" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function DashboardPage() {
-  const { profile } = useAuth()
-  const { text: greeting, icon } = getGreeting()
+  const { profile }                                            = useAuth()
+  const { text: greeting, icon }                               = getGreeting()
+  const { data: settings, isLoading: settingsLoading, upsert } = useUserSettings()
+
+  const [widgetPrefs, setWidgetPrefs] = useState<DashboardWidgetPref[]>([])
+  const [isEditing,   setIsEditing]   = useState(false)
+  const [isMobile,    setIsMobile]    = useState(false)
+  const [showAddMenu, setShowAddMenu] = useState(false)
+
+  const layoutReadyRef = useRef(false)
+  const addMenuRef     = useRef<HTMLDivElement>(null)
+
+  // 1. Sync from Supabase
+  useEffect(() => {
+    if (settingsLoading) return
+    const saved = settings?.dashboard_widgets as DashboardWidgetPref[] | null | undefined
+    if (Array.isArray(saved) && saved.length > 0) {
+      setWidgetPrefs(mergeWithDefaults(saved))
+    } else {
+      setWidgetPrefs(DEFAULT_WIDGET_PREFS)
+    }
+    requestAnimationFrame(() => { layoutReadyRef.current = true })
+  }, [settingsLoading, settings])
+
+  // 2. Mobile breakpoint
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // 3. Close Add dropdown on outside click
+  useEffect(() => {
+    if (!showAddMenu) return
+    const handler = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setShowAddMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showAddMenu])
+
+  const saveLayout = useCallback((updated: DashboardWidgetPref[]) => {
+    setWidgetPrefs(updated)
+    upsert.mutate({ dashboard_widgets: updated as any })
+  }, [upsert])
+
+  const handleLayoutChange = useCallback((currentLayout: any[]) => {
+    if (!layoutReadyRef.current) return
+    setWidgetPrefs(prev => {
+      const updated = prev.map(pref => {
+        if (!pref.visible) return pref
+        const match = currentLayout.find(l => l.i === pref.id)
+        if (!match) return pref
+        return { ...pref, x: match.x, y: match.y, size: { w: match.w, h: match.h } }
+      })
+      const sorted = [...updated].sort((a, b) => {
+        if (!a.visible && !b.visible) return a.order - b.order
+        if (!a.visible) return 1
+        if (!b.visible) return -1
+        return a.y - b.y || a.x - b.x
+      })
+      const finalized = sorted.map((p, idx) => ({ ...p, order: idx }))
+      upsert.mutate({ dashboard_widgets: finalized as any })
+      return finalized
+    })
+  }, [upsert])
+
+  const handleDragEndMobile = useCallback((result: DropResult) => {
+    if (!result.destination) return
+    const visible   = widgetPrefs.filter(w => w.visible)
+    const hidden    = widgetPrefs.filter(w => !w.visible)
+    const reordered = Array.from(visible)
+    const [moved]   = reordered.splice(result.source.index, 1)
+    reordered.splice(result.destination.index, 0, moved)
+    const updatedVisible = reordered.map((w, i) => ({ ...w, order: i, y: i * 4 }))
+    saveLayout([...updatedVisible, ...hidden].sort((a, b) => a.order - b.order))
+  }, [widgetPrefs, saveLayout])
+
+  const handleRemoveWidget = useCallback((id: string) => {
+    haptic('light')
+    saveLayout(widgetPrefs.map(w => w.id === id ? { ...w, visible: false } : w))
+  }, [widgetPrefs, saveLayout])
+
+  const handleAddWidget = useCallback((id: string) => {
+    haptic('light')
+    const visibleCount = widgetPrefs.filter(w => w.visible).length
+    saveLayout(widgetPrefs.map(w =>
+      w.id === id ? { ...w, visible: true, order: visibleCount, y: visibleCount * 4, x: 0 } : w
+    ))
+    setShowAddMenu(false)
+  }, [widgetPrefs, saveLayout])
+
+  const handleResetDefault = useCallback(() => {
+    if (!window.confirm('Reset dashboard layout to default?')) return
+    haptic('medium')
+    layoutReadyRef.current = false
+    saveLayout(DEFAULT_WIDGET_PREFS)
+    requestAnimationFrame(() => { layoutReadyRef.current = true })
+  }, [saveLayout])
+
+  const handleLongPress = useCallback(() => {
+    if (!isMobile || isEditing) return
+    haptic('heavy')
+    setIsEditing(true)
+  }, [isMobile, isEditing])
+
+  const mobileLongPress = useLongPress(handleLongPress)
+
+  const visibleWidgets = [...widgetPrefs].filter(w => w.visible).sort((a, b) => a.order - b.order)
+  const hiddenWidgets  = widgetPrefs.filter(w => !w.visible)
+  const desktopLayouts = visibleWidgets.map(w => ({
+    i:    w.id,
+    x:    w.x,
+    y:    w.y,
+    w:    w.size.w,
+    h:    w.size.h,
+    minW: WIDGET_METADATA.find(m => m.id === w.id)?.minSize.w ?? 4,
+    minH: WIDGET_METADATA.find(m => m.id === w.id)?.minSize.h ?? 2,
+  }))
 
   return (
-    // ── Desktop: 2-column asymmetric grid [main | sticky right panel] ──
-    <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:items-start">
+    <div className={`space-y-4 ${isEditing ? 'is-editing' : ''}`}>
+      <style>{`
+        .react-resizable-handle { opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        .is-editing .react-resizable-handle { opacity: 1; pointer-events: auto; }
+        .react-resizable-handle::after {
+          content: ""; position: absolute; right: 8px; bottom: 8px; width: 8px; height: 8px;
+          border-right: 2px solid var(--theme-text-secondary, #888);
+          border-bottom: 2px solid var(--theme-text-secondary, #888);
+          opacity: 0.6;
+        }
+      `}</style>
 
-      {/* ── Left / main column ── */}
-      <div className="space-y-4">
-
-          {/* Greeting */}
-          <div className="flex items-center justify-between pt-1">
-            <div>
-              <div className="flex items-center gap-1.5 text-text-secondary text-sm mb-0.5">
-                {icon}
-                <span>{greeting}</span>
-              </div>
-              <h2 className="text-2xl font-display text-text">
-                {profile?.display_name ?? 'Welcome'}
-              </h2>
-            </div>
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+        <div>
+          <div className="flex items-center gap-1.5 text-text-secondary text-sm mb-0.5">
+            {icon}<span>{greeting}</span>
           </div>
+          <h2 className="text-2xl font-display text-text">{profile?.display_name ?? 'Welcome'}</h2>
+        </div>
 
-        {/* Year progress */}
-        <YearProgressBar />
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <>
+              {hiddenWidgets.length > 0 && (
+                <div className="relative" ref={addMenuRef}>
+                  <button
+                    onClick={() => setShowAddMenu(v => !v)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-accent/10 border border-accent/20 text-accent text-xs font-semibold rounded-xl hover:bg-accent/20 transition-all shadow-sm"
+                  >
+                    <Plus size={14} /> Add Widget
+                  </button>
+                  {showAddMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                      {hiddenWidgets.map(w => {
+                        const meta = WIDGET_METADATA.find(m => m.id === w.id)
+                        return (
+                          <button key={w.id} onClick={() => handleAddWidget(w.id)}
+                            className="w-full text-left px-4 py-2.5 text-xs text-text hover:bg-surface-2 transition-colors font-medium flex items-center gap-2"
+                          >
+                            <Plus size={11} className="text-accent flex-shrink-0" />
+                            {meta?.label ?? w.id}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={handleResetDefault}
+                className="p-2 bg-surface-2 border border-border text-text-secondary hover:text-text rounded-xl shadow-sm transition-all"
+                title="Reset layout to default"
+              >
+                <RotateCcw size={14} />
+              </button>
+              <button
+                onClick={() => { haptic('light'); setIsEditing(false) }}
+                className="flex items-center gap-1 px-4 py-2 bg-success text-bg text-xs font-bold rounded-xl hover:bg-success/90 shadow-sm transition-all"
+              >
+                <Check size={14} /> Done
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => { haptic('light'); setIsEditing(true) }}
+              className="flex items-center gap-1 px-4 py-2 bg-surface border border-border text-text-secondary hover:text-text text-xs font-semibold rounded-xl hover:bg-surface-2 transition-all shadow-sm"
+            >
+              <Edit2 size={13} /> Edit Layout
+            </button>
+          )}
+        </div>
+      </header>
 
-        {/* Daily Log Routine Widget */}
-        <DailyLogWidget />
-
-        {/* Finance + NotesInbox — shown here on mobile/tablet, moved to right panel on desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:hidden">
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Finance</p>
-            <FinancePanel />
+      {/* Grid */}
+      {settingsLoading || widgetPrefs.length === 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <WidgetSkeleton key={i} />)}
+        </div>
+      ) : isMobile ? (
+        isEditing ? (
+          <DragDropContext onDragEnd={handleDragEndMobile}>
+            <Droppable droppableId="mobile-widgets">
+              {(provided) => (
+                <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-4">
+                  {visibleWidgets.map((pref, index) => {
+                    const Component = WIDGET_COMPONENTS[pref.id]
+                    if (!Component) return null
+                    return (
+                      <Draggable key={pref.id} draggableId={pref.id} index={index}>
+                        {(drag, snapshot) => (
+                          <div
+                            ref={drag.innerRef}
+                            {...drag.draggableProps}
+                            className={`relative bg-surface rounded-2xl border border-border transition-shadow ${snapshot.isDragging ? 'shadow-2xl ring-1 ring-accent/30 scale-[1.01]' : 'shadow-sm'}`}
+                          >
+                            <div className="absolute top-2.5 right-2.5 flex items-center gap-2 z-50">
+                              <div
+                                {...drag.dragHandleProps}
+                                className="p-1.5 bg-surface-2 border border-border text-text-muted hover:text-text rounded-lg cursor-grab active:cursor-grabbing"
+                              >
+                                <GripVertical size={14} />
+                              </div>
+                              <button
+                                onClick={() => handleRemoveWidget(pref.id)}
+                                className="p-1.5 bg-surface-2 border border-border text-danger hover:bg-danger/10 rounded-lg transition-colors"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                            <div className="pointer-events-none opacity-70 select-none">
+                              <Component />
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    )
+                  })}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {visibleWidgets.map(pref => {
+              const Component = WIDGET_COMPONENTS[pref.id]
+              if (!Component) return null
+              return (
+                <div
+                  key={pref.id}
+                  {...mobileLongPress}
+                  className="w-full relative transition-transform active:scale-[0.99] duration-150"
+                >
+                  <Component />
+                </div>
+              )
+            })}
+            <p className="text-center text-[10px] text-text-muted opacity-60 pb-2">
+              Long-press any widget to reorder
+            </p>
           </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Notes & Inbox</p>
-            <NotesInboxPanel />
-          </div>
+        )
+      ) : (
+        <div className={isEditing ? 'bg-surface-2/20 border border-dashed border-border rounded-3xl p-2 transition-colors' : ''}>
+          <ResponsiveGridLayout
+            layouts={{ lg: desktopLayouts }}
+            breakpoints={{ lg: 996 }}
+            cols={{ lg: 12 }}
+            rowHeight={70}
+            margin={[16, 16]}
+            isDraggable={isEditing}
+            isResizable={isEditing}
+            draggableHandle=".widget-drag-handle"
+            onLayoutChange={handleLayoutChange}
+            className="layout"
+          >
+            {visibleWidgets.map(pref => {
+              const Component = WIDGET_COMPONENTS[pref.id]
+              if (!Component) return null
+              return (
+                <div
+                  key={pref.id}
+                  className="relative bg-surface rounded-2xl border border-border hover:shadow-sm transition-all"
+                >
+                  <Component />
+                  {isEditing && (
+                    <>
+                      <div className="absolute inset-0 bg-bg/5 cursor-move z-40 rounded-2xl" />
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5 z-50 animate-in fade-in duration-150">
+                        <div className="widget-drag-handle p-1.5 bg-surface border border-border text-text-muted hover:text-text rounded-lg cursor-grab active:cursor-grabbing shadow-sm pointer-events-auto">
+                          <GripVertical size={13} />
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemoveWidget(pref.id) }}
+                          className="p-1.5 bg-surface border border-border text-danger hover:bg-danger/10 rounded-lg shadow-sm pointer-events-auto transition-colors"
+                          title="Remove widget"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </ResponsiveGridLayout>
         </div>
-
-        {/* Focus & Tasks */}
-        <div>
-          <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Focus & Tasks</p>
-          <FocusTasksPanel />
-        </div>
-
-        {/* Mood · Goals · Books */}
-        <div>
-          <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Mood · Goals · Books</p>
-          <MoodGoalsBooksPanel />
-        </div>
-
-        {/* Quote */}
-        <div>
-          <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Quote</p>
-          <QuotesWidget />
-        </div>
-      </div>
-
-      {/* ── Right / sticky panel — desktop only ── */}
-      <div className="hidden lg:flex flex-col gap-4 sticky top-20">
-        <div>
-          <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Finance</p>
-          <FinancePanel />
-        </div>
-        <div>
-          <p className="text-xs text-text-muted uppercase tracking-widest mb-2">Notes & Inbox</p>
-          <NotesInboxPanel />
-        </div>
-      </div>
+      )}
     </div>
   )
 }

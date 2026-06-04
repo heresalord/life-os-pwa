@@ -48,6 +48,7 @@ export interface Database {
           morning_reminder_time: string | null
           night_reminder_time: string | null
           notifications_enabled: boolean
+          dashboard_widgets: Json
           updated_at: string
         }
         Insert: {
@@ -62,6 +63,7 @@ export interface Database {
           morning_reminder_time?: string | null
           night_reminder_time?: string | null
           notifications_enabled?: boolean
+          dashboard_widgets?: Json
           updated_at?: string
         }
         Update: {
@@ -76,6 +78,7 @@ export interface Database {
           morning_reminder_time?: string | null
           night_reminder_time?: string | null
           notifications_enabled?: boolean
+          dashboard_widgets?: Json
           updated_at?: string
         }
       }
