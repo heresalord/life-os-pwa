@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useWallets } from '../../../hooks/useFinanceQueries'
 import { useFinanceMutations } from '../../../hooks/useFinanceMutations'
 import { useTransactionMutations } from '../../../hooks/useTransactionMutations'
@@ -265,7 +265,6 @@ function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void
 }
 
 // ── Main AccountsTab ──────────────────────────────────────────────────────────
-import React from 'react'
 
 export function AccountsTab({ currency }: { currency: string }) {
   const { data: wallets = [] } = useWallets()

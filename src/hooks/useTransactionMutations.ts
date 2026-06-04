@@ -303,6 +303,13 @@ export function useTransactionMutations(date: string) {
       await qc.cancelQueries({ queryKey: ['transactions'] })
       await qc.cancelQueries({ queryKey: ['transactions_range'] })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
+
+      // Snapshot all range caches before mutation so we can restore them on error
+      const previousRanges: Array<{ queryKey: readonly unknown[]; data: AnyItem[] | undefined }> = []
+      qc.getQueryCache().findAll({ queryKey: ['transactions_range'] }).forEach(query => {
+        previousRanges.push({ queryKey: query.queryKey, data: query.state.data as AnyItem[] | undefined })
+      })
+
       qc.setQueriesData<AnyItem[]>(
         { queryKey: ['transactions'] },
         old => (old ?? []).filter(t => t.id !== id)
@@ -311,10 +318,12 @@ export function useTransactionMutations(date: string) {
         { queryKey: ['transactions_range'] },
         old => (old ?? []).filter(t => t.id !== id)
       )
-      return { previous }
+      return { previous, previousRanges }
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+      // Restore every range cache that was modified during the optimistic delete
+      ctx?.previousRanges?.forEach(({ queryKey: qk, data }) => qc.setQueryData(qk, data))
     },
     onSettled: () => invalidateAll(),
   })

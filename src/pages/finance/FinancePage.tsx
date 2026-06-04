@@ -9,24 +9,19 @@ import { useAppStore } from '../../store/useAppStore'
 import { getUserLocalDate } from '../../lib/dateUtils'
 import {
   format,
-  addDays,
-  addWeeks,
-  addMonths,
-  addYears,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  startOfYear,
-  endOfYear
+  addDays, addWeeks, addMonths, addYears,
+  startOfWeek, endOfWeek,
+  startOfMonth, endOfMonth,
+  startOfYear, endOfYear,
+  isBefore, parseISO,
 } from 'date-fns'
 import clsx from 'clsx'
 
 const TABS = [
-  { value: 'overview',     icon: BarChart3,  label: 'Overview'  },
-  { value: 'accounts',     icon: Landmark,   label: 'Accounts'  },
-  { value: 'transactions', icon: List,       label: 'Activity'  },
-  { value: 'budgets',      icon: Target,     label: 'Budgets'   },
+  { value: 'overview',     icon: BarChart3, label: 'Overview'     },
+  { value: 'accounts',     icon: Landmark,  label: 'Accounts'     },
+  { value: 'transactions', icon: List,      label: 'Activity'     },
+  { value: 'budgets',      icon: Target,    label: 'Budgets'      },
 ] as const
 
 type TabValue = typeof TABS[number]['value']
@@ -43,49 +38,55 @@ export function FinancePage() {
 
   const adjustPeriod = (direction: 'prev' | 'next') => {
     const d = new Date(referenceDate + 'T12:00:00')
-    const amount = direction === 'prev' ? -1 : 1
-    let nextDate = d
-    if (period === 'day') nextDate = addDays(d, amount)
-    else if (period === 'week') nextDate = addWeeks(d, amount)
-    else if (period === 'month') nextDate = addMonths(d, amount)
-    else if (period === 'year') nextDate = addYears(d, amount)
-    setReferenceDate(format(nextDate, 'yyyy-MM-dd'))
+    const n = direction === 'prev' ? -1 : 1
+    let next = d
+    if      (period === 'day')   next = addDays(d, n)
+    else if (period === 'week')  next = addWeeks(d, n)
+    else if (period === 'month') next = addMonths(d, n)
+    else if (period === 'year')  next = addYears(d, n)
+    setReferenceDate(format(next, 'yyyy-MM-dd'))
   }
+
+  // Disable the "next" chevron when already at the current period
+  const isAtCurrentOrFuturePeriod = useMemo(() => {
+    const d = parseISO(referenceDate + 'T12:00:00')
+    const t = parseISO(today + 'T12:00:00')
+    if (period === 'day')   return !isBefore(d, t)
+    if (period === 'week')  return !isBefore(
+      startOfWeek(d, { weekStartsOn: 1 }),
+      startOfWeek(t, { weekStartsOn: 1 })
+    )
+    if (period === 'month') return format(d, 'yyyy-MM') >= format(t, 'yyyy-MM')
+    return d.getFullYear() >= t.getFullYear()
+  }, [referenceDate, period, today])
 
   const getPeriodLabel = () => {
     const d = new Date(referenceDate + 'T12:00:00')
-    if (period === 'day') {
-      return format(d, 'MMMM d, yyyy')
-    }
+    if (period === 'day')   return format(d, 'MMMM d, yyyy')
     if (period === 'week') {
-      const start = startOfWeek(d, { weekStartsOn: 1 })
-      const end = endOfWeek(d, { weekStartsOn: 1 })
-      return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`
+      const s = startOfWeek(d, { weekStartsOn: 1 })
+      const e = endOfWeek(d,   { weekStartsOn: 1 })
+      return `${format(s, 'MMM d')} – ${format(e, 'MMM d, yyyy')}`
     }
-    if (period === 'month') {
-      return format(d, 'MMMM yyyy')
-    }
+    if (period === 'month') return format(d, 'MMMM yyyy')
     return format(d, 'yyyy')
   }
 
   const dateRange = useMemo(() => {
     const d = new Date(referenceDate + 'T12:00:00')
-    let from = referenceDate
-    let to = referenceDate
-    if (period === 'day') {
-      from = referenceDate
-      to = referenceDate
-    } else if (period === 'week') {
-      from = format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-      to = format(endOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    } else if (period === 'month') {
-      from = format(startOfMonth(d), 'yyyy-MM-dd')
-      to = format(endOfMonth(d), 'yyyy-MM-dd')
-    } else if (period === 'year') {
-      from = format(startOfYear(d), 'yyyy-MM-dd')
-      to = format(endOfYear(d), 'yyyy-MM-dd')
+    if (period === 'day')   return { from: referenceDate, to: referenceDate }
+    if (period === 'week')  return {
+      from: format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      to:   format(endOfWeek(d,   { weekStartsOn: 1 }), 'yyyy-MM-dd'),
     }
-    return { from, to }
+    if (period === 'month') return {
+      from: format(startOfMonth(d), 'yyyy-MM-dd'),
+      to:   format(endOfMonth(d),   'yyyy-MM-dd'),
+    }
+    return {
+      from: format(startOfYear(d), 'yyyy-MM-dd'),
+      to:   format(endOfYear(d),   'yyyy-MM-dd'),
+    }
   }, [referenceDate, period])
 
   return (
@@ -94,30 +95,22 @@ export function FinancePage() {
         <h1 className="text-2xl font-display text-text">Finance</h1>
       </header>
 
-      {/* ── Tab bar ──────────────────────────────────────────────────────
-          Grid with 4 columns: guarantees items span full width and fit on mobile.
-          Only active item shows text.                                  */}
+      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-1 p-1 bg-surface-2 border border-border rounded-2xl">
         {TABS.map(tab => {
-          const Icon    = tab.icon
+          const Icon     = tab.icon
           const isActive = active === tab.value
           return (
             <button
               key={tab.value}
               onClick={() => setActive(tab.value)}
               className={clsx(
-                'flex items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all duration-200 font-medium w-full text-xs sm:text-sm',
-                isActive
-                  ? 'bg-surface text-text shadow-sm'
-                  : 'text-text-muted hover:text-text-secondary'
+                'flex items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all duration-200 font-medium w-full',
+                isActive ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
               )}
             >
               <Icon size={16} strokeWidth={isActive ? 2.5 : 1.75} />
-              {/* Label: always visible on sm+, only on active on mobile */}
-              <span className={clsx(
-                'text-xs sm:text-sm',
-                isActive ? 'inline' : 'hidden sm:inline'
-              )}>
+              <span className={clsx('text-xs sm:text-sm', isActive ? 'inline' : 'hidden sm:inline')}>
                 {tab.label}
               </span>
             </button>
@@ -125,18 +118,15 @@ export function FinancePage() {
         })}
       </div>
 
-      {/* ── Timeframe selector (only for overview and transactions tabs) ── */}
+      {/* ── Timeframe selector ──────────────────────────────────────────── */}
       {(active === 'overview' || active === 'transactions') && (
         <div className="flex flex-col gap-3 bg-surface border border-border p-3.5 rounded-2xl shadow-sm">
-          {/* Day/Week/Month/Year selector */}
+          {/* Period pills */}
           <div className="flex p-1 bg-surface-2 border border-border rounded-xl">
             {(['day', 'week', 'month', 'year'] as const).map(p => (
               <button
                 key={p}
-                onClick={() => {
-                  setPeriod(p)
-                  setReferenceDate(today)
-                }}
+                onClick={() => { setPeriod(p); setReferenceDate(today) }}
                 className={clsx(
                   'flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors capitalize',
                   period === p ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
@@ -147,7 +137,7 @@ export function FinancePage() {
             ))}
           </div>
 
-          {/* Timeframe navigation controls */}
+          {/* Prev / label / next */}
           <div className="flex items-center justify-between px-1">
             <button
               onClick={() => adjustPeriod('prev')}
@@ -155,12 +145,11 @@ export function FinancePage() {
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-sm font-medium text-text">
-              {getPeriodLabel()}
-            </span>
+            <span className="text-sm font-medium text-text">{getPeriodLabel()}</span>
             <button
               onClick={() => adjustPeriod('next')}
-              className="p-1.5 text-text-secondary hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
+              disabled={isAtCurrentOrFuturePeriod}
+              className="p-1.5 text-text-secondary hover:text-text hover:bg-surface-2 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronRight size={16} />
             </button>
@@ -168,25 +157,16 @@ export function FinancePage() {
         </div>
       )}
 
-      {/* ── Tab content ─────────────────────────────────────────────── */}
+      {/* ── Tab content ─────────────────────────────────────────────────── */}
       <div className="animate-in fade-in duration-200">
-        {active === 'overview'     && (
-          <OverviewTab
-            currency={currency}
-            from={dateRange.from}
-            to={dateRange.to}
-            period={period}
-          />
+        {active === 'overview' && (
+          <OverviewTab currency={currency} from={dateRange.from} to={dateRange.to} period={period} />
         )}
-        {active === 'accounts'     && <AccountsTab     currency={currency} />}
+        {active === 'accounts' && <AccountsTab currency={currency} />}
         {active === 'transactions' && (
-          <TransactionsTab
-            currency={currency}
-            from={dateRange.from}
-            to={dateRange.to}
-          />
+          <TransactionsTab currency={currency} from={dateRange.from} to={dateRange.to} today={today} />
         )}
-        {active === 'budgets'      && <BudgetsTab      currency={currency} />}
+        {active === 'budgets' && <BudgetsTab currency={currency} />}
       </div>
     </div>
   )

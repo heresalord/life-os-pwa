@@ -73,15 +73,27 @@ export function DailyLogPage() {
   const [carryOverRunning, setCarryOverRunning] = useState(false)
   const [carryOverCount, setCarryOverCount] = useState<number | null>(null)
 
+  // Carry-over is guarded by a localStorage key so it runs at most once per
+  // user+date pair, even across remounts, page refreshes, and wizard re-opens.
   useEffect(() => {
     async function checkAndCarryOver() {
-      if (!user || guidedMode !== 'morning' || carryOverRunning || carryOverCount !== null) return
+      if (!user || guidedMode !== 'morning' || carryOverRunning) return
+
+      const flagKey = `carryover:${user.id}:${activeDate}`
+      const stored = localStorage.getItem(flagKey)
+      if (stored !== null) {
+        // Already ran this session or a previous one — restore the count display.
+        setCarryOverCount(parseInt(stored, 10))
+        return
+      }
+
       setCarryOverRunning(true)
       try {
         const dateObj = new Date(activeDate + 'T12:00:00')
         const yesterdayStr = format(subDays(dateObj, 1), 'yyyy-MM-dd')
         const count = await carryOverTasks(user.id, yesterdayStr, activeDate)
         setCarryOverCount(count)
+        localStorage.setItem(flagKey, String(count))
       } catch (err) {
         console.error('Carry over failed:', err)
       } finally {
@@ -113,8 +125,19 @@ export function DailyLogPage() {
   // --- UI Save Indicator ---
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'saving' | 'error'>('idle')
 
-  // --- Guided Wizard Wizard Step ---
+  // --- Guided Wizard Step ---
   const [wizardStep, setWizardStep] = useState<number>(1)
+
+  // Reset to step 1 whenever the wizard type changes — covers direct URL navigation
+  // (e.g. deep-linking to ?guided=evening after finishing morning at step 4).
+  useEffect(() => {
+    setWizardStep(1)
+  }, [guidedMode])
+
+  // Reset preview mode when navigating to a different date.
+  useEffect(() => {
+    setIsPreviewMode(false)
+  }, [activeDate])
 
   // Populate fields from the loaded record — only on first load per date.
   // We deliberately do NOT re-run when `record` mutates after the initial
@@ -756,7 +779,7 @@ export function DailyLogPage() {
           ======================================================== */}
       {guidedMode === 'morning' && (
         <div className="fixed inset-0 bg-bg/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6 relative">
+          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6 relative max-h-[90dvh] overflow-y-auto">
             <button 
               onClick={() => setSearchParams({})}
               className="absolute right-4 top-4 text-text-muted hover:text-text"
@@ -928,7 +951,7 @@ export function DailyLogPage() {
 
       {guidedMode === 'evening' && (
         <div className="fixed inset-0 bg-bg/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6 relative">
+          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6 relative max-h-[90dvh] overflow-y-auto">
             <button 
               onClick={() => setSearchParams({})}
               className="absolute right-4 top-4 text-text-muted hover:text-text"
@@ -1033,7 +1056,7 @@ export function DailyLogPage() {
                 <h3 className="text-lg font-semibold text-text">Structured Reflection</h3>
                 <p className="text-xs text-text-secondary">Take a brief moment to log went went well and tomorrow's focus.</p>
                 
-                <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-3 pr-1">
                   <div>
                     <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">What went well?</label>
                     <textarea

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { format, eachDayOfInterval } from 'date-fns'
 import { TrendingDown, TrendingUp, ChevronDown } from 'lucide-react'
 import { useTransactionsRange } from '../../../hooks/useRangeQueries'
@@ -101,6 +101,10 @@ interface OverviewTabProps {
 export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
   const [detail, setDetail] = useState<'expense' | 'income' | null>(null)
   const { data: txns = [], isLoading } = useTransactionsRange(from, to)
+
+  // Close the breakdown panel whenever the viewed date range changes so the
+  // user never sees a stale category list for the previous period.
+  useEffect(() => { setDetail(null) }, [from, to])
 
   const expenses    = txns.filter((t: Transaction) => t.type === 'expense'   && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0)
   const income      = txns.filter((t: Transaction) => t.type === 'income'    && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0)

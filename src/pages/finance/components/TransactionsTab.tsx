@@ -17,20 +17,28 @@ interface TransactionsTabProps {
   currency: string
   from: string
   to: string
+  /** Today's local date (yyyy-MM-dd) — passed from FinancePage so the prop
+   *  is stable and doesn't re-derive timezone on every render. */
+  today: string
 }
 
-export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
+export function TransactionsTab({ currency, from, to, today }: TransactionsTabProps) {
   const { selectedDate, timezone } = useAppStore()
-  const today = getUserLocalDate(timezone)
 
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [typeFilter,     setTypeFilter]     = useState<TypeFilter>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [search, setSearch] = useState('')
+  const [search,         setSearch]         = useState('')
 
   const { data: txns = [], isLoading } = useTransactionsRange(from, to)
+
+  // For delete optimistic updates — the hook only needs any valid date key;
+  // selectedDate is fine here since onSettled invalidates all caches anyway.
   const { deleteTransaction } = useTransactionMutations(selectedDate)
 
-  // All unique categories from loaded transactions
+  // Default date for new transactions: the end of the viewed period, capped at today.
+  // Prevents defaulting to a future date when `to` is e.g. the end of the current month.
+  const defaultAddDate = to < today ? to : today
+
   const allCategories = useMemo(() => {
     const cats = new Set(txns.map((t: Transaction) => t.category))
     return ['all', ...Array.from(cats).sort()]
@@ -38,8 +46,8 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
 
   const filtered = useMemo(() => {
     return txns.filter((t: Transaction) => {
-      const matchType = typeFilter === 'all' || t.type === typeFilter
-      const matchCat  = categoryFilter === 'all' || t.category === categoryFilter
+      const matchType   = typeFilter === 'all' || t.type === typeFilter
+      const matchCat    = categoryFilter === 'all' || t.category === categoryFilter
       const matchSearch = !search.trim() ||
         t.category.toLowerCase().includes(search.toLowerCase()) ||
         (t.description ?? '').toLowerCase().includes(search.toLowerCase())
@@ -60,21 +68,22 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
   }, [filtered])
 
   const totals = useMemo(() => ({
-    expense:    filtered.filter((t: Transaction) => t.type === 'expense'    && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
-    income:     filtered.filter((t: Transaction) => t.type === 'income'     && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
-    adjustment: filtered.filter((t: Transaction) => t.type === 'adjustment'                            ).reduce((s, t) => s + Number(t.amount), 0),
+    expense:    filtered.filter(t => t.type === 'expense'    && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
+    income:     filtered.filter(t => t.type === 'income'     && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
+    adjustment: filtered.filter(t => t.type === 'adjustment'                             ).reduce((s, t) => s + Number(t.amount), 0),
   }), [filtered])
+
+  const yesterday = getUserLocalDate(timezone, subDays(new Date(today + 'T12:00:00'), 1))
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Add Transaction Button at the top */}
+      {/* Add Transaction — defaults to the period being viewed, never a future date */}
       <div>
-        <AddTransactionModal date={selectedDate} />
+        <AddTransactionModal date={defaultAddDate} />
       </div>
 
-      {/* Filters bar */}
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Search */}
         <div className="relative flex-1 min-w-[140px]">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
@@ -86,7 +95,6 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
           />
         </div>
 
-        {/* Type Filter */}
         <div className="flex bg-surface border border-border rounded-xl p-0.5">
           {(['all', 'expense', 'income', 'adjustment'] as TypeFilter[]).map(t => (
             <button
@@ -94,9 +102,7 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
               onClick={() => setTypeFilter(t)}
               className={clsx(
                 'px-3 py-1.5 text-xs font-medium rounded-lg capitalize transition-all',
-                typeFilter === t
-                  ? 'bg-surface-2 text-text shadow-sm'
-                  : 'text-text-muted hover:text-text-secondary'
+                typeFilter === t ? 'bg-surface-2 text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
               )}
             >
               {t}
@@ -104,7 +110,6 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
           ))}
         </div>
 
-        {/* Category Filter */}
         {allCategories.length > 2 && (
           <div className="relative">
             <select
@@ -113,9 +118,7 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
               className="appearance-none bg-surface border border-border rounded-xl pl-3 pr-8 py-2 text-xs font-medium text-text capitalize focus:border-accent outline-none cursor-pointer"
             >
               {allCategories.map(c => (
-                <option key={c} value={c}>
-                  {c === 'all' ? 'All Categories' : c}
-                </option>
+                <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>
               ))}
             </select>
             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
@@ -155,19 +158,29 @@ export function TransactionsTab({ currency, from, to }: TransactionsTabProps) {
       ) : (
         <div className="space-y-6">
           {grouped.map(([date, items]) => {
-            const dayTotal = items.reduce((s, t) =>
-              t.type === 'expense' ? s - Number(t.amount) : s + Number(t.amount), 0)
-            const dateLabel = date === today
-              ? 'Today'
-              : date === getUserLocalDate(timezone, subDays(new Date(today + 'T12:00:00'), 1))
-              ? 'Yesterday'
-              : format(new Date(date + 'T12:00:00'), 'EEE, MMM d')
+            // Exclude transfers from the daily net so the chip only reflects
+            // real cashflow (income minus expenses). Adjustments are signed so
+            // they add or subtract directly.
+            const dayTotal = items
+              .filter(t => t.category !== 'transfer')
+              .reduce((s, t) => {
+                const amt = Number(t.amount)
+                if (t.type === 'expense')    return s - amt
+                if (t.type === 'income')     return s + amt
+                if (t.type === 'adjustment') return s + amt  // already signed
+                return s
+              }, 0)
+
+            const dateLabel =
+              date === today     ? 'Today' :
+              date === yesterday ? 'Yesterday' :
+              format(new Date(date + 'T12:00:00'), 'EEE, MMM d')
 
             return (
               <section key={date}>
                 <div className="flex items-center justify-between mb-2 px-1">
                   <span className="text-xs font-medium text-text-muted uppercase tracking-wider">{dateLabel}</span>
-                  <span className={`text-xs font-medium ${dayTotal >= 0 ? 'text-success' : 'text-danger'}`}>
+                  <span className={clsx('text-xs font-medium', dayTotal >= 0 ? 'text-success' : 'text-danger')}>
                     {dayTotal >= 0 ? '+' : ''}{dayTotal.toFixed(2)} {currency}
                   </span>
                 </div>
