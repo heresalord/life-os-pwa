@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { 
   Sun, Moon, Zap, Award, FileText, CheckCircle2, 
-  ArrowRight, Check, Plus, Edit2, Play, Eye
+  ArrowRight, Check, Plus, Edit2, Play, Eye, ChevronLeft, ChevronRight
 } from 'lucide-react'
-import { subDays, format } from 'date-fns'
+import { subDays, addDays, format, isToday, parseISO } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useDailyRecord } from '../../hooks/useDailyRecord'
@@ -111,32 +111,38 @@ export function DailyLogPage() {
   const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false)
 
   // --- UI Save Indicator ---
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'saving' | 'error'>('idle')
 
   // --- Guided Wizard Wizard Step ---
   const [wizardStep, setWizardStep] = useState<number>(1)
 
-  // Populate data when record loads
+  // Populate fields from the loaded record — only on first load per date.
+  // We deliberately do NOT re-run when `record` mutates after the initial
+  // hydration so that in-progress edits are never clobbered by a background
+  // refetch (staleTime: 0 means React Query re-fetches on every focus).
+  const populatedDateRef = useRef<string | null>(null)
   useEffect(() => {
-    if (record) {
-      if (record.energy_am !== null) setEnergyAm(record.energy_am)
-      if (record.intent !== null) setIntention(record.intent)
-      if (Array.isArray(record.gratitude)) {
-        setGratitude([
-          typeof record.gratitude[0] === 'string' ? record.gratitude[0] : '',
-          typeof record.gratitude[1] === 'string' ? record.gratitude[1] : '',
-          typeof record.gratitude[2] === 'string' ? record.gratitude[2] : ''
-        ])
-      }
-      if (record.mood !== null) setMood(record.mood)
-      if (record.energy_pm !== null) setEnergyPm(record.energy_pm)
-      if (record.win_of_day !== null) setWinOfDay(record.win_of_day)
-      if (record.went_well !== null) setWentWell(record.went_well)
-      if (record.do_differently !== null) setDoDifferently(record.do_differently)
-      if (record.tomorrow_focus !== null) setTomorrowFocus(record.tomorrow_focus)
-      if (record.journal !== null) setJournal(record.journal)
+    if (!record) return
+    if (populatedDateRef.current === activeDate) return   // already hydrated for this date
+    populatedDateRef.current = activeDate
+
+    if (record.energy_am !== null && record.energy_am !== undefined) setEnergyAm(record.energy_am)
+    if (record.intent !== null && record.intent !== undefined) setIntention(record.intent)
+    if (Array.isArray(record.gratitude)) {
+      setGratitude([
+        typeof record.gratitude[0] === 'string' ? record.gratitude[0] : '',
+        typeof record.gratitude[1] === 'string' ? record.gratitude[1] : '',
+        typeof record.gratitude[2] === 'string' ? record.gratitude[2] : ''
+      ])
     }
-  }, [record])
+    if (record.mood !== null && record.mood !== undefined) setMood(record.mood)
+    if (record.energy_pm !== null && record.energy_pm !== undefined) setEnergyPm(record.energy_pm)
+    if (record.win_of_day !== null && record.win_of_day !== undefined) setWinOfDay(record.win_of_day)
+    if (record.went_well !== null && record.went_well !== undefined) setWentWell(record.went_well)
+    if (record.do_differently !== null && record.do_differently !== undefined) setDoDifferently(record.do_differently)
+    if (record.tomorrow_focus !== null && record.tomorrow_focus !== undefined) setTomorrowFocus(record.tomorrow_focus)
+    if (record.journal !== null && record.journal !== undefined) setJournal(record.journal)
+  }, [record, activeDate])
 
   // Top tasks priorities calculation (priority >= 4)
   const priorities = useMemo(() => {
@@ -171,26 +177,34 @@ export function DailyLogPage() {
   }
 
   const finishMorningWizard = async () => {
-    await upsert.mutateAsync({
-      energy_am: energyAm,
-      intent: intention,
-      gratitude,
-      morning_complete: true
-    })
-    setSearchParams({})
+    try {
+      await upsert.mutateAsync({
+        energy_am: energyAm,
+        intent: intention,
+        gratitude,
+        morning_complete: true
+      })
+      setSearchParams({})
+    } catch {
+      setSaveStatus('error')
+    }
   }
 
   const finishEveningWizard = async () => {
-    await upsert.mutateAsync({
-      mood,
-      energy_pm: energyPm,
-      win_of_day: winOfDay,
-      went_well: wentWell,
-      do_differently: doDifferently,
-      tomorrow_focus: tomorrowFocus,
-      evening_complete: true
-    })
-    setSearchParams({})
+    try {
+      await upsert.mutateAsync({
+        mood,
+        energy_pm: energyPm,
+        win_of_day: winOfDay,
+        went_well: wentWell,
+        do_differently: doDifferently,
+        tomorrow_focus: tomorrowFocus,
+        evening_complete: true
+      })
+      setSearchParams({})
+    } catch {
+      setSaveStatus('error')
+    }
   }
 
   // --- Priority Task Management ---
@@ -226,11 +240,10 @@ export function DailyLogPage() {
 
   // --- Journal Helper ---
   const applyTemplate = (templateKey: keyof typeof JOURNAL_TEMPLATES) => {
+    if (!window.confirm('Apply template? This will replace your current journal contents.')) return
     setSelectedTemplate(templateKey)
-    if (window.confirm('Apply template? This will replace your current journal contents.')) {
-      setJournal(JOURNAL_TEMPLATES[templateKey])
-      handleSaveFields({ journal: JOURNAL_TEMPLATES[templateKey] })
-    }
+    setJournal(JOURNAL_TEMPLATES[templateKey])
+    handleSaveFields({ journal: JOURNAL_TEMPLATES[templateKey] })
   }
 
   // Energy lightning scale render helper
@@ -298,8 +311,32 @@ export function DailyLogPage() {
           </h1>
         </div>
 
-        {/* Save status badge */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Prev / Next date navigation */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => navigate(`/day/${format(subDays(parseISO(activeDate + 'T12:00:00'), 1), 'yyyy-MM-dd')}`)}
+              className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-text-secondary hover:text-text transition-colors"
+              title="Previous day"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <button
+              onClick={() => navigate('/day')}
+              disabled={isToday(parseISO(activeDate + 'T12:00:00'))}
+              className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-border bg-surface hover:bg-surface-2 text-text-secondary hover:text-text transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            >
+              Today
+            </button>
+            <button
+              onClick={() => navigate(`/day/${format(addDays(parseISO(activeDate + 'T12:00:00'), 1), 'yyyy-MM-dd')}`)}
+              disabled={isToday(parseISO(activeDate + 'T12:00:00'))}
+              className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-text-secondary hover:text-text transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              title="Next day"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
           {saveStatus === 'saving' && (
             <span className="text-xs text-text-muted flex items-center gap-1.5">
               <span className="w-2 h-2 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -308,11 +345,11 @@ export function DailyLogPage() {
           )}
           {saveStatus === 'saved' && (
             <span className="text-xs text-success flex items-center gap-1">
-              <Check size={14} /> Saved Offline
+              <Check size={14} /> Saved
             </span>
           )}
           {saveStatus === 'error' && (
-            <span className="text-xs text-danger">⚠️ Error saving changes</span>
+            <span className="text-xs text-danger">⚠️ Error saving — check connection</span>
           )}
         </div>
       </header>
@@ -683,9 +720,11 @@ export function DailyLogPage() {
             <div className="flex justify-between items-center">
               <span className="text-text-muted">Task Completion:</span>
               <span className="font-semibold text-text">
-                {tasks.length > 0
-                  ? `${Math.round((tasks.filter(t => t.completed).length / tasks.filter(t => !t.skipped).length) * 100)}%`
-                  : '100%'}
+                {(() => {
+                  const nonSkipped = tasks.filter(t => !t.skipped)
+                  if (nonSkipped.length === 0) return '—'
+                  return `${Math.round((tasks.filter(t => t.completed).length / nonSkipped.length) * 100)}%`
+                })()}
               </span>
             </div>
             <div className="flex justify-between items-center">

@@ -9,6 +9,8 @@ import {
   GripVertical,
   X,
 } from 'lucide-react'
+// react-grid-layout v2 moved Responsive + WidthProvider to the ./legacy sub-path
+import { Responsive, WidthProvider } from 'react-grid-layout/legacy'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { useAuth } from '../../hooks/useAuth'
 import { useUserSettings } from '../../hooks/useUserSettings'
@@ -27,12 +29,7 @@ import { WellbeingHeatmapWidget } from '../../components/dashboard/widgets/Wellb
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 
-// @types/react-grid-layout uses `export =` which makes both named imports and
-// namespace destructuring fail in ESM TypeScript. Using `require` + `as any`
-// reaches the runtime exports (Responsive, WidthProvider) without type errors.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const RGL = require('react-grid-layout') as any
-const ResponsiveGridLayout = RGL.WidthProvider(RGL.Responsive)
+const ResponsiveGridLayout = WidthProvider(Responsive)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -213,7 +210,8 @@ export function DashboardPage() {
     upsert.mutate({ dashboard_widgets: updated as any })
   }, [upsert])
 
-  const handleLayoutChange = useCallback((currentLayout: any[]) => {
+  // Layout is readonly in v2 types; _layouts is the per-breakpoint map (unused)
+  const handleLayoutChange = useCallback((currentLayout: readonly { i: string; x: number; y: number; w: number; h: number }[], _layouts: any) => {
     if (!layoutReadyRef.current) return
     setWidgetPrefs(prev => {
       const updated = prev.map(pref => {
