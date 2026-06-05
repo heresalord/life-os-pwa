@@ -635,7 +635,11 @@ export interface Database {
           date: string
           title: string
           content: string
-          template: 'morning' | 'night' | null
+          template: 'morning' | 'evening' | 'weekly-review' | 'gratitude' | 'book-notes' | 'meeting-notes' | null
+          pinned: boolean
+          folder: string
+          word_count: number
+          is_template: boolean
           created_at: string
           updated_at: string
         }
@@ -645,7 +649,11 @@ export interface Database {
           date: string
           title: string
           content?: string
-          template?: 'morning' | 'night' | null
+          template?: 'morning' | 'evening' | 'weekly-review' | 'gratitude' | 'book-notes' | 'meeting-notes' | null
+          pinned?: boolean
+          folder?: string
+          word_count?: number
+          is_template?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -655,7 +663,11 @@ export interface Database {
           date?: string
           title?: string
           content?: string
-          template?: 'morning' | 'night' | null
+          template?: 'morning' | 'evening' | 'weekly-review' | 'gratitude' | 'book-notes' | 'meeting-notes' | null
+          pinned?: boolean
+          folder?: string
+          word_count?: number
+          is_template?: boolean
           created_at?: string
           updated_at?: string
         }

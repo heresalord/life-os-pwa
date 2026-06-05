@@ -11,15 +11,15 @@ export function useNotesQuery(date?: string) {
     staleTime: 30_000,
     queryFn: async () => {
       if (navigator.onLine) {
-        let q = supabase.from('notes').select('*').eq('user_id', user!.id).order('created_at', { ascending: false })
+        let q = supabase.from('notes').select('*').eq('user_id', user!.id).order('updated_at', { ascending: false })
         if (date) q = q.eq('date', date)
         const { data, error } = await q
         if (error) throw error
         if (data) await db.notes.bulkPut(data as Parameters<typeof db.notes.bulkPut>[0])
         return data ?? []
       }
-      if (date) return db.notes.where('date').equals(date).reverse().sortBy('created_at')
-      return db.notes.orderBy('created_at').reverse().toArray()
+      if (date) return db.notes.where('date').equals(date).reverse().sortBy('updated_at')
+      return db.notes.orderBy('updated_at').reverse().toArray()
     }
   })
 }

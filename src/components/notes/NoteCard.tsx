@@ -1,22 +1,47 @@
 import React, { useRef, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Pin, MoreHorizontal, Download, Copy, FolderInput } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { Note } from '../../db/schema'
 import { extractTags, stripTags } from '../../lib/noteTagUtils'
+import { useNoteMutations } from '../../hooks/useNoteMutations'
 import clsx from 'clsx'
+
+const SYSTEM_FOLDERS = ['All', 'Pinned', 'Journal', 'Templates']
+
+function exportAsMarkdown(note: Note) {
+  const body = stripTags(note.content)
+  const blob = new Blob([`# ${note.title}\n\n${body}`], { type: 'text/markdown' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${note.title.replace(/[^a-z0-9]/gi, '_')}.md`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function copyAsPlainText(note: Note) {
+  const body = stripTags(note.content).replace(/[#*`_~\[\]]/g, '').trim()
+  navigator.clipboard.writeText(`${note.title}\n\n${body}`)
+}
 
 export function NoteCard({
   note,
   onClick,
   onDelete,
+  folders = [],
+  isActive = false,
 }: {
   note: Note
   onClick: () => void
   onDelete: (id: string) => void
+  folders?: string[]
+  isActive?: boolean
 }) {
   const [swiped, setSwiped] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const { pinNote, moveToFolder } = useNoteMutations()
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
   const handleTouchMove  = (e: React.TouchEvent) => {
@@ -28,7 +53,7 @@ export function NoteCard({
   const handleTouchEnd = () => { touchStartX.current = null }
 
   const tags    = extractTags(note.content)
-  const snippet = stripTags(note.content).replace(/[#*`_]/g, '').slice(0, 100).trim() || 'No content'
+  const snippet = stripTags(note.content).replace(/[#*`_~]/g, '').slice(0, 100).trim() || 'No content'
 
   const confirmDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -36,9 +61,26 @@ export function NoteCard({
     setShowDeleteConfirm(true)
   }
 
+  const handlePin = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    pinNote.mutate({ id: note.id, pinned: !note.pinned })
+  }
+
+  const allFolders = [...new Set([...SYSTEM_FOLDERS, ...folders])].filter(f => f !== 'All' && f !== 'Pinned')
+
+  const wordCount = (note as any).word_count as number | undefined
+
   return (
     <>
-      <div className="relative overflow-hidden rounded-xl bg-surface border border-border group cursor-pointer">
+      <div
+        className={clsx(
+          'relative overflow-hidden rounded-xl border group cursor-pointer transition-colors',
+          isActive
+            ? 'bg-accent/8 border-accent/40'
+            : 'bg-surface border-border',
+          (note as any).pinned && 'ring-1 ring-amber-400/30'
+        )}
+      >
         {/* Swipe-reveal delete zone */}
         <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
           <button onClick={confirmDelete} className="p-2 text-danger hover:bg-danger/10 rounded-full transition-colors">
@@ -52,17 +94,107 @@ export function NoteCard({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={clsx(
-            'relative flex flex-col p-4 bg-surface transition-transform duration-200 ease-out hover:bg-surface-2',
+            'relative flex flex-col p-4 transition-all duration-200 ease-out',
+            isActive ? 'bg-accent/8' : 'bg-surface hover:bg-surface-2',
             swiped ? '-translate-x-16' : 'translate-x-0'
           )}
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-text truncate pr-4">{note.title}</span>
-            {note.template && (
-              <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded bg-surface-2 text-text-muted border border-border flex-shrink-0">
-                {note.template}
-              </span>
-            )}
+          {/* Header row */}
+          <div className="flex items-start justify-between mb-2 gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {(note as any).pinned && (
+                <Pin size={11} className="text-amber-400 flex-shrink-0 fill-amber-400" />
+              )}
+              <span className="text-sm font-medium text-text truncate">{note.title}</span>
+            </div>
+
+            <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+              {/* Pin button */}
+              <button
+                onClick={handlePin}
+                title={(note as any).pinned ? 'Unpin' : 'Pin'}
+                className={clsx(
+                  'p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100',
+                  (note as any).pinned
+                    ? 'opacity-100 text-amber-400 hover:text-amber-300'
+                    : 'text-text-muted hover:text-text'
+                )}
+              >
+                <Pin size={12} className={clsx((note as any).pinned && 'fill-amber-400')} />
+              </button>
+
+              {/* Three-dot menu */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    className="p-1 rounded-md text-text-muted hover:text-text transition-colors opacity-0 group-hover:opacity-100"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <MoreHorizontal size={14} />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    className="z-50 bg-surface border border-border rounded-xl shadow-2xl py-1 min-w-[180px]"
+                    sideOffset={4}
+                    align="end"
+                  >
+                    {/* Move to folder */}
+                    {allFolders.length > 0 && (
+                      <DropdownMenu.Sub>
+                        <DropdownMenu.SubTrigger className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-2 cursor-pointer outline-none">
+                          <FolderInput size={13} className="text-text-muted" />
+                          Move to Folder
+                        </DropdownMenu.SubTrigger>
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.SubContent className="z-50 bg-surface border border-border rounded-xl shadow-2xl py-1 min-w-[160px]">
+                            {allFolders.map(f => (
+                              <DropdownMenu.Item
+                                key={f}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-2 cursor-pointer outline-none"
+                                onSelect={() => moveToFolder.mutate({ id: note.id, folder: f })}
+                              >
+                                {f === (note as any).folder && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+                                )}
+                                <span className={f !== (note as any).folder ? 'pl-3.5' : ''}>{f}</span>
+                              </DropdownMenu.Item>
+                            ))}
+                          </DropdownMenu.SubContent>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Sub>
+                    )}
+
+                    <DropdownMenu.Separator className="h-px bg-border my-1" />
+
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-2 cursor-pointer outline-none"
+                      onSelect={() => exportAsMarkdown(note)}
+                    >
+                      <Download size={13} className="text-text-muted" />
+                      Export as Markdown
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-2 cursor-pointer outline-none"
+                      onSelect={() => copyAsPlainText(note)}
+                    >
+                      <Copy size={13} className="text-text-muted" />
+                      Copy as Plain Text
+                    </DropdownMenu.Item>
+
+                    <DropdownMenu.Separator className="h-px bg-border my-1" />
+
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-danger/10 cursor-pointer outline-none"
+                      onSelect={() => setShowDeleteConfirm(true)}
+                    >
+                      <Trash2 size={13} />
+                      Delete
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            </div>
           </div>
 
           <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{snippet}</p>
@@ -78,8 +210,16 @@ export function NoteCard({
             </div>
           )}
 
-          <div className="text-[10px] text-text-muted mt-2">
-            {new Date(note.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {/* Footer */}
+          <div className="flex items-center justify-between mt-2">
+            <div className="text-[10px] text-text-muted">
+              {new Date(note.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            {wordCount !== undefined && wordCount > 0 && (
+              <div className="text-[10px] text-text-muted">
+                {wordCount} {wordCount === 1 ? 'word' : 'words'}
+              </div>
+            )}
           </div>
         </div>
       </div>
