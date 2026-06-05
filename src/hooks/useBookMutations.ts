@@ -13,6 +13,7 @@ const SUPABASE_BOOK_COLUMNS = [
   'id','user_id','title','author','status','started_at','finished_at',
   'current_page','total_pages','tags','reflection','abandon_reason',
   'added_at','created_at','updated_at','cover_url','rating',
+  'genre','isbn','language','source','reading_sessions','shelves'
 ] as const
 
 function toSupabasePayload(payload: Record<string, unknown>) {
@@ -42,7 +43,16 @@ export function useBookMutations() {
 
   const addBook = useMutation({
     mutationFn: async (payload: {
-      title: string; author?: string; total_pages?: number; status: BookStatus; cover_url?: string;
+      title: string;
+      author?: string;
+      total_pages?: number;
+      status: BookStatus;
+      cover_url?: string;
+      genre?: string;
+      isbn?: string;
+      language?: string;
+      source?: 'physical' | 'ebook' | 'audiobook' | 'library';
+      shelves?: string[];
     }) => {
       if (!user) return
       const book = {
@@ -60,6 +70,12 @@ export function useBookMutations() {
         started_at: payload.status === 'reading'  ? new Date().toISOString().split('T')[0] : null,
         finished_at: payload.status === 'finished' ? new Date().toISOString().split('T')[0] : null,
         tags: [],
+        genre: payload.genre || null,
+        isbn: payload.isbn || null,
+        language: payload.language || null,
+        source: payload.source || null,
+        reading_sessions: [] as any[],
+        shelves: payload.shelves || [],
         added_at: new Date().toISOString().split('T')[0],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -83,6 +99,12 @@ export function useBookMutations() {
         rating: null,
         reflection: null,
         abandon_reason: null,
+        genre: payload.genre || null,
+        isbn: payload.isbn || null,
+        language: payload.language || null,
+        source: payload.source || null,
+        reading_sessions: [] as any[],
+        shelves: payload.shelves || [],
         started_at: payload.status === 'reading'  ? new Date().toISOString().split('T')[0] : null,
         finished_at: payload.status === 'finished' ? new Date().toISOString().split('T')[0] : null,
         tags: [],
@@ -101,10 +123,48 @@ export function useBookMutations() {
 
   const updateBook = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
+      const previousBook = await db.books.get(id)
       const withTs = { ...updates, updated_at: new Date().toISOString() }
       await db.books.update(id, withTs)
       const updated = await db.books.get(id)
       if (updated) await writeBook('update', updated as Record<string, unknown>)
+
+      // Connect to Goals module Target tracker:
+      // If book status transitions to finished, search active goals for books
+      if (previousBook && previousBook.status !== 'finished' && updates.status === 'finished' && user) {
+        const activeGoals = await db.goals
+          .where('state').equals('active')
+          .and(g => g.tracker_type === 'target' && (g.name.toLowerCase().includes('book') || g.name.toLowerCase().includes('read')))
+          .toArray()
+
+        if (activeGoals.length > 0) {
+          const nowStr = new Date().toISOString().split('T')[0]
+          for (const g of activeGoals) {
+            const event = {
+              id: crypto.randomUUID(),
+              user_id: user.id,
+              goal_id: g.id,
+              sub_goal_id: null,
+              date: nowStr,
+              value: 1,
+              event_type: 'add',
+              note: `Finished reading: ${updated?.title || 'a book'}`,
+              new_state: null,
+              old_target: null,
+              new_target: null,
+              created_at: new Date().toISOString()
+            }
+            await db.goal_events.add(event as any)
+            if (navigator.onLine) {
+              await sbAny.from('goal_events').insert([event])
+            } else {
+              await enqueueSync('goal_events', 'insert', event)
+            }
+            qc.invalidateQueries({ queryKey: ['goal_events'] })
+            qc.invalidateQueries({ queryKey: ['goals'] })
+          }
+        }
+      }
     },
     onMutate: async ({ id, updates }) => {
       await qc.cancelQueries({ queryKey })
@@ -117,7 +177,12 @@ export function useBookMutations() {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
     },
-    onSettled: () => invalidate(),
+    onSettled: (_data, _error, variables) => {
+      invalidate()
+      if (variables?.id) {
+        qc.invalidateQueries({ queryKey: ['book', variables.id] })
+      }
+    },
   })
 
   const deleteBook = useMutation({

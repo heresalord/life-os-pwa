@@ -216,24 +216,29 @@ create policy "Users access own milestones" on milestones
 -- 7. BOOKS & QUOTES
 -- ========================================================
 create table books (
-  id             uuid primary key default gen_random_uuid(),
-  user_id        uuid not null references auth.users(id) on delete cascade,
-  title          text not null,
-  author         text,
-  cover_url      text,
-  status         text not null default 'to-read' check (status in ('to-read', 'reading', 'finished', 'abandoned')),
-  started_at     date,
-  finished_at    date,
-  current_page   int default 0,
-  total_pages    int,
-  cover_url      text,
-  rating         int check (rating >= 1 and rating <= 5),
-  tags           text[] default '{}',
-  reflection     text,
-  abandon_reason text,
-  added_at       date default current_date,
-  created_at     timestamptz default now(),
-  updated_at     timestamptz default now()
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  title            text not null,
+  author           text,
+  cover_url        text,
+  status           text not null default 'to-read' check (status in ('to-read', 'reading', 'finished', 'abandoned')),
+  started_at       date,
+  finished_at      date,
+  current_page     int default 0,
+  total_pages      int,
+  rating           int check (rating >= 1 and rating <= 5),
+  tags             text[] default '{}',
+  reflection       text,
+  abandon_reason   text,
+  genre            text,
+  isbn             text,
+  language         text,
+  source           text check (source in ('physical', 'ebook', 'audiobook', 'library')),
+  reading_sessions jsonb default '[]'::jsonb,
+  shelves          jsonb default '[]'::jsonb,
+  added_at         date default current_date,
+  created_at       timestamptz default now(),
+  updated_at       timestamptz default now()
 );
 
 create index on books(user_id, status);
@@ -255,6 +260,21 @@ create index on quotes(book_id);
 create index on quotes(user_id);
 alter table quotes enable row level security;
 create policy "Users access own quotes" on quotes
+  for all using (auth.uid() = user_id);
+
+create table reading_goals (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  year         integer not null,
+  target_books integer not null,
+  target_pages integer,
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now(),
+  unique (user_id, year)
+);
+
+alter table reading_goals enable row level security;
+create policy "Users access own reading goals" on reading_goals
   for all using (auth.uid() = user_id);
 
 -- ========================================================

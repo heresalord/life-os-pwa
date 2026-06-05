@@ -31,3 +31,29 @@ export function useBooksQuery() {
     }
   })
 }
+
+export function useBookQuery(id: string) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['book', id, user?.id],
+    enabled: !!user && !!id,
+    staleTime: 30_000,
+    queryFn: async () => {
+      if (navigator.onLine) {
+        const { data, error } = await supabase
+          .from('books')
+          .select('*')
+          .eq('id', id)
+          .eq('user_id', user!.id)
+          .single()
+        if (error) throw error
+        if (data) {
+          await db.books.put(data as any)
+          return data
+        }
+        return null
+      }
+      return db.books.get(id)
+    }
+  })
+}

@@ -9,6 +9,7 @@ import { useQuotesQuery } from '../../hooks/useQuotesQuery'
 import { useQuoteMutations } from '../../hooks/useQuoteMutations'
 import { haptic } from '../../lib/haptic'
 import type { Book } from '../../db/schema'
+import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 
 // ── Star rating widget ────────────────────────────────────────────────────
@@ -257,6 +258,11 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
   const [pages, setPages] = useState(book.total_pages?.toString() || '')
   const [status, setStatus] = useState(book.status)
   const [rating, setRating] = useState<number | null>(book.rating ?? null)
+  const [genre, setGenre] = useState(book.genre || '')
+  const [isbn, setIsbn] = useState(book.isbn || '')
+  const [language, setLanguage] = useState(book.language || '')
+  const [source, setSource] = useState<'physical' | 'ebook' | 'audiobook' | 'library' | ''>(book.source || '')
+  const [shelves, setShelves] = useState(Array.isArray(book.shelves) ? book.shelves.join(', ') : '')
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -267,6 +273,11 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
       total_pages: pages ? parseInt(pages) : null,
       status,
       rating,
+      genre: genre.trim() || null,
+      isbn: isbn.trim() || null,
+      language: language.trim() || null,
+      source: source || null,
+      shelves: shelves ? shelves.split(',').map(s => s.trim()).filter(Boolean) : [],
       started_at: status === 'reading' && !book.started_at ? new Date().toISOString().split('T')[0] : book.started_at,
     }})
     setSaving(false)
@@ -277,7 +288,7 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
     <Dialog.Root open={open} onOpenChange={v => { if (!v) onClose() }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/85 backdrop-blur-sm" />
-        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-2xl sm:border"
+        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-2xl sm:border max-h-[90vh] overflow-y-auto"
           style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
           <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
           <div className="flex items-center justify-between mb-4">
@@ -312,6 +323,46 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
                 </select>
               </div>
             </div>
+
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Genre</label>
+                <input value={genre} onChange={e => setGenre(e.target.value)} placeholder="e.g. Non-fiction"
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Source</label>
+                <select value={source} onChange={e => setSource(e.target.value as any)}
+                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
+                  <option value="">Select source</option>
+                  <option value="physical">Physical</option>
+                  <option value="ebook">E-Book</option>
+                  <option value="audiobook">Audiobook</option>
+                  <option value="library">Library</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">ISBN</label>
+                <input value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="Optional"
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Language</label>
+                <input value={language} onChange={e => setLanguage(e.target.value)} placeholder="e.g. English"
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Shelves / Collections</label>
+              <input value={shelves} onChange={e => setShelves(e.target.value)} placeholder="e.g. Sci-Fi, Classics, Favorites"
+                className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+              <p className="text-[10px] text-text-muted mt-1">Separate shelf names with commas</p>
+            </div>
+
             <div>
               <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Rating</label>
               <StarRating value={rating} onChange={setRating} size={22} />
@@ -439,6 +490,7 @@ function ProgressModal({ book, open, onClose }: { book: Book; open: boolean; onC
 
 // ── Main BookItem ─────────────────────────────────────────────────────────
 export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string) => void }) {
+  const navigate = useNavigate()
   const { updateBook } = useBookMutations()
   const [swiped, setSwiped] = useState(false)
   const [showReflection, setShowReflection] = useState(false)
@@ -506,7 +558,10 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
           )}
         >
           {/* Book cover */}
-          <div className="w-11 h-16 rounded flex-shrink-0 overflow-hidden bg-surface-2 border border-border flex items-center justify-center">
+          <div
+            onClick={() => navigate(`/books/${book.id}`)}
+            className="w-11 h-16 rounded flex-shrink-0 overflow-hidden bg-surface-2 border border-border flex items-center justify-center cursor-pointer hover:border-accent transition-colors"
+          >
             {book.cover_url
               ? <img src={book.cover_url} alt="" className="w-full h-full object-cover"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -518,7 +573,12 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
             {/* Title + status */}
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-text leading-snug">{book.title}</p>
+                <button
+                  onClick={() => navigate(`/books/${book.id}`)}
+                  className="text-sm font-medium text-text leading-snug hover:text-accent transition-colors text-left block"
+                >
+                  {book.title}
+                </button>
                 {book.author && <p className="text-xs text-text-secondary mt-0.5">{book.author}</p>}
               </div>
               <span className={clsx('text-[10px] font-medium uppercase tracking-wider flex-shrink-0 mt-0.5 px-2 py-0.5 rounded-full', statusColor)}>
@@ -529,6 +589,17 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
             {/* Star rating (finished books) */}
             {book.status === 'finished' && book.rating && (
               <StarRating value={book.rating} size={13} readOnly />
+            )}
+
+            {/* Shelves list */}
+            {book.shelves && Array.isArray(book.shelves) && book.shelves.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {(book.shelves as any[]).map((shelf: string) => (
+                  <span key={shelf} className="text-[9px] bg-surface-2 border border-border/80 text-text-muted px-1.5 py-0.5 rounded-md font-medium">
+                    {shelf}
+                  </span>
+                ))}
+              </div>
             )}
 
             {/* Reading progress */}

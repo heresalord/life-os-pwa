@@ -13,6 +13,7 @@ const FinancePage = React.lazy(() => import('./pages/finance/FinancePage').then(
 const GoalsPage = React.lazy(() => import('./pages/goals/GoalsPage').then(m => ({ default: m.GoalsPage })))
 const GoalDetailPage = React.lazy(() => import('./pages/goals/GoalDetailPage').then(m => ({ default: m.GoalDetailPage })))
 const BooksPage = React.lazy(() => import('./pages/books/BooksPage').then(m => ({ default: m.BooksPage })))
+const BookDetailPage = React.lazy(() => import('./pages/books/BookDetailPage').then(m => ({ default: m.BookDetailPage })))
 const AgendaPage = React.lazy(() => import('./pages/agenda/AgendaPage').then(m => ({ default: m.AgendaPage })))
 const InboxPage = React.lazy(() => import('./pages/inbox/InboxPage').then(m => ({ default: m.InboxPage })))
 const NotesPage = React.lazy(() => import('./pages/notes/NotesPage').then(m => ({ default: m.NotesPage })))
@@ -64,6 +65,7 @@ function App() {
                     <Route path="/goals"    element={<GoalsPage />} />
                     <Route path="/goals/:id" element={<GoalDetailPage />} />
                     <Route path="/books"    element={<BooksPage />} />
+                    <Route path="/books/:id" element={<BookDetailPage />} />
                     <Route path="/agenda"   element={<AgendaPage />} />
                     <Route path="/inbox"    element={<InboxPage />} />
                     <Route path="/notes"    element={<NotesPage />} />

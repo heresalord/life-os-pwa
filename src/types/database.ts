@@ -445,6 +445,12 @@ export interface Database {
           tags: string[]
           reflection: string | null
           abandon_reason: string | null
+          genre: string | null
+          isbn: string | null
+          language: string | null
+          source: 'physical' | 'ebook' | 'audiobook' | 'library' | null
+          reading_sessions: Json | null
+          shelves: Json | null
           added_at: string
           created_at: string
           updated_at: string
@@ -464,6 +470,12 @@ export interface Database {
           tags?: string[]
           reflection?: string | null
           abandon_reason?: string | null
+          genre?: string | null
+          isbn?: string | null
+          language?: string | null
+          source?: 'physical' | 'ebook' | 'audiobook' | 'library' | null
+          reading_sessions?: Json | null
+          shelves?: Json | null
           added_at?: string
           created_at?: string
           updated_at?: string
@@ -483,6 +495,12 @@ export interface Database {
           tags?: string[]
           reflection?: string | null
           abandon_reason?: string | null
+          genre?: string | null
+          isbn?: string | null
+          language?: string | null
+          source?: 'physical' | 'ebook' | 'audiobook' | 'library' | null
+          reading_sessions?: Json | null
+          shelves?: Json | null
           added_at?: string
           created_at?: string
           updated_at?: string
@@ -515,6 +533,35 @@ export interface Database {
           page?: number | null
           date?: string
           created_at?: string
+        }
+      }
+      reading_goals: {
+        Row: {
+          id: string
+          user_id: string
+          year: number
+          target_books: number
+          target_pages: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          year: number
+          target_books: number
+          target_pages?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          year?: number
+          target_books?: number
+          target_pages?: number | null
+          created_at?: string
+          updated_at?: string
         }
       }
       agenda_blocks: {

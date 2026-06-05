@@ -12,18 +12,24 @@ interface OLBook {
   pages?: number
   coverId?: number
   coverUrl?: string
+  isbn?: string
+  language?: string
+  genre?: string
 }
 
 async function searchOpenLibrary(query: string): Promise<OLBook[]> {
   if (!query.trim()) return []
-  const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=5&fields=title,author_name,number_of_pages_median,cover_i`)
+  const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=5&fields=title,author_name,number_of_pages_median,cover_i,isbn,language,subject`)
   const json = await res.json()
-  return (json.docs ?? []).map((d: Record<string, unknown>) => ({
+  return (json.docs ?? []).map((d: Record<string, any>) => ({
     title: d.title as string,
     author: Array.isArray(d.author_name) ? (d.author_name as string[])[0] : '',
     pages: d.number_of_pages_median as number | undefined,
     coverId: d.cover_i as number | undefined,
     coverUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : undefined,
+    isbn: Array.isArray(d.isbn) ? d.isbn[0] : undefined,
+    language: Array.isArray(d.language) ? d.language[0] : undefined,
+    genre: Array.isArray(d.subject) ? d.subject[0] : undefined,
   }))
 }
 
@@ -34,6 +40,13 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
   const [pages, setPages] = useState('')
   const [status, setStatus] = useState<BookStatus>(defaultStatus)
   const [coverUrl, setCoverUrl] = useState<string | undefined>()
+
+  const [genre, setGenre] = useState('')
+  const [isbn, setIsbn] = useState('')
+  const [language, setLanguage] = useState('')
+  const [source, setSource] = useState<'physical' | 'ebook' | 'audiobook' | 'library' | ''>('')
+  const [shelves, setShelves] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [searchQ, setSearchQ] = useState('')
   const [searching, setSearching] = useState(false)
@@ -63,6 +76,9 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
     setAuthor(book.author)
     if (book.pages) setPages(book.pages.toString())
     setCoverUrl(book.coverUrl)
+    if (book.isbn) setIsbn(book.isbn)
+    if (book.language) setLanguage(book.language)
+    if (book.genre) setGenre(book.genre)
     setSuggestions([])
     setSearchQ('')
   }
@@ -81,9 +97,16 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
       total_pages: pages ? parseInt(pages) : undefined,
       status,
       cover_url: coverUrl,
+      genre: genre.trim() || undefined,
+      isbn: isbn.trim() || undefined,
+      language: language.trim() || undefined,
+      source: source || undefined,
+      shelves: shelves ? shelves.split(',').map(s => s.trim()).filter(Boolean) : undefined,
     }, {
       onSuccess: () => {
         setTitle(''); setAuthor(''); setPages(''); setCoverUrl(undefined); setSearchQ('')
+        setGenre(''); setIsbn(''); setLanguage(''); setSource(''); setShelves('')
+        setShowAdvanced(false)
         setOpen(false)
       }
     })
@@ -98,7 +121,7 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
-        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-2xl sm:border"
+        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-2xl sm:border max-h-[90vh] overflow-y-auto"
           style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
           <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
           <div className="flex items-center justify-between mb-4">
@@ -179,6 +202,57 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
                 </select>
               </div>
             </div>
+
+            {/* Advanced Toggle */}
+            <div className="pt-1">
+              <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
+                className="text-xs font-semibold text-accent hover:underline focus:outline-none">
+                {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options (Genre, ISBN, shelves…)'}
+              </button>
+            </div>
+
+            {showAdvanced && (
+              <div className="space-y-3 border-t border-border/60 pt-3 animate-in fade-in duration-200">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Genre</label>
+                    <input value={genre} onChange={e => setGenre(e.target.value)} placeholder="e.g. Fiction"
+                      className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Source</label>
+                    <select value={source} onChange={e => setSource(e.target.value as any)}
+                      className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none appearance-none">
+                      <option value="">Select source</option>
+                      <option value="physical">Physical</option>
+                      <option value="ebook">E-Book</option>
+                      <option value="audiobook">Audiobook</option>
+                      <option value="library">Library</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">ISBN</label>
+                    <input value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="Optional"
+                      className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Language</label>
+                    <input value={language} onChange={e => setLanguage(e.target.value)} placeholder="e.g. English"
+                      className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Shelves / Collections</label>
+                  <input value={shelves} onChange={e => setShelves(e.target.value)} placeholder="e.g. Sci-Fi, Classics, Favorites"
+                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none" />
+                  <p className="text-[10px] text-text-muted mt-1">Separate shelf names with commas</p>
+                </div>
+              </div>
+            )}
 
             <button type="submit" disabled={!title.trim() || addBook.isPending}
               className="w-full bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
