@@ -75,27 +75,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // onAuthStateChange fires synchronously with INITIAL_SESSION for the
-    // existing session, so a separate getSession() call is not needed and
-    // would just double-invoke fetchProfile.
+    // ── Primary bootstrap: check for an existing session immediately.
+    // This is what clears the loading spinner on page reload / app start.
+    // We can't rely solely on onAuthStateChange(INITIAL_SESSION) because in
+    // Capacitor WebViews (and some browsers) that event fires with a noticeable
+    // delay, leaving loading=true and the screen blank in the meantime.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        // Defer the profile fetch to the next event-loop tick.
+        // Calling supabase.from() synchronously inside the auth resolution
+        // path can contend with Supabase's internal async lock and hang.
+        const userId = session.user.id
+        setTimeout(() => fetchProfile(userId), 0)
+      } else {
+        setLoading(false)
+      }
+    })
+
+    // ── Subsequent auth changes: login, logout, token refresh.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        // Re-arm the loading gate on actual sign-in events so AuthGuard keeps
-        // showing its spinner while the profile fetches — preventing a false
-        // redirect to /onboarding before the profile arrives.
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        // Re-arm the loading gate on actual sign-in so AuthGuard keeps showing
+        // its spinner while the profile fetches — prevents a false redirect to
+        // /onboarding before the profile arrives.
+        // INITIAL_SESSION is already handled by getSession() above.
+        if (event === 'SIGNED_IN') {
           setLoading(true)
         }
-        fetchProfile(session.user.id)
+        const userId = session.user.id
+        setTimeout(() => fetchProfile(userId), 0)
       } else {
         setProfile(null)
         setLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
+    // ── Safety net: guarantee loading clears even if both paths above fail
+    // (e.g. network down on first load, Supabase misconfiguration, etc.).
+    const safetyTimer = setTimeout(() => setLoading(false), 8_000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(safetyTimer)
+    }
   }, [fetchProfile])
 
   const refreshProfile = useCallback(() => {
