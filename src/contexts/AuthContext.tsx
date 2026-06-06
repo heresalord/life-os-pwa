@@ -29,58 +29,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = useCallback(async (userId: string, retries = 5) => {
-    // ── 1. Serve from Dexie immediately (instant) ─────────────────────────
-    const cached = await db.user_profiles.get(userId)
-    if (cached) {
-      setProfile(cached)
-      setLoading(false)
-      // Background re-sync so changes (avatar, display name) propagate
-      void supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setProfile(data as UserProfile)
-            db.user_profiles.put(data as UserProfile)
-          }
-        })
-      return cached
-    }
-
-    // ── 2. No cached profile (first login / new device) ──────────────────
-    // New signups: the DB trigger that creates user_profiles runs async.
-    // Retry with back-off before giving up.
-    for (let i = 0; i < retries; i++) {
-      const { data, error } = await supabase
-        .from('user_profiles').select('*').eq('id', userId).maybeSingle()
-      if (data) {
-        setProfile(data as UserProfile)
+    try {
+      // ── 1. Serve from Dexie immediately (instant) ───────────────────────
+      const cached = await db.user_profiles.get(userId)
+      if (cached) {
+        setProfile(cached)
         setLoading(false)
-        await db.user_profiles.put(data as UserProfile)
-        return data as UserProfile
+        // Background re-sync so changes (avatar, display name) propagate
+        void supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle()
+          .then(({ data }) => {
+            if (data) {
+              setProfile(data as UserProfile)
+              db.user_profiles.put(data as UserProfile)
+            }
+          })
+        return cached
       }
-      const isNotFound = !error || error.code === 'PGRST116'
-      if (!isNotFound) break
-      // Exponential back-off: 400 ms, 800 ms, 1 200 ms …
-      await new Promise(r => setTimeout(r, 400 * (i + 1)))
+
+      // ── 2. No cached profile (first login / new device) ────────────────
+      // New signups: the DB trigger that creates user_profiles runs async.
+      // Retry with back-off before giving up.
+      for (let i = 0; i < retries; i++) {
+        const { data, error } = await supabase
+          .from('user_profiles').select('*').eq('id', userId).maybeSingle()
+        if (data) {
+          setProfile(data as UserProfile)
+          setLoading(false)
+          await db.user_profiles.put(data as UserProfile)
+          return data as UserProfile
+        }
+        const isNotFound = !error || error.code === 'PGRST116'
+        if (!isNotFound) break
+        // Exponential back-off: 400 ms, 800 ms, 1 200 ms …
+        await new Promise(r => setTimeout(r, 400 * (i + 1)))
+      }
+      setLoading(false)
+      return null
+    } catch (err) {
+      // Catch Dexie/IndexedDB errors (common in Capacitor WebViews) so the
+      // loading spinner never gets permanently stuck.
+      console.error('[AuthContext] fetchProfile error:', err)
+      setLoading(false)
+      return null
     }
-    setLoading(false)
-    return null
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // onAuthStateChange fires synchronously with INITIAL_SESSION for the
+    // existing session, so a separate getSession() call is not needed and
+    // would just double-invoke fetchProfile.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
+        // Re-arm the loading gate on actual sign-in events so AuthGuard keeps
+        // showing its spinner while the profile fetches — preventing a false
+        // redirect to /onboarding before the profile arrives.
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          setLoading(true)
+        }
         fetchProfile(session.user.id)
       } else {
         setProfile(null)

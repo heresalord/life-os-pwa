@@ -4,6 +4,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { userSettingsApi } from '../../api/userSettings'
 import { userProfilesApi } from '../../api/userProfiles'
+import { db } from '../../db'
+import type { UserProfile } from '../../db/schema'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { supabase as supa } from '../../lib/supabase'
 const sbAny = supa as any
@@ -59,15 +61,25 @@ export function OnboardingFlow() {
         }, { onConflict: 'id' })
       }
 
-      // 3. Apply timezone + theme locally
+      // 3. Write the updated profile straight into the Dexie cache so that
+      //    refreshProfile() reads onboarded=true from cache immediately,
+      //    instead of returning the stale cached row and doing a slow
+      //    background re-sync that would send us back to /onboarding.
+      const updatedProfile: UserProfile = {
+        ...(profile ?? ({} as UserProfile)),
+        id: user.id,
+        display_name: name.trim(),
+        timezone,
+        onboarded: true,
+      }
+      await db.user_profiles.put(updatedProfile)
+
+      // 4. Apply timezone + theme locally
       setStoreTimezone(timezone)
       setTheme('light')
 
-      // 4. Refresh profile in auth state — wait for it to confirm onboarded=true
+      // 5. Refresh profile in auth state — now reads the correct cached row
       await refreshProfile()
-
-      // 5. Small buffer so AuthGuard re-reads the updated profile before we navigate
-      await new Promise(r => setTimeout(r, 150))
 
       navigate('/', { replace: true })
     } catch (err) {
