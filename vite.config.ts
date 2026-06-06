@@ -28,6 +28,9 @@ export default defineConfig({
       },
       workbox: {
         importScripts: ['push-sw.js'],
+        // Wipe caches from previous broken SW builds so stale files don't
+        // cause a blank screen after a new deployment.
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           // ── Supabase REST API ────────────────────────────────────────────────
           // Use NetworkOnly so the service worker NEVER caches API responses.
@@ -40,10 +43,18 @@ export default defineConfig({
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/,
             handler: 'NetworkOnly',
           },
+          // ── App shell (HTML) ─────────────────────────────────────────────────
+          // NetworkFirst ensures the browser always loads the freshest index.html.
+          // StaleWhileRevalidate was causing blank screens after new deployments:
+          // the old SW served the cached (stale) HTML which referenced old JS
+          // chunk filenames that no longer existed on the server → 404 → blank.
           {
             urlPattern: /\/$/,
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'pages' },
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 5,
+            },
           },
         ],
       },
