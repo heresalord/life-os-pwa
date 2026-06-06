@@ -2,22 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-import { supabase as supa } from '../lib/supabase'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sbAny = supa as any
 
 type AnyItem = { id: string; [key: string]: unknown }
 
 async function writeAgenda(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
-  if (navigator.onLine) {
-    let error = null
-    if (op === 'insert')      ({ error } = await sbAny.from('agenda_blocks').insert([payload]))
-    else if (op === 'update') ({ error } = await sbAny.from('agenda_blocks').update(payload).eq('id', payload.id))
-    else                      ({ error } = await sbAny.from('agenda_blocks').delete().eq('id', payload.id))
-    if (error) await enqueueSync('agenda_blocks', op, payload)
-  } else {
-    await enqueueSync('agenda_blocks', op, payload)
-  }
+  await enqueueSync('agenda_blocks', op, payload)
 }
 
 export function useAgendaMutations(date: string) {

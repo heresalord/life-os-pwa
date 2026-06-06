@@ -2,24 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-import { supabase as supa } from '../lib/supabase'
 import { syncDayScore } from '../lib/scoreUtils'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sbAny = supa as any
 
 type Task = { id: string; [key: string]: unknown }
 type KanbanStatus = 'backlog' | 'todo' | 'in_progress' | 'done'
 
 async function writeTask(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
-  if (navigator.onLine) {
-    let error = null
-    if (op === 'insert')      ({ error } = await sbAny.from('tasks').insert([payload]))
-    else if (op === 'update') ({ error } = await sbAny.from('tasks').update(payload).eq('id', payload.id))
-    else                      ({ error } = await sbAny.from('tasks').delete().eq('id', payload.id))
-    if (error) await enqueueSync('tasks', op, payload)
-  } else {
-    await enqueueSync('tasks', op, payload)
-  }
+  await enqueueSync('tasks', op, payload)
 }
 
 export interface AddTaskPayload {

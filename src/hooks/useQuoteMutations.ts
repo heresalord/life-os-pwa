@@ -2,9 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-import { supabase as supa } from '../lib/supabase'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sbAny = supa as any
 
 /**
  * Mutations scoped to a specific book.
@@ -30,12 +27,7 @@ export function useQuoteMutations(bookId: string) {
         created_at: new Date().toISOString(),
       }
       await db.quotes.add(quote as Parameters<typeof db.quotes.add>[0])
-      if (navigator.onLine) {
-        const { error } = await sbAny.from('quotes').insert([quote])
-        if (error) await enqueueSync('quotes', 'insert', quote)
-      } else {
-        await enqueueSync('quotes', 'insert', quote)
-      }
+      await enqueueSync('quotes', 'insert', quote)
       return quote
     },
     onSuccess: () => invalidate(),
@@ -44,11 +36,7 @@ export function useQuoteMutations(bookId: string) {
   const deleteQuote = useMutation({
     mutationFn: async (id: string) => {
       await db.quotes.delete(id)
-      if (navigator.onLine) {
-        await sbAny.from('quotes').delete().eq('id', id)
-      } else {
-        await enqueueSync('quotes', 'delete', { id })
-      }
+      await enqueueSync('quotes', 'delete', { id })
     },
     onSuccess: () => invalidate(),
   })

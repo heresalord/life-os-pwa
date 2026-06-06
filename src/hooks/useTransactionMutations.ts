@@ -2,32 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-import { supabase as supa } from '../lib/supabase'
 import type { Wallet } from '../db/schema'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sbAny = supa as any
 
 type AnyItem = { id: string; [key: string]: unknown }
 
 async function writeTx(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
-  if (navigator.onLine) {
-    let error = null
-    if (op === 'insert') {
-      const { error: err } = await sbAny.from('transactions').insert([payload])
-      error = err
-    } else if (op === 'update') {
-      // Exclude id and user_id to prevent Postgres write errors on immutable fields
-      const { id, user_id, ...updateFields } = payload
-      const { error: err } = await sbAny.from('transactions').update(updateFields).eq('id', id)
-      error = err
-    } else {
-      const { error: err } = await sbAny.from('transactions').delete().eq('id', payload.id)
-      error = err
-    }
-    if (error) await enqueueSync('transactions', op, payload)
-  } else {
-    await enqueueSync('transactions', op, payload)
-  }
+  await enqueueSync('transactions', op, payload)
 }
 
 async function adjustWalletBalance(
@@ -45,27 +25,13 @@ async function adjustWalletBalance(
   } else {
     diff = type === 'expense' ? -amount : amount
   }
-  if (operation === 'remove') {
-    diff = -diff
-  }
+  if (operation === 'remove') diff = -diff
 
   const newBalance = Number(wallet.balance) + diff
-  await db.wallets.update(walletId, {
-    balance: newBalance,
-    updated_at: new Date().toISOString()
-  })
-
+  await db.wallets.update(walletId, { balance: newBalance, updated_at: new Date().toISOString() })
   const updatedWallet = await db.wallets.get(walletId)
   if (updatedWallet) {
-    if (navigator.onLine) {
-      const { error } = await sbAny.from('wallets').update({
-        balance: newBalance,
-        updated_at: updatedWallet.updated_at
-      }).eq('id', walletId)
-      if (error) await enqueueSync('wallets', 'update', updatedWallet as Record<string, unknown>)
-    } else {
-      await enqueueSync('wallets', 'update', updatedWallet as Record<string, unknown>)
-    }
+    await enqueueSync('wallets', 'update', updatedWallet as Record<string, unknown>)
   }
 }
 

@@ -1,5 +1,4 @@
 import { db } from '../db'
-import { supabase } from './supabase'
 import { enqueueSync } from '../db/syncQueue'
 
 export function calculateDayScore(
@@ -30,8 +29,6 @@ export function calculateDayScore(
   return Math.round((taskPct + moodScore + energyScore) / 3);
 }
 
-const sbAny = supabase as any
-
 export async function syncDayScore(userId: string, date: string) {
   try {
     const tasks = await db.tasks.where('date').equals(date).toArray();
@@ -51,17 +48,7 @@ export async function syncDayScore(userId: string, date: string) {
         updated_at: new Date().toISOString()
       };
       await db.daily_records.put(updatedRecord as Parameters<typeof db.daily_records.put>[0]);
-
-      if (navigator.onLine) {
-        const { error } = await sbAny
-          .from('daily_records')
-          .upsert(updatedRecord, { onConflict: 'user_id,date' });
-        if (error) {
-          await enqueueSync('daily_records', 'update', updatedRecord);
-        }
-      } else {
-        await enqueueSync('daily_records', 'update', updatedRecord);
-      }
+      await enqueueSync('daily_records', 'update', updatedRecord);
       return score;
     }
     return record.day_score;

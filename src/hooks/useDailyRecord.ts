@@ -3,10 +3,9 @@ import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-import { supabase as supa } from '../lib/supabase'
+import { bgSync } from '../lib/localFirst'
+import { queryClient } from '../lib/queryClient'
 import { calculateDayScore } from '../lib/scoreUtils'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sbAny = supa as any
 
 export function useDailyRecord(date: string) {
   const { user } = useAuth()
@@ -15,18 +14,25 @@ export function useDailyRecord(date: string) {
   const query = useQuery({
     queryKey: ['daily_records', date, user?.id],
     enabled: !!user,
-    staleTime: 0,
+    staleTime: 30_000,
     queryFn: async () => {
+      const local = (await db.daily_records.where('date').equals(date).first()) ?? null
+
       if (navigator.onLine) {
-        const { data, error } = await supabase
-          .from('daily_records').select('*')
-          .eq('user_id', user!.id).eq('date', date)
-          .maybeSingle()
-        if (error) throw error
-        if (data) await db.daily_records.put(data as Parameters<typeof db.daily_records.put>[0])
-        return data
+        bgSync(`daily_record-${date}-${user!.id}`, async () => {
+          const { data, error } = await supabase
+            .from('daily_records').select('*')
+            .eq('user_id', user!.id).eq('date', date)
+            .maybeSingle()
+          if (error) throw error
+          if (data) {
+            await db.daily_records.put(data as Parameters<typeof db.daily_records.put>[0])
+            queryClient.setQueryData(['daily_records', date, user!.id], data)
+          }
+        })
       }
-      return db.daily_records.where('date').equals(date).first()
+
+      return local
     }
   })
 
@@ -52,14 +58,7 @@ export function useDailyRecord(date: string) {
         created_at: existing?.created_at ?? new Date().toISOString(),
       }
       await db.daily_records.put(record as Parameters<typeof db.daily_records.put>[0])
-
-      if (navigator.onLine) {
-        const { error } = await sbAny.from('daily_records')
-          .upsert(record, { onConflict: 'user_id,date' })
-        if (error) await enqueueSync('daily_records', existing ? 'update' : 'insert', record)
-      } else {
-        await enqueueSync('daily_records', existing ? 'update' : 'insert', record)
-      }
+      await enqueueSync('daily_records', existing ? 'update' : 'insert', record)
       return record
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['daily_records', date, user?.id] })

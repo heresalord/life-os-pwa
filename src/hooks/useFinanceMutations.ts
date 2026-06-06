@@ -3,20 +3,9 @@ import { db } from '../db'
 import type { Wallet, Budget, SavingsGoal, Debt } from '../db/schema'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-import { supabase as supa } from '../lib/supabase'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sbAny = supa as any
 
 async function write(table: string, op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
-  if (navigator.onLine) {
-    let error = null
-    if (op === 'insert')      ({ error } = await sbAny.from(table).insert([payload]))
-    else if (op === 'update') ({ error } = await sbAny.from(table).update(payload).eq('id', payload.id))
-    else                      ({ error } = await sbAny.from(table).delete().eq('id', payload.id))
-    if (error) await enqueueSync(table, op, payload)
-  } else {
-    await enqueueSync(table, op, payload)
-  }
+  await enqueueSync(table, op, payload)
 }
 
 export function useFinanceMutations() {

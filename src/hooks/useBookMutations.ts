@@ -2,37 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
-import { supabase as supa } from '../lib/supabase'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sbAny = supa as any
 
 type AnyItem = { id: string; [key: string]: unknown }
 type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
 
-const SUPABASE_BOOK_COLUMNS = [
-  'id','user_id','title','author','status','started_at','finished_at',
-  'current_page','total_pages','tags','reflection','abandon_reason',
-  'added_at','created_at','updated_at','cover_url','rating',
-  'genre','isbn','language','source','reading_sessions','shelves'
-] as const
-
-function toSupabasePayload(payload: Record<string, unknown>) {
-  return Object.fromEntries(
-    Object.entries(payload).filter(([k]) => (SUPABASE_BOOK_COLUMNS as readonly string[]).includes(k))
-  )
-}
-
 async function writeBook(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
-  if (navigator.onLine) {
-    let error = null
-    const safe = op !== 'delete' ? toSupabasePayload(payload) : payload
-    if (op === 'insert')      ({ error } = await sbAny.from('books').insert([safe]))
-    else if (op === 'update') ({ error } = await sbAny.from('books').update(safe).eq('id', payload.id))
-    else                      ({ error } = await sbAny.from('books').delete().eq('id', payload.id))
-    if (error) await enqueueSync('books', op, payload)
-  } else {
-    await enqueueSync('books', op, payload)
-  }
+  await enqueueSync('books', op, payload)
 }
 
 export function useBookMutations() {
@@ -155,11 +130,7 @@ export function useBookMutations() {
               created_at: new Date().toISOString()
             }
             await db.goal_events.add(event as any)
-            if (navigator.onLine) {
-              await sbAny.from('goal_events').insert([event])
-            } else {
-              await enqueueSync('goal_events', 'insert', event)
-            }
+            await enqueueSync('goal_events', 'insert', event)
             qc.invalidateQueries({ queryKey: ['goal_events'] })
             qc.invalidateQueries({ queryKey: ['goals'] })
           }

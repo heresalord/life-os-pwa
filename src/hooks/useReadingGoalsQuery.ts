@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
+import { bgSync } from '../lib/localFirst'
+import { queryClient } from '../lib/queryClient'
 import type { ReadingGoal } from '../db/schema'
 import { enqueueSync } from '../db/syncQueue'
-
-const supa = supabase as any
 
 export function useReadingGoalsQuery() {
   const { user } = useAuth()
@@ -14,19 +14,21 @@ export function useReadingGoalsQuery() {
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
+      const local = await db.reading_goals.where('user_id').equals(user!.id).toArray()
+
       if (navigator.onLine) {
-        const { data, error } = await supabase
-          .from('reading_goals')
-          .select('*')
-          .eq('user_id', user!.id)
-        if (error) throw error
-        if (data) {
-          await db.reading_goals.bulkPut(data as ReadingGoal[])
-          return data as ReadingGoal[]
-        }
-        return []
+        bgSync(`reading_goals-${user!.id}`, async () => {
+          const { data, error } = await supabase
+            .from('reading_goals').select('*').eq('user_id', user!.id)
+          if (error) throw error
+          if (data) {
+            await db.reading_goals.bulkPut(data as ReadingGoal[])
+            queryClient.setQueryData(['reading_goals', user!.id], data)
+          }
+        })
       }
-      return db.reading_goals.where('user_id').equals(user!.id).toArray()
+
+      return local as ReadingGoal[]
     }
   })
 }
@@ -41,11 +43,11 @@ export function useSaveReadingGoalMutation() {
       target_pages: number | null
     }) => {
       if (!user) return
-      
+
       const existing = await db.reading_goals
         .where({ user_id: user.id, year: payload.year })
         .first()
-        
+
       const goal: ReadingGoal = {
         id: existing?.id || crypto.randomUUID(),
         user_id: user.id,
@@ -55,18 +57,9 @@ export function useSaveReadingGoalMutation() {
         created_at: existing?.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
-      
+
       await db.reading_goals.put(goal)
-      
-      if (navigator.onLine) {
-        const { error } = await supa.from('reading_goals').upsert([goal], { onConflict: 'id', ignoreDuplicates: false })
-        if (error) {
-          await enqueueSync('reading_goals', 'insert', goal)
-        }
-      } else {
-        await enqueueSync('reading_goals', 'insert', goal)
-      }
-      
+      await enqueueSync('reading_goals', 'insert', goal)
       return goal
     },
     onSettled: () => {

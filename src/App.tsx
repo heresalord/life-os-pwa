@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
 import { AuthGuard } from './components/auth/AuthGuard'
 import { AppShell } from './components/layout/AppShell'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
@@ -32,6 +33,7 @@ function App() {
   const isOnline = useOnlineStatus()
 
   return (
+    <AuthProvider>
     <BrowserRouter>
       {/* Global offline banner */}
       {!isOnline && (
@@ -82,6 +84,7 @@ function App() {
         </Routes>
       </Suspense>
     </BrowserRouter>
+    </AuthProvider>
   )
 }
 

@@ -2,7 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
+import { bgSync } from '../lib/localFirst'
+import { queryClient } from '../lib/queryClient'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useBooksQuery() {
   const { user } = useAuth()
   return useQuery({
@@ -10,24 +13,28 @@ export function useBooksQuery() {
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
+      const local = await db.books.orderBy('created_at').reverse().toArray()
+
       if (navigator.onLine) {
-        const { data: rawData, error } = await supabase
-          .from('books').select('*').eq('user_id', user!.id).order('created_at', { ascending: false })
-        if (error) throw error
-        if (rawData) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const data = rawData as any[]
-          const localBooks = await db.books.bulkGet(data.map(b => b.id))
-          const merged = data.map((remote, i) => {
-            const local = localBooks[i]
-            return (!remote.cover_url && local?.cover_url) ? { ...remote, cover_url: local.cover_url } : remote
-          })
-          await db.books.bulkPut(merged as Parameters<typeof db.books.bulkPut>[0])
-          return merged
-        }
-        return []
+        bgSync(`books-${user!.id}`, async () => {
+          const { data: rawData, error } = await supabase
+            .from('books').select('*').eq('user_id', user!.id).order('created_at', { ascending: false })
+          if (error) throw error
+          if (rawData) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const data = rawData as any[]
+            const localBooks = await db.books.bulkGet(data.map(b => b.id))
+            const merged = data.map((remote, i) => {
+              const loc = localBooks[i]
+              return (!remote.cover_url && loc?.cover_url) ? { ...remote, cover_url: loc.cover_url } : remote
+            })
+            await db.books.bulkPut(merged as Parameters<typeof db.books.bulkPut>[0])
+            queryClient.setQueryData(['books', user!.id], merged)
+          }
+        })
       }
-      return db.books.orderBy('created_at').reverse().toArray()
+
+      return local
     }
   })
 }
@@ -39,21 +46,31 @@ export function useBookQuery(id: string) {
     enabled: !!user && !!id,
     staleTime: 30_000,
     queryFn: async () => {
-      if (navigator.onLine) {
+      const local = await db.books.get(id)
+
+      if (!local && navigator.onLine) {
         const { data, error } = await supabase
-          .from('books')
-          .select('*')
-          .eq('id', id)
-          .eq('user_id', user!.id)
-          .single()
+          .from('books').select('*').eq('id', id).eq('user_id', user!.id).single()
         if (error) throw error
-        if (data) {
-          await db.books.put(data as any)
-          return data
-        }
-        return null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (data) await db.books.put(data as any)
+        return data ?? null
       }
-      return db.books.get(id)
+
+      if (navigator.onLine && local) {
+        bgSync(`book-${id}-${user!.id}`, async () => {
+          const { data, error } = await supabase
+            .from('books').select('*').eq('id', id).eq('user_id', user!.id).single()
+          if (error) throw error
+          if (data) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await db.books.put(data as any)
+            queryClient.setQueryData(['book', id, user!.id], data)
+          }
+        })
+      }
+
+      return local ?? null
     }
   })
 }
