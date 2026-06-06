@@ -12,10 +12,10 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 export async function registerPushSW(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null
   try {
-    const reg = await navigator.serviceWorker.register('/push-sw.js', { scope: '/' })
+    const reg = await navigator.serviceWorker.ready
     return reg
   } catch (e) {
-    console.warn('[Push] SW registration failed', e)
+    console.warn('[Push] Active service worker ready failed', e)
     return null
   }
 }
@@ -63,8 +63,8 @@ export async function subscribeToPush(userId: string): Promise<PushResult> {
 
 export async function unsubscribeFromPush(userId: string): Promise<void> {
   try {
-    const reg = await navigator.serviceWorker.getRegistration('/push-sw.js')
-    const sub = await reg?.pushManager.getSubscription()
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.getSubscription()
     if (sub) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sbAny = supabase as any
@@ -81,8 +81,9 @@ export async function unsubscribeFromPush(userId: string): Promise<void> {
 
 export async function isPushSubscribed(): Promise<boolean> {
   try {
-    const reg = await navigator.serviceWorker.getRegistration('/push-sw.js')
-    const sub = await reg?.pushManager.getSubscription()
+    if (!('serviceWorker' in navigator)) return false
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.getSubscription()
     return !!sub
   } catch {
     return false

@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { displayDate } from '../../lib/dateUtils'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { NavLink } from 'react-router-dom'
+import { NotificationCenter } from '../notifications/NotificationCenter'
 import { CalendarDays, Inbox, FileText } from 'lucide-react'
 
 const pathTitleMap: Record<string, string> = {
@@ -85,6 +86,9 @@ export function DesktopTopbar() {
 
         {/* Sync status */}
         <SyncStatusDot />
+
+        {/* Notifications */}
+        <NotificationCenter />
 
         {/* Search */}
         <button

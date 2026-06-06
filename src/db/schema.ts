@@ -30,3 +30,15 @@ export type Budget = Database['public']['Tables']['budgets']['Row']
 export type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
 export type Debt = Database['public']['Tables']['debts']['Row']
 export type Project = Database['public']['Tables']['projects']['Row']
+
+export interface Notification {
+  id: string
+  user_id: string
+  title: string
+  body: string
+  type: string
+  read: boolean
+  action_url: string | null
+  created_at: string
+}
+

@@ -4,6 +4,8 @@ import { AuthProvider } from './contexts/AuthContext'
 import { AuthGuard } from './components/auth/AuthGuard'
 import { AppShell } from './components/layout/AppShell'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { useAuth } from './hooks/useAuth'
+import { useCapacitorPush } from './hooks/useCapacitorPush'
 
 const SignInPage = React.lazy(() => import('./pages/auth/SignInPage').then(m => ({ default: m.SignInPage })))
 const SignUpPage = React.lazy(() => import('./pages/auth/SignUpPage').then(m => ({ default: m.SignUpPage })))
@@ -29,11 +31,18 @@ const LoadingFallback = () => (
   </div>
 )
 
+function PushNotificationManager() {
+  const { user } = useAuth()
+  useCapacitorPush(user?.id)
+  return null
+}
+
 function App() {
   const isOnline = useOnlineStatus()
 
   return (
     <AuthProvider>
+    <PushNotificationManager />
     <BrowserRouter>
       {/* Global offline banner */}
       {!isOnline && (

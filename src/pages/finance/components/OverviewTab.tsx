@@ -21,28 +21,28 @@ function MiniBarChart({
   const show = data.filter(d => d.expense > 0 || d.income > 0).length > 0
   if (!show) return null
 
+  // h-16 = 64px — use pixel heights so percentages don't resolve to 0
+  // inside a flex column that has no explicit height of its own.
+  const PX = 64
+
   return (
     <div className="flex items-end w-full h-16 gap-0.5 sm:gap-1">
       {data.map(d => {
-        const hasExpense = showType !== 'income' && d.expense > 0
-        const hasIncome = showType !== 'expense' && d.income > 0
+        const showExp = showType !== 'income' && d.expense > 0
+        const showInc = showType !== 'expense' && d.income > 0
+        const expPx   = Math.max(2, Math.round((d.expense / maxVal) * PX))
+        const incPx   = Math.max(2, Math.round((d.income  / maxVal) * PX))
 
         return (
-          <div key={d.date} className="flex-1 flex flex-col-reverse gap-0.5 items-stretch justify-start">
-            {hasExpense && (
-              <div
-                className="bg-accent/60 rounded transition-all"
-                style={{ height: `${(d.expense / maxVal) * 100}%` }}
-              />
+          <div key={d.date} className="flex-1 flex flex-col-reverse gap-0.5 items-stretch">
+            {showExp && (
+              <div className="bg-accent/60 rounded-sm transition-all duration-300" style={{ height: expPx }} />
             )}
-            {hasIncome && (
-              <div
-                className="bg-success/50 rounded transition-all"
-                style={{ height: `${(d.income / maxVal) * 100}%` }}
-              />
+            {showInc && (
+              <div className="bg-success/50 rounded-sm transition-all duration-300" style={{ height: incPx }} />
             )}
-            {!hasExpense && !hasIncome && (
-              <div className="bg-surface-2 rounded-sm" style={{ height: '4px' }} />
+            {!showExp && !showInc && (
+              <div className="bg-surface-2 rounded-sm" style={{ height: 3 }} />
             )}
           </div>
         )

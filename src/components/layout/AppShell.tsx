@@ -12,6 +12,7 @@ import { InboxFAB } from '../inbox/InboxFAB'
 import { InstallBanner } from './InstallBanner'
 import { DesktopSidebar } from './DesktopSidebar'
 import { DesktopTopbar } from './DesktopTopbar'
+import { NotificationCenter } from '../notifications/NotificationCenter'
 import { useNavSync } from '../../hooks/useNavSync'
 import clsx from 'clsx'
 
@@ -98,6 +99,10 @@ export function AppShell({ children }: AppShellProps) {
 
             <div className="flex items-center gap-3">
               <SyncStatusDot />
+              
+              {/* Notifications */}
+              <NotificationCenter />
+              
               <button
                 onClick={() => navigate('/search')}
                 className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors"

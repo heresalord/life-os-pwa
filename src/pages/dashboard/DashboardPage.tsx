@@ -299,19 +299,19 @@ export function DashboardPage() {
       `}</style>
 
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-        <div>
+      <header className="flex items-center justify-between gap-3 pt-1">
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-text-secondary text-sm mb-0.5">
             {icon}<span>{greeting}</span>
           </div>
-          <h2 className="text-2xl font-display text-text">{profile?.display_name ?? 'Welcome'}</h2>
+          <h2 className="text-xl font-display text-text truncate">{profile?.display_name ?? 'Welcome'}</h2>
         </div>
 
         <div className="flex items-center gap-2">
           {isEditing ? (
             <>
               {hiddenWidgets.length > 0 && (
-                <div className="relative" ref={addMenuRef}>
+                <div className="relative flex-shrink-0" ref={addMenuRef}>
                   <button
                     onClick={() => setShowAddMenu(v => !v)}
                     className="flex items-center gap-1.5 px-3.5 py-2 bg-accent/10 border border-accent/20 text-accent text-xs font-semibold rounded-xl hover:bg-accent/20 transition-all shadow-sm"

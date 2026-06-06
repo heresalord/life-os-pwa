@@ -12,9 +12,14 @@ export function useNotesQuery(date?: string) {
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
-      const local = date
-        ? await db.notes.where('date').equals(date).reverse().sortBy('updated_at')
-        : await db.notes.orderBy('updated_at').reverse().toArray()
+      // updated_at is not a Dexie index — always fetch all and sort in JS
+      const all = await (date
+        ? db.notes.where('date').equals(date).toArray()
+        : db.notes.toArray()
+      )
+      const local = all.sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      )
 
       if (navigator.onLine) {
         bgSync(`notes-${date ?? 'all'}-${user!.id}`, async () => {
