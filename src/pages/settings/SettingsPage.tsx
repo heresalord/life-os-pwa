@@ -146,7 +146,7 @@ const TABS: { id: Tab; label: string; icon: React.FC<any> }[] = [
 
 // ─── SettingsPage ─────────────────────────────────────────────────────────────
 export function SettingsPage() {
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const { data: settings, upsert } = useUserSettings()
   const { theme, setTheme, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours } = useAppStore()
 
@@ -216,6 +216,13 @@ export function SettingsPage() {
     try {
       if (user && displayName) {
         await supabaseAny.from('user_profiles').update({ display_name: displayName }).eq('id', user.id)
+        // Keep Dexie in sync so AuthContext (sidebar/topbar) reflects the new
+        // name immediately without requiring a page reload.
+        const cached = await db.user_profiles.get(user.id)
+        if (cached) {
+          await db.user_profiles.put({ ...cached, display_name: displayName })
+        }
+        await refreshProfile()
       }
       await upsert.mutateAsync({
         currency, theme,

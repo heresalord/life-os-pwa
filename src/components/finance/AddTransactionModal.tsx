@@ -182,7 +182,15 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">From Account</label>
-                  <select value={walletId} onChange={e => setWalletId(e.target.value)}
+                  <select value={walletId} onChange={e => {
+                    const newFrom = e.target.value
+                    setWalletId(newFrom)
+                    // If the new From would match To, pick the first other wallet
+                    if (newFrom === transferToId) {
+                      const fallback = activeWallets.find(w => w.id !== newFrom)
+                      setTransferToId(fallback?.id ?? '')
+                    }
+                  }}
                     className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-accent outline-none appearance-none">
                     {activeWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>

@@ -218,7 +218,15 @@ function TransferSheet({ wallets, currency, onClose }: { wallets: Wallet[]; curr
       <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
         <div>
           <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">From</label>
-          <select value={fromId} onChange={e => setFromId(e.target.value)}
+          <select value={fromId} onChange={e => {
+            const newFrom = e.target.value
+            setFromId(newFrom)
+            // If the new From would match To, pick the first other wallet
+            if (newFrom === toId) {
+              const fallback = wallets.find(w => w.id !== newFrom)
+              setToId(fallback?.id ?? '')
+            }
+          }}
             className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-accent outline-none appearance-none">
             {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
