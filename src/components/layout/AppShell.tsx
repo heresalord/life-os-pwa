@@ -14,6 +14,7 @@ import { DesktopSidebar } from './DesktopSidebar'
 import { DesktopTopbar } from './DesktopTopbar'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { useNavSync } from '../../hooks/useNavSync'
+import { ErrorBoundary } from '../ErrorBoundary'
 import clsx from 'clsx'
 
 export const ALL_NAV_OPTIONS = [
@@ -101,7 +102,9 @@ export function AppShell({ children }: AppShellProps) {
               <SyncStatusDot />
               
               {/* Notifications */}
-              <NotificationCenter />
+              <ErrorBoundary inline>
+                <NotificationCenter />
+              </ErrorBoundary>
               
               <button
                 onClick={() => navigate('/search')}

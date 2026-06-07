@@ -6,6 +6,8 @@ import { AppShell } from './components/layout/AppShell'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useAuth } from './hooks/useAuth'
 import { useCapacitorPush } from './hooks/useCapacitorPush'
+import { NotificationProvider } from './contexts/NotificationContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const SignInPage = React.lazy(() => import('./pages/auth/SignInPage').then(m => ({ default: m.SignInPage })))
 const SignUpPage = React.lazy(() => import('./pages/auth/SignUpPage').then(m => ({ default: m.SignUpPage })))
@@ -41,59 +43,63 @@ function App() {
   const isOnline = useOnlineStatus()
 
   return (
-    <AuthProvider>
-    <PushNotificationManager />
-    <BrowserRouter>
-      {/* Global offline banner */}
-      {!isOnline && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-warning/20 border-b border-warning/40 text-warning text-xs text-center py-1.5 font-medium">
-          ⚡ Offline — changes will sync when you reconnect
-        </div>
-      )}
+    <ErrorBoundary>
+      <AuthProvider>
+        <PushNotificationManager />
+        <BrowserRouter>
+          {/* Global offline banner */}
+          {!isOnline && (
+            <div className="fixed top-0 left-0 right-0 z-[100] bg-warning/20 border-b border-warning/40 text-warning text-xs text-center py-1.5 font-medium">
+              ⚡ Offline — changes will sync when you reconnect
+            </div>
+          )}
 
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          {/* Public auth routes */}
-          <Route path="/signin" element={<SignInPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              {/* Public auth routes */}
+              <Route path="/signin" element={<SignInPage />} />
+              <Route path="/signup" element={<SignUpPage />} />
 
-          {/* Protected routes — wrapped in AuthGuard then AppShell */}
-          <Route element={<AuthGuard />}>
-            <Route path="/onboarding" element={<OnboardingFlow />} />
+              {/* Protected routes — wrapped in AuthGuard then AppShell */}
+              <Route element={<AuthGuard />}>
+                <Route path="/onboarding" element={<OnboardingFlow />} />
 
-            {/* All app routes use the AppShell */}
-            <Route
-              path="/*"
-              element={
-                <AppShell>
-                  <Routes>
-                    <Route path="/"         element={<DashboardPage />} />
-                    <Route path="/day"      element={<DailyLogPage />} />
-                    <Route path="/day/history" element={<DailyLogHistoryPage />} />
-                    <Route path="/day/:date" element={<DailyLogPage />} />
-                    <Route path="/tasks"    element={<TasksPage />} />
-                    <Route path="/finance"  element={<FinancePage />} />
-                    <Route path="/goals"    element={<GoalsPage />} />
-                    <Route path="/goals/:id" element={<GoalDetailPage />} />
-                    <Route path="/books"    element={<BooksPage />} />
-                    <Route path="/books/:id" element={<BookDetailPage />} />
-                    <Route path="/agenda"   element={<AgendaPage />} />
-                    <Route path="/inbox"    element={<InboxPage />} />
-                    <Route path="/notes"    element={<NotesPage />} />
-                    <Route path="/search"   element={<SearchPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="*"         element={<Navigate to="/" replace />} />
-                  </Routes>
-                </AppShell>
-              }
-            />
-          </Route>
+                {/* All app routes use the AppShell */}
+                <Route
+                  path="/*"
+                  element={
+                    <NotificationProvider>
+                      <AppShell>
+                        <Routes>
+                          <Route path="/"         element={<DashboardPage />} />
+                          <Route path="/day"      element={<DailyLogPage />} />
+                          <Route path="/day/history" element={<DailyLogHistoryPage />} />
+                          <Route path="/day/:date" element={<DailyLogPage />} />
+                          <Route path="/tasks"    element={<TasksPage />} />
+                          <Route path="/finance"  element={<FinancePage />} />
+                          <Route path="/goals"    element={<GoalsPage />} />
+                          <Route path="/goals/:id" element={<GoalDetailPage />} />
+                          <Route path="/books"    element={<BooksPage />} />
+                          <Route path="/books/:id" element={<BookDetailPage />} />
+                          <Route path="/agenda"   element={<AgendaPage />} />
+                          <Route path="/inbox"    element={<InboxPage />} />
+                          <Route path="/notes"    element={<NotesPage />} />
+                          <Route path="/search"   element={<SearchPage />} />
+                          <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="*"         element={<Navigate to="/" replace />} />
+                        </Routes>
+                      </AppShell>
+                    </NotificationProvider>
+                  }
+                />
+              </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
-    </AuthProvider>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 

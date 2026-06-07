@@ -8,6 +8,7 @@ import { SyncStatusDot } from '../SyncStatusDot'
 import { NavLink } from 'react-router-dom'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { CalendarDays, Inbox, FileText } from 'lucide-react'
+import { ErrorBoundary } from '../ErrorBoundary'
 
 const pathTitleMap: Record<string, string> = {
   '/':         'Dashboard',
@@ -88,7 +89,9 @@ export function DesktopTopbar() {
         <SyncStatusDot />
 
         {/* Notifications */}
-        <NotificationCenter />
+        <ErrorBoundary inline>
+          <NotificationCenter />
+        </ErrorBoundary>
 
         {/* Search */}
         <button
