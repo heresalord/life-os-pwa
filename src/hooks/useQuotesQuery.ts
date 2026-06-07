@@ -27,10 +27,14 @@ export function useQuotesQuery(bookId?: string | null) {
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
-      // ── 1. Read from Dexie + manual book join (instant) ──────────────
+      // created_at is not a Dexie index on quotes — fetch then sort in memory
       const localQuotes = bookId
-        ? await db.quotes.where('book_id').equals(bookId).reverse().sortBy('created_at')
-        : await db.quotes.orderBy('created_at').reverse().toArray()
+        ? (await db.quotes.where('book_id').equals(bookId).toArray()).sort(
+            (a, b) => (b.created_at || '').localeCompare(a.created_at || '')
+          )
+        : (await db.quotes.toArray()).sort(
+            (a, b) => (b.created_at || '').localeCompare(a.created_at || '')
+          )
 
       const bookIds = [...new Set(localQuotes.map(q => q.book_id))]
       const books = await db.books.bulkGet(bookIds)

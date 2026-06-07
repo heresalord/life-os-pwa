@@ -96,17 +96,33 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const markAsRead = useMutation({
     mutationFn: async (id: string) => {
+      // 1. Always update Dexie immediately (instant UI feedback)
       const local = await db.notifications.get(id)
       if (local) {
         await db.notifications.put({ ...local, read: true })
       }
-      
+
+      // 2. Try to sync to Supabase; if it fails queue it for later
       if (navigator.onLine) {
-        const { error } = await (supabase as any)
-          .from('notifications')
-          .update({ read: true })
-          .eq('id', id)
-        if (error) throw error
+        try {
+          const { error } = await (supabase as any)
+            .from('notifications')
+            .update({ read: true })
+            .eq('id', id)
+          if (error) throw error
+        } catch (err) {
+          console.warn('[markAsRead] Supabase sync failed, queuing:', err)
+          const queueItem = {
+            id: crypto.randomUUID(),
+            table: 'notifications',
+            operation: 'update' as const,
+            payload: { id, read: true },
+            created_at: Date.now(),
+            retries: 0,
+            synced: false
+          }
+          await db.sync_queue.put(queueItem)
+        }
       } else {
         const queueItem = {
           id: crypto.randomUUID(),
@@ -120,7 +136,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         await db.sync_queue.put(queueItem)
       }
     },
-    onSuccess: () => {
+    // onSettled runs whether the mutation succeeded or failed — always refresh UI
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] })
     }
   })
@@ -128,20 +145,38 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const markAllAsRead = useMutation({
     mutationFn: async () => {
       if (!user) return
-      
+
+      // 1. Always update all unread in Dexie immediately
       const allLocal = await db.notifications.toArray()
       const toUpdate = allLocal.filter(n => !n.read)
       for (const notif of toUpdate) {
         await db.notifications.put({ ...notif, read: true })
       }
 
+      // 2. Try to sync to Supabase; if it fails queue each for later
       if (navigator.onLine) {
-        const { error } = await (supabase as any)
-          .from('notifications')
-          .update({ read: true })
-          .eq('user_id', user.id)
-          .eq('read', false)
-        if (error) throw error
+        try {
+          const { error } = await (supabase as any)
+            .from('notifications')
+            .update({ read: true })
+            .eq('user_id', user.id)
+            .eq('read', false)
+          if (error) throw error
+        } catch (err) {
+          console.warn('[markAllAsRead] Supabase sync failed, queuing:', err)
+          for (const notif of toUpdate) {
+            const queueItem = {
+              id: crypto.randomUUID(),
+              table: 'notifications',
+              operation: 'update' as const,
+              payload: { id: notif.id, read: true },
+              created_at: Date.now(),
+              retries: 0,
+              synced: false
+            }
+            await db.sync_queue.put(queueItem)
+          }
+        }
       } else {
         for (const notif of toUpdate) {
           const queueItem = {
@@ -157,7 +192,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         }
       }
     },
-    onSuccess: () => {
+    // onSettled runs whether the mutation succeeded or failed — always refresh UI
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] })
     }
   })

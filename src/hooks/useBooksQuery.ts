@@ -13,7 +13,10 @@ export function useBooksQuery() {
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
-      const local = await db.books.orderBy('created_at').reverse().toArray()
+      // created_at is not a Dexie index on books — sort in memory instead
+      const local = (await db.books.toArray()).sort(
+        (a, b) => (b.created_at || '').localeCompare(a.created_at || '')
+      )
 
       if (navigator.onLine) {
         bgSync(`books-${user!.id}`, async () => {
