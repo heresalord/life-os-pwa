@@ -37,10 +37,11 @@ export function BudgetsTab({ currency }: { currency: string }) {
   const [editCategory, setEditCategory]   = useState('')
   const [editAmount, setEditAmount]       = useState('')
   const [editPeriod, setEditPeriod]       = useState<Budget['period']>('monthly')
-  const [error, setError]                 = useState<string | null>(null)
+  const [addError, setAddError]           = useState<string | null>(null)
+  const [editError, setEditError]         = useState<string | null>(null)
 
   const openEdit = (b: Budget) => {
-    setError(null)
+    setEditError(null)
     setEditingId(b.id)
     setEditCategory(b.category)
     setEditAmount(String(b.limit_amount))
@@ -49,7 +50,7 @@ export function BudgetsTab({ currency }: { currency: string }) {
 
   const cancelEdit = () => {
     setEditingId(null)
-    setError(null)
+    setEditError(null)
   }
 
   const handleSave = (id: string) => {
@@ -58,10 +59,10 @@ export function BudgetsTab({ currency }: { currency: string }) {
       b => b.id !== id && b.category.toLowerCase() === editCategory.toLowerCase() && b.period === editPeriod
     )
     if (isDuplicate) {
-      setError(`A ${editPeriod} budget for "${editCategory}" already exists.`)
+      setEditError(`A ${editPeriod} budget for "${editCategory}" already exists.`)
       return
     }
-    setError(null)
+    setEditError(null)
     updateBudget.mutate({
       id,
       updates: { category: editCategory, period: editPeriod, limit_amount: Number(editAmount) },
@@ -92,11 +93,11 @@ export function BudgetsTab({ currency }: { currency: string }) {
     const isDuplicate = budgets.some(
       b => b.category.toLowerCase() === newCategory.toLowerCase() && b.period === newPeriod
     )
-    if (isDuplicate) {
-      setError(`A ${newPeriod} budget for "${newCategory}" already exists.`)
+      if (isDuplicate) {
+      setAddError(`A ${newPeriod} budget for "${newCategory}" already exists.`)
       return
     }
-    setError(null)
+    setAddError(null)
     addBudget.mutate({ category: newCategory, period: newPeriod, limit_amount: Number(newAmount), currency })
     setIsAdding(false)
     setNewAmount('')
@@ -107,7 +108,7 @@ export function BudgetsTab({ currency }: { currency: string }) {
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium text-text">Budgets</h2>
         <button
-          onClick={() => { setIsAdding(true); setEditingId(null); setError(null) }}
+          onClick={() => { setIsAdding(true); setEditingId(null); setAddError(null); setEditError(null) }}
           className="flex items-center gap-1.5 text-sm bg-accent/10 text-accent px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-colors"
         >
           <Plus size={16} /> New Budget
@@ -141,9 +142,9 @@ export function BudgetsTab({ currency }: { currency: string }) {
               <option value="yearly">Yearly</option>
             </select>
           </div>
-          {error && <p className="text-xs text-danger font-medium">{error}</p>}
+          {addError && <p className="text-xs text-danger font-medium">{addError}</p>}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => { setIsAdding(false); setError(null) }} className="px-4 py-2 text-sm text-text-muted hover:text-text">Cancel</button>
+            <button onClick={() => { setIsAdding(false); setAddError(null) }} className="px-4 py-2 text-sm text-text-muted hover:text-text">Cancel</button>
             <button onClick={handleAdd} className="px-4 py-2 text-sm bg-accent text-bg rounded-lg hover:bg-accent-dim transition-colors">Save</button>
           </div>
         </div>
@@ -193,7 +194,7 @@ export function BudgetsTab({ currency }: { currency: string }) {
                       <option value="yearly">Yearly</option>
                     </select>
                   </div>
-                  {error && <p className="text-xs text-danger font-medium">{error}</p>}
+                  {editError && <p className="text-xs text-danger font-medium">{editError}</p>}
                   <div className="flex gap-2 justify-end">
                     <button onClick={cancelEdit}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-muted hover:text-text rounded-lg hover:bg-surface-2 transition-colors">

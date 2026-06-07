@@ -225,7 +225,7 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
                 <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">Adjustments</span>
               </div>
-              <span className={clsx('text-sm font-medium', adjustments >= 0 ? 'text-amber-400' : 'text-amber-400')}>
+              <span className={clsx('text-sm font-medium', adjustments >= 0 ? 'text-success' : 'text-danger')}>
                 {adjustments >= 0 ? '+' : ''}{adjustments.toFixed(2)} {currency}
               </span>
             </div>

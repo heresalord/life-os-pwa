@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Sun, Moon, Search, Settings, X } from 'lucide-react'
+import { Sun, Moon, Search, Settings, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
@@ -138,7 +138,7 @@ export function DesktopTopbar() {
                     onClick={() => { signOut(); setMenuOpen(false) }}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
                   >
-                    <X size={15} />
+                    <LogOut size={15} />
                     Sign Out
                   </button>
                 </nav>

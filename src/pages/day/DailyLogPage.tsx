@@ -1054,7 +1054,7 @@ export function DailyLogPage() {
             {wizardStep === 4 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-text">Structured Reflection</h3>
-                <p className="text-xs text-text-secondary">Take a brief moment to log went went well and tomorrow's focus.</p>
+                <p className="text-xs text-text-secondary">Take a brief moment to log what went well and tomorrow's focus.</p>
                 
                 <div className="space-y-3 pr-1">
                   <div>

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
-  CalendarDays, Inbox, FileText, Search, Settings, LogOut
+  CalendarDays, Inbox, FileText, Search, Settings, LogOut, Heart
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
@@ -13,11 +13,12 @@ const navGroups = [
   {
     title: 'Core',
     items: [
-      { to: '/',        icon: LayoutDashboard, label: 'Home'    },
-      { to: '/tasks',   icon: CheckSquare,     label: 'Tasks'   },
-      { to: '/finance', icon: DollarSign,      label: 'Finance' },
-      { to: '/goals',   icon: Target,          label: 'Goals'   },
-      { to: '/books',   icon: BookOpen,        label: 'Books'   },
+      { to: '/',        icon: LayoutDashboard, label: 'Home'      },
+      { to: '/day',     icon: Heart,           label: 'Daily Log' },
+      { to: '/tasks',   icon: CheckSquare,     label: 'Tasks'     },
+      { to: '/finance', icon: DollarSign,      label: 'Finance'   },
+      { to: '/goals',   icon: Target,          label: 'Goals'     },
+      { to: '/books',   icon: BookOpen,        label: 'Books'     },
     ]
   },
   {
