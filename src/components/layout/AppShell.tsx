@@ -2,7 +2,8 @@ import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
-  CalendarDays, Inbox, FileText, Search, Settings, LogOut, Heart
+  CalendarDays, Inbox, FileText, Search, Settings, LogOut, Heart,
+  Sun, Moon, Clock, Briefcase
 } from 'lucide-react'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useAuth } from '../../hooks/useAuth'
@@ -22,6 +23,7 @@ export const ALL_NAV_OPTIONS = [
   { key: 'tasks',   to: '/tasks',   icon: CheckSquare,  label: 'Tasks'   },
   { key: 'finance', to: '/finance', icon: DollarSign,   label: 'Finance' },
   { key: 'goals',   to: '/goals',   icon: Target,       label: 'Goals'   },
+  { key: 'projects',to: '/projects',icon: Briefcase,    label: 'Projects'},
   { key: 'books',   to: '/books',   icon: BookOpen,     label: 'Books'   },
   { key: 'agenda',  to: '/agenda',  icon: CalendarDays, label: 'Agenda'  },
   { key: 'inbox',   to: '/inbox',   icon: Inbox,        label: 'Inbox'   },
@@ -148,11 +150,11 @@ export function AppShell({ children }: AppShellProps) {
 
                         <NavLink to="/day?guided=morning" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <span className="text-base leading-none">☀️</span> Start Morning
+                          <Sun size={15} /> Start Morning
                         </NavLink>
                         <NavLink to="/day?guided=evening" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <span className="text-base leading-none">🌙</span> Start Evening
+                          <Moon size={15} /> Start Evening
                         </NavLink>
 
                         <div className="border-t border-border my-1" />
@@ -183,8 +185,8 @@ export function AppShell({ children }: AppShellProps) {
 
         {isTimeTravel && (
           <div className="bg-timetravel/15 border-b border-timetravel/30 px-4 py-2 flex items-center justify-between">
-            <span className="text-xs text-timetravel font-medium">
-              🕰 Viewing {displayDate(selectedDate, 'MMMM d, yyyy')}
+            <span className="flex items-center gap-1.5 text-xs text-timetravel font-medium">
+              <Clock size={14} /> Viewing {displayDate(selectedDate, 'MMMM d, yyyy')}
             </span>
             <button
               onClick={() => useAppStore.getState().resetToToday()}

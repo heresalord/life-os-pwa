@@ -147,6 +147,7 @@ create table goals (
   habit_schedule   jsonb default '{"frequency": "daily", "days": []}'::jsonb,
   habit_streak     integer default 0,
   last_checkin     date,
+  project_id       uuid references projects(id) on delete set null,
   created_at       timestamptz default now(),
   updated_at       timestamptz default now()
 );
@@ -287,6 +288,8 @@ create table agenda_blocks (
   start_time  time not null,
   end_time    time not null,
   description text not null,
+  all_day     boolean not null default false,
+  recurrence  jsonb,
   created_at  timestamptz default now(),
   constraint end_after_start check (end_time > start_time)
 );

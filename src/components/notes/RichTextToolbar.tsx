@@ -1,10 +1,13 @@
 import React, { useRef } from 'react'
-import { Bold, Italic, Heading1, Heading2, Link, List, Code } from 'lucide-react'
+import { Bold, Italic, Heading1, Heading2, Link, List, Code, ListTodo } from 'lucide-react'
 
 interface RichTextToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   onBodyChange: (newBody: string) => void
   body: string
+  /** Optional — shows a "Create task" button that hands off the current
+   *  selection (or falls back to the note title) to the parent. */
+  onCreateTask?: () => void
 }
 
 function wrapSelection(
@@ -46,7 +49,7 @@ function prefixLines(
   return newText
 }
 
-export function RichTextToolbar({ textareaRef, onBodyChange, body }: RichTextToolbarProps) {
+export function RichTextToolbar({ textareaRef, onBodyChange, body, onCreateTask }: RichTextToolbarProps) {
   // Keep a stable ref to latest body so callbacks don't close over stale value
   const bodyRef = useRef(body)
   bodyRef.current = body
@@ -132,6 +135,22 @@ export function RichTextToolbar({ textareaRef, onBodyChange, body }: RichTextToo
           </button>
         </React.Fragment>
       ))}
+      {onCreateTask && (
+        <>
+          <div className="w-px h-4 bg-border mx-1" />
+          <button
+            type="button"
+            title="Create task from selection"
+            onMouseDown={e => {
+              e.preventDefault()
+              onCreateTask()
+            }}
+            className="flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:text-accent hover:bg-accent/10 transition-colors text-xs font-medium"
+          >
+            <ListTodo size={13} strokeWidth={2.5} />
+          </button>
+        </>
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ChevronLeft, Quote as QuoteIcon, X, Award, BookOpen } from 'lucide-react'
+import { ChevronLeft, Quote as QuoteIcon, X, Award, BookOpen, Smartphone, Headphones, Library } from 'lucide-react'
 import { useBookQuery } from '../../hooks/useBooksQuery'
 import { useBookMutations } from '../../hooks/useBookMutations'
 import { useQuotesQuery } from '../../hooks/useQuotesQuery'
@@ -10,11 +10,11 @@ import { Star } from 'lucide-react'
 import { haptic } from '../../lib/haptic'
 import clsx from 'clsx'
 
-const SOURCE_LABELS: Record<'physical' | 'ebook' | 'audiobook' | 'library', string> = {
-  physical:  '📚 Physical',
-  ebook:     '📱 E-Book',
-  audiobook: '🎧 Audiobook',
-  library:   '🏛️ Library',
+const SOURCE_LABELS: Record<'physical' | 'ebook' | 'audiobook' | 'library', { label: string; icon: React.ComponentType<any> }> = {
+  physical:  { label: 'Physical',  icon: BookOpen },
+  ebook:     { label: 'E-Book',    icon: Smartphone },
+  audiobook: { label: 'Audiobook', icon: Headphones },
+  library:   { label: 'Library',   icon: Library },
 }
 
 function StarRating({ value, size = 16 }: { value: number | null; size?: number }) {
@@ -113,7 +113,8 @@ export function BookDetailPage() {
     'finished': 'Finished', 'abandoned': 'Abandoned',
   }[book.status] ?? book.status
 
-  const sourceLabel = book.source ? (SOURCE_LABELS[book.source] ?? null) : null
+  const sourceLabelObj = book.source ? (SOURCE_LABELS[book.source] ?? null) : null
+  const SourceIcon = sourceLabelObj?.icon
 
   const shelves: string[] = Array.isArray(book.shelves)
     ? (book.shelves as unknown[]).filter((s): s is string => typeof s === 'string')
@@ -148,9 +149,10 @@ export function BookDetailPage() {
           <span className={clsx('text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border', statusColor)}>
             {statusLabel}
           </span>
-          {sourceLabel && (
-            <span className="text-[10px] font-medium bg-surface-2 border border-border text-text-secondary px-2.5 py-0.5 rounded-full">
-              {sourceLabel}
+          {sourceLabelObj && SourceIcon && (
+            <span className="flex items-center gap-1 text-[10px] font-medium bg-surface-2 border border-border text-text-secondary px-2.5 py-0.5 rounded-full">
+              <SourceIcon size={10} />
+              <span>{sourceLabelObj.label}</span>
             </span>
           )}
           {book.genre && (

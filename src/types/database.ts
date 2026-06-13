@@ -281,6 +281,7 @@ export interface Database {
           habit_schedule: Json
           habit_streak: number
           last_checkin: string | null
+          project_id: string | null
           created_at: string
           updated_at: string
         }
@@ -302,6 +303,7 @@ export interface Database {
           habit_schedule?: Json
           habit_streak?: number
           last_checkin?: string | null
+          project_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -323,6 +325,7 @@ export interface Database {
           habit_schedule?: Json
           habit_streak?: number
           last_checkin?: string | null
+          project_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -575,6 +578,8 @@ export interface Database {
           start_time: string
           end_time: string
           description: string
+          all_day: boolean
+          recurrence: Json | null
           created_at: string
         }
         Insert: {
@@ -584,6 +589,8 @@ export interface Database {
           start_time: string
           end_time: string
           description: string
+          all_day?: boolean
+          recurrence?: Json | null
           created_at?: string
         }
         Update: {
@@ -593,6 +600,8 @@ export interface Database {
           start_time?: string
           end_time?: string
           description?: string
+          all_day?: boolean
+          recurrence?: Json | null
           created_at?: string
         }
       }

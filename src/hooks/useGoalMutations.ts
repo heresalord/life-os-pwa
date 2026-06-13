@@ -117,6 +117,7 @@ export function useGoalMutations() {
       tracker_type?: 'target' | 'habit' | 'average' | 'project'
       category?: string
       habit_schedule?: { frequency: 'daily' | 'weekly'; days: number[] }
+      project_id?: string | null
     }) => {
       if (!user) return
       const goal = {
@@ -137,6 +138,7 @@ export function useGoalMutations() {
         habit_schedule: payload.habit_schedule ?? { frequency: 'daily', days: [] },
         habit_streak: 0,
         last_checkin: null,
+        project_id: payload.project_id ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -165,6 +167,7 @@ export function useGoalMutations() {
         habit_schedule: payload.habit_schedule ?? { frequency: 'daily', days: [] },
         habit_streak: 0,
         last_checkin: null,
+        project_id: payload.project_id ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }

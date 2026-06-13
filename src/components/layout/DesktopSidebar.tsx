@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
-  CalendarDays, Inbox, FileText, Search, Settings, LogOut, Heart
+  CalendarDays, Inbox, FileText, Search, Settings, LogOut, Heart,
+  Briefcase
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
@@ -18,6 +19,7 @@ const navGroups = [
       { to: '/tasks',   icon: CheckSquare,     label: 'Tasks'     },
       { to: '/finance', icon: DollarSign,      label: 'Finance'   },
       { to: '/goals',   icon: Target,          label: 'Goals'     },
+      { to: '/projects',icon: Briefcase,       label: 'Projects'  },
       { to: '/books',   icon: BookOpen,        label: 'Books'     },
     ]
   },
@@ -55,7 +57,7 @@ export function DesktopSidebar() {
           />
           <span className="text-xs text-text-secondary hover:text-accent font-medium transition-colors flex items-center gap-1 cursor-pointer">
             <span className="lg:inline hidden">{displayDate(selectedDate, 'MMM d')}</span>
-            <span className="lg:hidden">📅</span>
+            <span className="lg:hidden"><CalendarDays size={14} /></span>
           </span>
         </div>
       </div>

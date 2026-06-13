@@ -39,7 +39,8 @@ export function GoalProgressWidget() {
           </div>
         ) : topGoals.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-4 text-center text-text-muted">
-            <p className="text-xs italic">No active goals yet 🎯</p>
+            <Target size={24} className="text-text-muted/50 mb-1.5" />
+            <p className="text-xs italic">No active goals yet</p>
             <p className="text-[10px] opacity-75 mt-0.5">Tap to set your first goal</p>
           </div>
         ) : (

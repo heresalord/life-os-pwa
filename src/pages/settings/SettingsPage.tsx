@@ -10,7 +10,8 @@ import {
   User, Palette, Bell, DollarSign, Database,
   LogOut, Download, Upload, AlertTriangle,
   CheckCircle, XCircle, Loader, Moon, Sun,
-  X, Plus, Layout, Quote, Check, Pipette
+  X, Plus, Layout, Quote, Check, Pipette,
+  CalendarCheck, Flame, Wallet, PartyPopper, PiggyBank, BarChart3,
 } from 'lucide-react'
 import { ACCENT_PRESETS, type AccentPreset } from '../../lib/colorUtils'
 import {
@@ -540,14 +541,18 @@ export function SettingsPage() {
           <SectionCard title="Reminder Times" icon={Bell}>
             <div className="grid grid-cols-2 gap-3 pt-3">
               <div>
-                <label className="block text-[11px] text-text-muted uppercase tracking-wider mb-1.5">Morning ☀️</label>
+                <label className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider mb-1.5">
+                  <Sun size={11} /> Morning
+                </label>
                 <input
                   type="time" value={morningTime} onChange={e => setMorningTime(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-text-muted uppercase tracking-wider mb-1.5">Evening 🌙</label>
+                <label className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider mb-1.5">
+                  <Moon size={11} /> Evening
+                </label>
                 <input
                   type="time" value={nightTime} onChange={e => setNightTime(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none"
@@ -560,15 +565,15 @@ export function SettingsPage() {
           <SectionCard title="Reminder Types" icon={Bell}>
             <div className="pt-3 space-y-2">
               {[
-                { key: 'morning_reminder',    emoji: '☀️',  label: 'Morning Check-in',      sub: 'Daily intention & mood' },
-                { key: 'evening_reminder',    emoji: '🌙',  label: 'Evening Review',         sub: 'Reflection & wins' },
-                { key: 'task_due_today',      emoji: '📅',  label: 'Tasks Due Today',        sub: 'At 7:00 AM' },
-                { key: 'task_overdue',        emoji: '⚠️',  label: 'Overdue Tasks',          sub: 'At 9:00 AM' },
-                { key: 'streak_alert',        emoji: '🔥',  label: 'Streak at Risk',         sub: 'Active habits only, 8 PM' },
-                { key: 'budget_alert',        emoji: '💸',  label: 'Budget Warning',         sub: 'When 80%+ daily budget used' },
-                { key: 'goal_milestone',      emoji: '🎉',  label: 'Goal Completed',         sub: 'Real-time' },
-                { key: 'savings_goal_reached',emoji: '💰',  label: 'Savings Goal Reached',   sub: 'Real-time' },
-                { key: 'weekly_review',       emoji: '📊',  label: 'Weekly Review',          sub: 'Sundays at 7 PM' },
+                { key: 'morning_reminder',    icon: Sun,          label: 'Morning Check-in',      sub: 'Daily intention & mood' },
+                { key: 'evening_reminder',    icon: Moon,         label: 'Evening Review',         sub: 'Reflection & wins' },
+                { key: 'task_due_today',      icon: CalendarCheck, label: 'Tasks Due Today',        sub: 'At 7:00 AM' },
+                { key: 'task_overdue',        icon: AlertTriangle, label: 'Overdue Tasks',          sub: 'At 9:00 AM' },
+                { key: 'streak_alert',        icon: Flame,        label: 'Streak at Risk',         sub: 'Active habits only, 8 PM' },
+                { key: 'budget_alert',        icon: Wallet,       label: 'Budget Warning',         sub: 'When 80%+ daily budget used' },
+                { key: 'goal_milestone',      icon: PartyPopper,  label: 'Goal Completed',         sub: 'Real-time' },
+                { key: 'savings_goal_reached',icon: PiggyBank,    label: 'Savings Goal Reached',   sub: 'Real-time' },
+                { key: 'weekly_review',       icon: BarChart3,    label: 'Weekly Review',          sub: 'Sundays at 7 PM' },
               ].map(item => (
                 <label
                   key={item.key}
@@ -585,7 +590,7 @@ export function SettingsPage() {
                     onChange={e => setPrefs({ ...prefs, [item.key]: e.target.checked })}
                     className="sr-only"
                   />
-                  <span className="text-base leading-none">{item.emoji}</span>
+                  <item.icon size={16} className="text-text-muted flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-text">{item.label}</p>
                     <p className="text-[11px] text-text-muted">{item.sub}</p>

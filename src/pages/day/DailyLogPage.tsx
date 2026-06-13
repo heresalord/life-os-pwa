@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { 
   Sun, Moon, Zap, Award, FileText, CheckCircle2, 
-  ArrowRight, Check, Plus, Edit2, Play, Eye, ChevronLeft, ChevronRight
+  ArrowRight, Check, Plus, Edit2, Play, Eye, ChevronLeft, ChevronRight,
+  Frown, Annoyed, Meh, Smile, Laugh, X, Star, AlertTriangle,
 } from 'lucide-react'
 import { subDays, addDays, format, isToday, parseISO } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
@@ -16,7 +17,7 @@ import { displayDate } from '../../lib/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
 import { carryOverTasks } from '../../lib/carryOver'
 
-const EMOJIS = ['😶', '😕', '😐', '🙂', '😊']
+const MOOD_ICONS = [Frown, Annoyed, Meh, Smile, Laugh]
 const MOOD_LABELS = ['Low', 'Difficult', 'Okay', 'Good', 'Great']
 
 const JOURNAL_TEMPLATES = {
@@ -296,24 +297,27 @@ export function DailyLogPage() {
   const renderMoodScale = (currentVal: number, onChange: (val: number) => void, readonly = false) => {
     return (
       <div className="flex justify-between gap-3">
-        {[1, 2, 3, 4, 5].map(val => (
-          <button
-            key={val}
-            disabled={readonly}
-            type="button"
-            onClick={() => onChange(val)}
-            className={`flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
-              currentVal === val
-                ? 'bg-info/10 border-info text-info scale-105'
-                : 'bg-surface-2 border-border hover:border-info/30 hover:bg-surface-2/80'
-            }`}
-          >
-            <span className="text-3xl mb-1">{EMOJIS[val - 1]}</span>
-            <span className={`text-[9px] font-bold uppercase tracking-wider ${currentVal === val ? 'text-info' : 'text-text-muted'}`}>
-              {MOOD_LABELS[val - 1]}
-            </span>
-          </button>
-        ))}
+        {[1, 2, 3, 4, 5].map(val => {
+          const MoodIcon = MOOD_ICONS[val - 1]
+          return (
+            <button
+              key={val}
+              disabled={readonly}
+              type="button"
+              onClick={() => onChange(val)}
+              className={`flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
+                currentVal === val
+                  ? 'bg-info/10 border-info text-info scale-105'
+                  : 'bg-surface-2 border-border hover:border-info/30 hover:bg-surface-2/80'
+              }`}
+            >
+              <MoodIcon size={24} className={`mb-1 ${currentVal === val ? '' : 'text-text-muted'}`} />
+              <span className={`text-[9px] font-bold uppercase tracking-wider ${currentVal === val ? 'text-info' : 'text-text-muted'}`}>
+                {MOOD_LABELS[val - 1]}
+              </span>
+            </button>
+          )
+        })}
       </div>
     )
   }
@@ -372,7 +376,9 @@ export function DailyLogPage() {
             </span>
           )}
           {saveStatus === 'error' && (
-            <span className="text-xs text-danger">⚠️ Error saving — check connection</span>
+            <span className="text-xs text-danger flex items-center gap-1">
+              <AlertTriangle size={12} /> Error saving — check connection
+            </span>
           )}
         </div>
       </header>
@@ -477,9 +483,9 @@ export function DailyLogPage() {
                     </div>
                     <button
                       onClick={() => toggleTaskPriority(t.id, t.priority)}
-                      className="text-[10px] font-bold text-warning hover:underline"
+                      className="flex items-center gap-1 text-[10px] font-bold text-warning hover:underline"
                     >
-                      ★ Priority
+                      <Star size={10} className="fill-warning" /> Priority
                     </button>
                   </li>
                 ))}
@@ -513,9 +519,9 @@ export function DailyLogPage() {
                       <span className="truncate pr-2">{t.title}</span>
                       <button
                         onClick={() => toggleTaskPriority(t.id, t.priority)}
-                        className="text-[10px] font-bold text-accent hover:underline flex-shrink-0"
+                        className="flex items-center gap-1 text-[10px] font-bold text-accent hover:underline flex-shrink-0"
                       >
-                        ☆ Set Priority
+                        <Star size={10} /> Set Priority
                       </button>
                     </div>
                   ))}
@@ -784,7 +790,7 @@ export function DailyLogPage() {
               onClick={() => setSearchParams({})}
               className="absolute right-4 top-4 text-text-muted hover:text-text"
             >
-              ✕
+              <X size={18} />
             </button>
 
             <header>
@@ -806,16 +812,18 @@ export function DailyLogPage() {
                   {renderLightningScale(energyAm, setEnergyAm)}
                 </div>
                 {carryOverRunning && (
-                  <p className="text-[10px] text-text-muted text-center animate-pulse">⚡ Checking yesterday's tasks to carry over...</p>
+                  <p className="text-[10px] text-text-muted text-center flex items-center justify-center gap-1 animate-pulse">
+                    <Zap size={11} /> Checking yesterday's tasks to carry over...
+                  </p>
                 )}
                 {carryOverCount !== null && carryOverCount > 0 && (
-                  <p className="text-[10px] text-warning bg-warning/5 border border-warning/10 p-2.5 rounded-xl text-center">
-                    ⚡ Carried over {carryOverCount} pending tasks from yesterday.
+                  <p className="text-[10px] text-warning bg-warning/5 border border-warning/10 p-2.5 rounded-xl text-center flex items-center justify-center gap-1.5">
+                    <Zap size={11} /> Carried over {carryOverCount} pending tasks from yesterday.
                   </p>
                 )}
                 {carryOverCount !== null && carryOverCount === 0 && (
-                  <p className="text-[10px] text-text-muted text-center">
-                    ⚡ No pending tasks to carry over from yesterday.
+                  <p className="text-[10px] text-text-muted text-center flex items-center justify-center gap-1.5">
+                    <Zap size={11} /> No pending tasks to carry over from yesterday.
                   </p>
                 )}
                 <button
@@ -956,7 +964,7 @@ export function DailyLogPage() {
               onClick={() => setSearchParams({})}
               className="absolute right-4 top-4 text-text-muted hover:text-text"
             >
-              ✕
+              <X size={18} />
             </button>
 
             <header>

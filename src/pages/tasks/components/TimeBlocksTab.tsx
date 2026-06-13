@@ -37,7 +37,11 @@ export function TimeBlocksTab() {
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list')
 
   useEffect(() => {
-    setOrderedBlocks([...blocks].sort((a, b) => a.start_time.localeCompare(b.start_time)))
+    setOrderedBlocks([...blocks].sort((a, b) => {
+      if (a.all_day && !b.all_day) return -1
+      if (!a.all_day && b.all_day) return 1
+      return a.start_time.localeCompare(b.start_time)
+    }))
   }, [blocks])
 
   const handleDragEnd = (result: DropResult) => {
@@ -147,7 +151,7 @@ export function TimeBlocksTab() {
               )
             })()}
 
-            {orderedBlocks.map(b => (
+            {orderedBlocks.filter(b => !b.all_day).map(b => (
               <div key={b.id}
                 className="absolute left-10 right-1 bg-accent/20 border border-accent/40 rounded-lg px-2 py-1 overflow-hidden z-10"
                 style={{ top: `${minutesToPosition(timeToMinutes(b.start_time))}%`, height: `${blockHeightPct(b.start_time, b.end_time)}%` }}>

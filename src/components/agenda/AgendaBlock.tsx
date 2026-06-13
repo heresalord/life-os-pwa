@@ -1,7 +1,8 @@
-import { useRef, useState, useEffect } from 'react'
-import { Trash2, GripVertical } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Trash2, GripVertical, Repeat } from 'lucide-react'
 import type { AgendaBlock as AgendaBlockType } from '../../db/schema'
 import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
+import { useNowMinutes } from '../../hooks/useNowMinutes'
 import clsx from 'clsx'
 
 interface AgendaBlockProps {
@@ -10,20 +11,6 @@ interface AgendaBlockProps {
   dragHandleProps?: DraggableProvidedDragHandleProps | null
 }
 
-function useNowMinutes() {
-  const [mins, setMins] = useState(() => {
-    const n = new Date()
-    return n.getHours() * 60 + n.getMinutes()
-  })
-  useEffect(() => {
-    const id = setInterval(() => {
-      const n = new Date()
-      setMins(n.getHours() * 60 + n.getMinutes())
-    }, 60_000)
-    return () => clearInterval(id)
-  }, [])
-  return mins
-}
 
 function toMins(t: string) {
   const [h, m] = t.split(':').map(Number)
@@ -35,9 +22,10 @@ export function AgendaBlock({ block, onDelete, dragHandleProps }: AgendaBlockPro
   const touchStartX = useRef<number | null>(null)
   const nowMins = useNowMinutes()
 
+  const isAllDay  = block.all_day
   const startMins = toMins(block.start_time)
   const endMins   = toMins(block.end_time)
-  const isActive  = nowMins >= startMins && nowMins < endMins
+  const isActive  = !isAllDay && nowMins >= startMins && nowMins < endMins
   const pct       = isActive
     ? Math.round(((nowMins - startMins) / (endMins - startMins)) * 100)
     : 0
@@ -96,15 +84,23 @@ export function AgendaBlock({ block, onDelete, dragHandleProps }: AgendaBlockPro
           </div>
         )}
 
-        {/* Time column */}
-        <div className="w-24 flex-shrink-0 flex flex-col items-start pr-2 border-r border-border/50 mr-1">
-          <span className={clsx('text-sm font-medium', isActive ? 'text-accent' : 'text-text')}>
-            {formatTime(block.start_time)}
-          </span>
-          <span className="text-xs text-text-muted">{formatTime(block.end_time)}</span>
-        </div>
+        {/* Time column or All Day badge */}
+        {isAllDay ? (
+          <div className="w-24 flex-shrink-0 flex items-center pr-2 border-r border-border/50 mr-1">
+            <span className="text-[10px] font-bold text-accent bg-accent/10 border border-accent/15 px-2 py-0.5 rounded-lg flex-shrink-0 uppercase tracking-wider">
+              All Day
+            </span>
+          </div>
+        ) : (
+          <div className="w-24 flex-shrink-0 flex flex-col items-start pr-2 border-r border-border/50 mr-1">
+            <span className={clsx('text-sm font-medium', isActive ? 'text-accent' : 'text-text')}>
+              {formatTime(block.start_time)}
+            </span>
+            <span className="text-xs text-text-muted">{formatTime(block.end_time)}</span>
+          </div>
+        )}
 
-        {/* Description + duration + now badge */}
+        {/* Description + duration + now badge + recurrence */}
         <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className={clsx('text-sm font-medium truncate', isActive ? 'text-accent' : 'text-text')}>
@@ -115,8 +111,15 @@ export function AgendaBlock({ block, onDelete, dragHandleProps }: AgendaBlockPro
                 NOW
               </span>
             )}
+            {block.recurrence && (
+              <span className="text-text-muted/60 flex items-center" title={`Repeats: ${(block.recurrence as any).type}`}>
+                <Repeat size={11} className="stroke-[2.5]" />
+              </span>
+            )}
           </div>
-          <span className="text-xs text-text-muted mt-0.5">{getDuration()}</span>
+          <span className="text-xs text-text-muted mt-0.5">
+            {isAllDay ? 'All-day event' : getDuration()}
+          </span>
         </div>
       </div>
 

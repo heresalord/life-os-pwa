@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Plus, X, CalendarDays, AlignLeft, Clock } from 'lucide-react'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import type { AddTaskPayload } from '../../hooks/useTaskMutations'
+import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 
 type KanbanStatus = 'backlog' | 'todo' | 'in_progress' | 'done'
 
@@ -27,8 +28,10 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
   const [description, setDescription] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime]     = useState('')
+  const [projectId, setProjectId] = useState('')
   const [showExtra, setShowExtra] = useState(false)
 
+  const { data: projects } = useProjectsQuery()
   const { addTask } = useTaskMutations(date)
 
   const reset = () => {
@@ -38,6 +41,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
     setDescription('')
     setStartTime('')
     setEndTime('')
+    setProjectId('')
     setShowExtra(false)
   }
 
@@ -54,6 +58,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
       kanban_status: defaultKanbanStatus ?? 'todo',
       time_block_start: startTime || null,
       time_block_end: endTime || null,
+      project_id: projectId || null,
     }
     addTask.mutate(payload)
     reset()
@@ -139,6 +144,25 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
             {!startTime && endTime && (
               <p className="text-xs text-danger">Start time is required if end time is specified.</p>
             )}
+
+            {/* Project Selection */}
+            <div>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">
+                Project (optional)
+              </label>
+              <select
+                value={projectId}
+                onChange={e => setProjectId(e.target.value)}
+                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none"
+              >
+                <option value="">No Project</option>
+                {projects?.filter(p => !p.archived).map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Description (toggle) */}
             {showExtra ? (

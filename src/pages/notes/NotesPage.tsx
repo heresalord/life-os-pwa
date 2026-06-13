@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useNotesQuery } from '../../hooks/useNotesQuery'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
+import { useTaskMutations } from '../../hooks/useTaskMutations'
+import { useAppStore } from '../../store/useAppStore'
+import { getUserLocalDate } from '../../lib/dateUtils'
 import { useScrollToHighlight } from '../../hooks/useScrollToHighlight'
 import { NoteCard } from '../../components/notes/NoteCard'
 import { NoteEditorModal } from '../../components/notes/NoteEditorModal'
@@ -9,11 +12,11 @@ import { RichTextToolbar } from '../../components/notes/RichTextToolbar'
 import { NoteLinkAutocomplete } from '../../components/notes/NoteLinkAutocomplete'
 import { TemplatePicker } from '../../components/notes/TemplatePicker'
 import { EmptyState } from '../../components/EmptyState'
-import { extractTags, stripTags, applyTags, collectAllTags } from '../../lib/noteTagUtils'
+import { extractTags, stripTags, applyTags, collectAllTags, cleanTaskTitle } from '../../lib/noteTagUtils'
 import {
   FileText, Plus, Search, X, Eye, Edit3,
   FolderOpen, FolderPlus, ChevronDown, ArrowUpDown,
-  Folder, Pin, BookText, LayoutTemplate, FolderTree,
+  Folder, Pin, BookText, LayoutTemplate, FolderTree, ListTodo,
 } from 'lucide-react'
 import type { Note } from '../../db/schema'
 import ReactMarkdown from 'react-markdown'
@@ -52,6 +55,10 @@ function DesktopNoteEditor({
   const [tagInput, setTagInput] = useState('')
   const [mode, setMode]         = useState<'write' | 'preview'>('write')
   const { updateNote } = useNoteMutations()
+  const { timezone } = useAppStore()
+  const today = getUserLocalDate(timezone)
+  const { addTask } = useTaskMutations(today)
+  const [taskFeedback, setTaskFeedback] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -81,6 +88,15 @@ function DesktopNoteEditor({
     const next = tags.filter(t => t !== tag)
     setTags(next)
     save(body, next)
+  }
+
+  const handleCreateTask = () => {
+    const ta = textareaRef.current
+    const selected = ta ? ta.value.slice(ta.selectionStart, ta.selectionEnd) : ''
+    const taskTitle = cleanTaskTitle(selected || title) || 'New task'
+    addTask.mutate({ title: taskTitle, date: today })
+    setTaskFeedback(taskTitle)
+    setTimeout(() => setTaskFeedback(null), 2500)
   }
 
   const wordCount = computeWordCount(body)
@@ -131,11 +147,20 @@ function DesktopNoteEditor({
 
       {/* Rich text toolbar (write mode) */}
       {mode === 'write' && (
-        <RichTextToolbar
-          textareaRef={textareaRef}
-          body={body}
-          onBodyChange={b => { setBody(b); save(b) }}
-        />
+        <div className="relative">
+          <RichTextToolbar
+            textareaRef={textareaRef}
+            body={body}
+            onBodyChange={b => { setBody(b); save(b) }}
+            onCreateTask={handleCreateTask}
+          />
+          {taskFeedback && (
+            <div className="absolute top-full right-3 mt-1.5 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
+              <ListTodo size={12} className="text-accent flex-shrink-0" />
+              <span className="truncate max-w-[220px]">Added “{taskFeedback}” to Tasks</span>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Editor / Preview */}

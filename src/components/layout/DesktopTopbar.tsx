@@ -81,8 +81,8 @@ export function DesktopTopbar() {
         </div>
 
         {/* Selected date chip */}
-        <div className="hidden lg:block text-xs text-text-muted font-medium bg-surface px-3 py-1.5 rounded-lg border border-border whitespace-nowrap">
-          📅 <span className="text-text">{displayDate(selectedDate, 'EEE, MMM d')}</span>
+        <div className="hidden lg:flex items-center gap-1.5 text-xs text-text-muted font-medium bg-surface px-3 py-1.5 rounded-lg border border-border whitespace-nowrap">
+          <CalendarDays size={14} /> <span className="text-text">{displayDate(selectedDate, 'EEE, MMM d')}</span>
         </div>
 
         {/* Sync status */}

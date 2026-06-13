@@ -1,94 +1,183 @@
-import { useState, useEffect } from 'react'
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import type { DropResult } from '@hello-pangea/dnd'
+import { useMemo } from 'react'
 import { useAgendaQuery } from '../../hooks/useAgendaQuery'
 import { useAgendaMutations } from '../../hooks/useAgendaMutations'
+import { useTasksQuery } from '../../hooks/useTasksQuery'
+import { useTaskMutations } from '../../hooks/useTaskMutations'
 import { useAppStore } from '../../store/useAppStore'
+import { useNowMinutes } from '../../hooks/useNowMinutes'
 import { AgendaBlock } from '../../components/agenda/AgendaBlock'
+import { AgendaTaskBlock } from '../../components/agenda/AgendaTaskBlock'
 import { AddBlockModal } from '../../components/agenda/AddBlockModal'
 import { EmptyState } from '../../components/EmptyState'
-import { CalendarDays } from 'lucide-react'
-import type { AgendaBlock as AgendaBlockType } from '../../db/schema'
+import { CalendarDays, Clock, Play } from 'lucide-react'
+import type { AgendaBlock as AgendaBlockType, Task } from '../../db/schema'
+import clsx from 'clsx'
+
+
+type UnifiedScheduledItem =
+  | { type: 'block'; id: string; time: string; item: AgendaBlockType }
+  | { type: 'task'; id: string; time: string; item: Task }
+
+function toMins(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
 
 export function AgendaPage() {
   const { selectedDate } = useAppStore()
-  const { data: blocks = [], isLoading } = useAgendaQuery(selectedDate)
+  const nowMins = useNowMinutes()
+
+  // Queries
+  const { data: blocks = [], isLoading: blocksLoading } = useAgendaQuery(selectedDate)
+  const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery(selectedDate)
+
+  // Mutations
   const { deleteBlock } = useAgendaMutations(selectedDate)
-  const [orderedBlocks, setOrderedBlocks] = useState<AgendaBlockType[]>([])
+  const { deleteTask } = useTaskMutations(selectedDate)
 
-  useEffect(() => {
-    const sorted = [...blocks].sort((a, b) => a.start_time.localeCompare(b.start_time))
-    setOrderedBlocks(prev => {
-      if (prev.length === 0) return sorted
-      const ids    = new Set(sorted.map(b => b.id))
-      const prevIds = new Set(prev.map(b => b.id))
-      const merged = prev.filter(b => ids.has(b.id))
-      sorted.forEach(b => { if (!prevIds.has(b.id)) merged.push(b) })
-      return merged
+  // Filter and merge items
+  const allDayBlocks = useMemo(() => blocks.filter(b => b.all_day), [blocks])
+  const allDayTasks = useMemo(() => tasks.filter(t => !t.time_block_start), [tasks])
+
+  const scheduledItems = useMemo(() => {
+    const items: UnifiedScheduledItem[] = []
+
+    blocks.forEach(b => {
+      if (!b.all_day && b.start_time) {
+        items.push({ type: 'block', id: b.id, time: b.start_time, item: b })
+      }
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks])
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return
-    const items = Array.from(orderedBlocks)
-    const [moved] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, moved)
-    setOrderedBlocks(items)
+    tasks.forEach(t => {
+      if (t.time_block_start) {
+        items.push({ type: 'task', id: t.id, time: t.time_block_start, item: t })
+      }
+    })
+
+    // Sort chronologically by start time
+    return items.sort((a, b) => a.time.localeCompare(b.time))
+  }, [blocks, tasks])
+
+  const handleDeleteBlock = (id: string) => {
+    if (window.confirm('Delete this time block?')) {
+      deleteBlock.mutate(id)
+    }
   }
 
+  const handleDeleteTask = (id: string) => {
+    if (window.confirm('Delete this task?')) {
+      deleteTask.mutate(id)
+    }
+  }
+
+  const isItemActive = (item: UnifiedScheduledItem) => {
+    if (item.type === 'block') {
+      const start = toMins(item.item.start_time)
+      const end = toMins(item.item.end_time)
+      return nowMins >= start && nowMins < end
+    } else {
+      const start = toMins(item.item.time_block_start!)
+      const end = item.item.time_block_end ? toMins(item.item.time_block_end) : start + 30
+      return !item.item.completed && nowMins >= start && nowMins < end
+    }
+  }
+
+  const isLoading = blocksLoading || tasksLoading
+  const totalItemsCount = allDayBlocks.length + allDayTasks.length + scheduledItems.length
+
   return (
-    <div className="space-y-6 lg:max-w-3xl">
+    <div className="space-y-6 lg:max-w-3xl pb-10">
       <header>
-        <h1 className="text-2xl font-display text-text">Agenda</h1>
+        <h1 className="text-2xl font-display text-text font-bold">Agenda</h1>
+        <p className="text-xs text-text-muted mt-0.5">Plan and execute your day side-by-side</p>
       </header>
 
       <AddBlockModal date={selectedDate} />
 
       {isLoading ? (
-        <div className="flex justify-center p-8">
-          <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+        <div className="flex justify-center p-12">
+          <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
         </div>
-      ) : orderedBlocks.length === 0 ? (
+      ) : totalItemsCount === 0 ? (
         <EmptyState
           icon={<CalendarDays size={40} />}
-          title="No blocks scheduled"
-          message="Plan your day in time blocks to stay focused."
+          title="No blocks or tasks scheduled"
+          message="Create all-day blocks, schedule time-blocked tasks, or plan standard blocks to get started."
         />
       ) : (
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="agenda-blocks">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={snapshot.isDraggingOver
-                  ? 'space-y-3 rounded-xl bg-accent/5 p-1 -m-1 transition-colors'
-                  : 'space-y-3'}
-              >
-                {orderedBlocks.map((b, index) => (
-                  <Draggable key={b.id} draggableId={b.id} index={index}>
-                    {(prov, snap) => (
-                      <div
-                        ref={prov.innerRef}
-                        {...prov.draggableProps}
-                        style={{ ...prov.draggableProps.style, opacity: snap.isDragging ? 0.85 : 1 }}
-                        className={snap.isDragging ? 'shadow-lg shadow-black/30 rounded-xl' : ''}
-                      >
-                        <AgendaBlock
-                          block={b as Parameters<typeof AgendaBlock>[0]['block']}
-                          dragHandleProps={prov.dragHandleProps}
-                          onDelete={(id) => deleteBlock.mutate(id)}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
+        <div className="space-y-6">
+          {/* All Day Section */}
+          {(allDayBlocks.length > 0 || allDayTasks.length > 0) && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5 border-b border-border/40 pb-1.5">
+                <Clock size={13} className="text-accent" /> All-Day Schedule
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {allDayBlocks.map(b => (
+                  <AgendaBlock
+                    key={b.id}
+                    block={b}
+                    onDelete={handleDeleteBlock}
+                  />
                 ))}
-                {provided.placeholder}
+                {allDayTasks.map(t => (
+                  <AgendaTaskBlock
+                    key={t.id}
+                    task={t}
+                    onDelete={handleDeleteTask}
+                  />
+                ))}
               </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+            </div>
+          )}
+
+          {/* Timeline Section */}
+          {scheduledItems.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5 border-b border-border/40 pb-1.5">
+                <Play size={12} className="text-accent fill-accent/20" /> Daily Timeline
+              </h3>
+
+              <div className="relative pl-6 space-y-4">
+                {/* Vertical connecting line */}
+                <div className="absolute left-[9px] top-2.5 bottom-2.5 w-[2px] bg-border" />
+
+                {scheduledItems.map(item => {
+                  const active = isItemActive(item)
+                  return (
+                    <div key={item.id} className="relative flex items-stretch gap-4 group">
+                      {/* Timeline Node dot */}
+                      <div className={clsx(
+                        'absolute left-[-22px] top-4 w-4 h-4 rounded-full border-2 bg-bg z-10 flex items-center justify-center transition-all',
+                        active
+                          ? 'border-accent bg-accent/15 scale-110 shadow-sm shadow-accent/20'
+                          : 'border-border'
+                      )}>
+                        {active && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        {item.type === 'block' ? (
+                          <AgendaBlock
+                            block={item.item as AgendaBlockType}
+                            onDelete={handleDeleteBlock}
+                          />
+                        ) : (
+                          <AgendaTaskBlock
+                            task={item.item}
+                            onDelete={handleDeleteTask}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

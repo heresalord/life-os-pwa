@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react'
-import { Check, X, RotateCw, Trash2, GripVertical, Pencil, ChevronDown, ChevronRight, CalendarDays } from 'lucide-react'
+import { Check, X, RotateCw, Trash2, GripVertical, Pencil, ChevronDown, ChevronRight, CalendarDays, Clock } from 'lucide-react'
 import { haptic } from '../../lib/haptic'
 import type { Task } from '../../db/schema'
 import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import { format, isPast, isToday } from 'date-fns'
+import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 import clsx from 'clsx'
 
 interface Subtask { id: string; title: string; completed: boolean }
@@ -35,6 +36,16 @@ export function TaskItem({
   const [expanded, setExpanded]       = useState(false)
   const touchStartX = useRef<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const { data: projects } = useProjectsQuery()
+  const linkedProject = projects?.find(p => p.id === task.project_id)
+
+  const formatTime = (t: string) => {
+    const [h, m] = t.split(':')
+    const hr   = parseInt(h)
+    const ampm = hr >= 12 ? 'PM' : 'AM'
+    return `${hr % 12 || 12}:${m} ${ampm}`
+  }
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
   const handleTouchMove  = (e: React.TouchEvent) => {
@@ -143,6 +154,23 @@ export function TaskItem({
               {dueDateStr && (
                 <span className={clsx('text-[10px] flex items-center gap-0.5 select-none', isOverdue ? 'text-danger font-medium' : 'text-text-muted')}>
                   <CalendarDays size={9} /> {dueDateStr}{isOverdue ? ' · Overdue' : ''}
+                </span>
+              )}
+              {task.time_block_start && (
+                <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 select-none">
+                  <Clock size={9} /> {formatTime(task.time_block_start)}{task.time_block_end ? ` – ${formatTime(task.time_block_end)}` : ''}
+                </span>
+              )}
+              {linkedProject && (
+                <span
+                  className="text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider flex items-center gap-0.5 select-none"
+                  style={{
+                    borderColor: `${linkedProject.color}33`,
+                    color: linkedProject.color || '#3b82f6',
+                    backgroundColor: `${linkedProject.color}11`
+                  }}
+                >
+                  {linkedProject.name}
                 </span>
               )}
               {hasSubtasks && (

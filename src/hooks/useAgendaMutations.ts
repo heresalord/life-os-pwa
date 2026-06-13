@@ -16,7 +16,7 @@ export function useAgendaMutations(date: string) {
   const invalidate = () => qc.invalidateQueries({ queryKey })
 
   const addBlock = useMutation({
-    mutationFn: async (payload: { description: string; start_time: string; end_time: string; date: string }) => {
+    mutationFn: async (payload: { description: string; start_time: string; end_time: string; date: string; all_day?: boolean; recurrence?: any }) => {
       if (!user) return
       const block = {
         id: crypto.randomUUID(),
@@ -25,6 +25,8 @@ export function useAgendaMutations(date: string) {
         description: payload.description,
         start_time: payload.start_time,
         end_time: payload.end_time,
+        all_day: payload.all_day ?? false,
+        recurrence: payload.recurrence ?? null,
         created_at: new Date().toISOString(),
       }
       await db.agenda_blocks.add(block as Parameters<typeof db.agenda_blocks.add>[0])
@@ -41,6 +43,8 @@ export function useAgendaMutations(date: string) {
         description: payload.description,
         start_time: payload.start_time,
         end_time: payload.end_time,
+        all_day: payload.all_day ?? false,
+        recurrence: payload.recurrence ?? null,
         created_at: new Date().toISOString(),
       }
       qc.setQueryData<AnyItem[]>(queryKey, old => [...(old ?? []), optimistic])
@@ -54,8 +58,9 @@ export function useAgendaMutations(date: string) {
 
   const updateBlock = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
-      await db.agenda_blocks.update(id, updates)
-      const updated = await db.agenda_blocks.get(id)
+      const originalId = id.split('-')[0]
+      await db.agenda_blocks.update(originalId, updates)
+      const updated = await db.agenda_blocks.get(originalId)
       if (updated) await writeAgenda('update', updated as Record<string, unknown>)
     },
     onMutate: async ({ id, updates }) => {
@@ -74,8 +79,9 @@ export function useAgendaMutations(date: string) {
 
   const deleteBlock = useMutation({
     mutationFn: async (id: string) => {
-      await db.agenda_blocks.delete(id)
-      await writeAgenda('delete', { id })
+      const originalId = id.split('-')[0]
+      await db.agenda_blocks.delete(originalId)
+      await writeAgenda('delete', { id: originalId })
     },
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey })

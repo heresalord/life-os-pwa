@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays } from 'date-fns'
-import { Flame, Calendar, ChevronRight, TrendingUp } from 'lucide-react'
+import { Flame, Calendar, ChevronRight, TrendingUp, Trophy, Target, CalendarDays } from 'lucide-react'
 import { db } from '../../db'
 import { useAppStore } from '../../store/useAppStore'
 import { displayDate, getUserLocalDate } from '../../lib/dateUtils'
@@ -143,25 +143,37 @@ export function DailyLogHistoryPage() {
 
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="bg-surface border border-border rounded-2xl p-4 text-center space-y-1">
-          <p className="text-2xl font-display font-bold text-text tabular-nums">{stats.currentStreak}</p>
+        <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
+          <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning flex-shrink-0">
+            <Flame size={16} className="fill-warning" />
+          </div>
+          <p className="text-2xl font-display font-bold text-text tabular-nums mt-1">{stats.currentStreak}</p>
           <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Current Streak</p>
-          <p className="text-[10px] text-text-muted">consecutive days 🔥</p>
+          <p className="text-[10px] text-text-muted">consecutive days</p>
         </div>
-        <div className="bg-surface border border-border rounded-2xl p-4 text-center space-y-1">
-          <p className="text-2xl font-display font-bold text-text tabular-nums">{stats.maxStreak}</p>
+        <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
+          <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent flex-shrink-0">
+            <Trophy size={16} />
+          </div>
+          <p className="text-2xl font-display font-bold text-text tabular-nums mt-1">{stats.maxStreak}</p>
           <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Max Streak</p>
-          <p className="text-[10px] text-text-muted">all time best 🏆</p>
+          <p className="text-[10px] text-text-muted">all time best</p>
         </div>
-        <div className="bg-surface border border-border rounded-2xl p-4 text-center space-y-1">
-          <p className="text-2xl font-display font-bold text-text tabular-nums">{stats.averageScore}</p>
+        <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
+          <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center text-success flex-shrink-0">
+            <Target size={16} />
+          </div>
+          <p className="text-2xl font-display font-bold text-text tabular-nums mt-1">{stats.averageScore}</p>
           <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Avg Day Score</p>
-          <p className="text-[10px] text-text-muted">out of 100 🎯</p>
+          <p className="text-[10px] text-text-muted">out of 100</p>
         </div>
-        <div className="bg-surface border border-border rounded-2xl p-4 text-center space-y-1">
-          <p className="text-2xl font-display font-bold text-text tabular-nums">{stats.totalDays}</p>
+        <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
+          <div className="w-8 h-8 rounded-full bg-info/10 flex items-center justify-center text-info flex-shrink-0">
+            <CalendarDays size={16} />
+          </div>
+          <p className="text-2xl font-display font-bold text-text tabular-nums mt-1">{stats.totalDays}</p>
           <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Logged Days</p>
-          <p className="text-[10px] text-text-muted">total entries logged 📅</p>
+          <p className="text-[10px] text-text-muted">total entries logged</p>
         </div>
       </div>
 

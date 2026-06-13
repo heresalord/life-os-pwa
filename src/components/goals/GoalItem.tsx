@@ -24,6 +24,7 @@ import {
 import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { useHabitLogsQuery, useMilestonesQuery } from '../../hooks/useGoalsQuery'
 import { useGoalEventsQuery } from '../../hooks/useGoalEventsQuery'
+import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 import { haptic } from '../../lib/haptic'
 import type { Goal } from '../../db/schema'
 import clsx from 'clsx'
@@ -67,6 +68,8 @@ export function GoalItem({ goal }: { goal: Goal }) {
   } = useGoalMutations()
 
   const [expanded, setExpanded] = useState(false)
+  const { data: projects } = useProjectsQuery()
+  const linkedProject = projects?.find(p => p.id === goal.project_id)
   const [logValue, setLogValue] = useState('1')
   const [showLog, setShowLog] = useState(false)
 
@@ -214,13 +217,20 @@ export function GoalItem({ goal }: { goal: Goal }) {
     )}>
       {/* Top badges */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        <span className={clsx(
-          'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border',
-          catColor
-        )}>
-          <CatIcon size={10} />
-          {goal.category || 'General'}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className={clsx(
+            'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0',
+            catColor
+          )}>
+            <CatIcon size={10} />
+            {goal.category || 'General'}
+          </span>
+          {linkedProject && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-accent/20 bg-accent/5 text-accent truncate max-w-[100px]" title={`Project: ${linkedProject.name}`}>
+              {linkedProject.name}
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-bold text-text-secondary uppercase bg-surface-2 border border-border px-2 py-0.5 rounded-full tracking-wider">
@@ -346,12 +356,12 @@ export function GoalItem({ goal }: { goal: Goal }) {
 
       {/* SMART Info block ( measurable target + deadline ) */}
       <div className="mt-4 pt-3.5 border-t border-border/50 flex items-center justify-between text-[11px] text-text-muted">
-        <span className="flex items-center gap-1 truncate max-w-[60%]">
-          🎯 <span className="truncate">Target: {targetVal} {goal.measurement_type !== 'binary' ? unitLabel : ''}</span>
+        <span className="flex items-center gap-1.5 truncate max-w-[60%]">
+          <TargetIcon size={12} className="text-text-muted flex-shrink-0" /> <span className="truncate">Target: {targetVal} {goal.measurement_type !== 'binary' ? unitLabel : ''}</span>
         </span>
         {goal.end_date ? (
-          <span className="flex items-center gap-1 flex-shrink-0 text-text-secondary">
-            📅 {goal.end_date}
+          <span className="flex items-center gap-1.5 flex-shrink-0 text-text-secondary">
+            <Calendar size={12} className="text-text-muted flex-shrink-0" /> {goal.end_date}
           </span>
         ) : (
           <span className="text-[10px] opacity-60">No deadline</span>

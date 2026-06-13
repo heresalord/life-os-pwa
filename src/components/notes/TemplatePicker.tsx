@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { X } from 'lucide-react'
+import { X, Sun, Moon, BarChart2, Heart, BookOpen, Users, PenLine } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 
@@ -13,7 +13,7 @@ type TemplateKey = 'morning' | 'evening' | 'weekly-review' | 'gratitude' | 'book
 
 interface TemplateDef {
   key: TemplateKey
-  emoji: string
+  icon: React.ComponentType<any>
   label: string
   description: string
   folder: string
@@ -23,12 +23,12 @@ interface TemplateDef {
 const TEMPLATES: TemplateDef[] = [
   {
     key: 'morning',
-    emoji: '☀️',
+    icon: Sun,
     label: 'Morning',
     description: 'Intention, gratitude & focus',
     folder: 'Journal',
     content: `## Morning Routine
-
+ 
 **Today's intention:**
 > 
 
@@ -45,7 +45,7 @@ const TEMPLATES: TemplateDef[] = [
   },
   {
     key: 'evening',
-    emoji: '🌙',
+    icon: Moon,
     label: 'Evening',
     description: 'Reflection, wins & tomorrow',
     folder: 'Journal',
@@ -65,7 +65,7 @@ const TEMPLATES: TemplateDef[] = [
   },
   {
     key: 'weekly-review',
-    emoji: '📊',
+    icon: BarChart2,
     label: 'Weekly Review',
     description: 'Wins, challenges & next week',
     folder: 'Journal',
@@ -87,7 +87,7 @@ const TEMPLATES: TemplateDef[] = [
   },
   {
     key: 'gratitude',
-    emoji: '🙏',
+    icon: Heart,
     label: 'Gratitude',
     description: 'Three gratitudes + a note',
     folder: 'Journal',
@@ -108,7 +108,7 @@ const TEMPLATES: TemplateDef[] = [
   },
   {
     key: 'book-notes',
-    emoji: '📚',
+    icon: BookOpen,
     label: 'Book Notes',
     description: 'Title, author, key ideas & quotes',
     folder: 'All',
@@ -136,7 +136,7 @@ const TEMPLATES: TemplateDef[] = [
   },
   {
     key: 'meeting-notes',
-    emoji: '🤝',
+    icon: Users,
     label: 'Meeting Notes',
     description: 'Attendees, agenda & actions',
     folder: 'All',
@@ -161,7 +161,7 @@ const TEMPLATES: TemplateDef[] = [
   },
   {
     key: null,
-    emoji: '✏️',
+    icon: PenLine,
     label: 'Blank',
     description: 'Start from scratch',
     folder: 'All',
@@ -212,23 +212,28 @@ export function TemplatePicker({ open, onOpenChange, onNoteCreated }: TemplatePi
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            {TEMPLATES.map(tmpl => (
-              <button
-                key={tmpl.key ?? 'blank'}
-                onClick={() => pick(tmpl)}
-                className="flex flex-col items-start gap-2 p-4 rounded-xl border border-border bg-surface-2 hover:border-accent hover:bg-accent/5 transition-all text-left group"
-              >
-                <span className="text-2xl">{tmpl.emoji}</span>
-                <div>
-                  <div className="text-sm font-medium text-text group-hover:text-accent transition-colors">
-                    {tmpl.label}
+            {TEMPLATES.map(tmpl => {
+              const Icon = tmpl.icon
+              return (
+                <button
+                  key={tmpl.key ?? 'blank'}
+                  onClick={() => pick(tmpl)}
+                  className="flex flex-col items-start gap-2.5 p-4 rounded-xl border border-border bg-surface-2 hover:border-accent hover:bg-accent/5 transition-all text-left group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/15 flex items-center justify-center text-accent group-hover:scale-105 transition-transform flex-shrink-0">
+                    <Icon size={16} />
                   </div>
-                  <div className="text-xs text-text-muted leading-snug mt-0.5">
-                    {tmpl.description}
+                  <div>
+                    <div className="text-sm font-medium text-text group-hover:text-accent transition-colors">
+                      {tmpl.label}
+                    </div>
+                    <div className="text-xs text-text-muted leading-snug mt-0.5">
+                      {tmpl.description}
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

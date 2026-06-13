@@ -8,15 +8,31 @@ export function AddBlockModal({ date }: { date: string }) {
   const [description, setDescription] = useState('')
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
+  const [allDay, setAllDay] = useState(false)
+  const [repeatOption, setRepeatOption] = useState<'none' | 'daily' | 'weekly'>('none')
   const { addBlock } = useAgendaMutations(date)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!description.trim() || startTime >= endTime) return
-    addBlock.mutate({ description: description.trim(), start_time: startTime, end_time: endTime, date })
+    if (!description.trim()) return
+    if (!allDay && startTime >= endTime) return
+
+    const recurrence = repeatOption !== 'none' ? { type: repeatOption } : null
+
+    addBlock.mutate({
+      description: description.trim(),
+      start_time: allDay ? '00:00' : startTime,
+      end_time: allDay ? '23:59' : endTime,
+      all_day: allDay,
+      recurrence,
+      date
+    })
+
     setDescription('')
     setStartTime('09:00')
     setEndTime('10:00')
+    setAllDay(false)
+    setRepeatOption('none')
     setOpen(false)
   }
 
@@ -43,22 +59,52 @@ export function AddBlockModal({ date }: { date: string }) {
                 placeholder="e.g. Deep Work, Lunch, Meeting…"
                 className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
             </div>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Start</label>
-                <input type="time" required value={startTime} onChange={e => setStartTime(e.target.value)}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">End</label>
-                <input type="time" required value={endTime} onChange={e => setEndTime(e.target.value)} min={startTime}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+
+            {/* All Day & Repeat settings */}
+            <div className="flex gap-4 items-center justify-between bg-surface-2/60 p-3 rounded-xl border border-border/50">
+              <label className="flex items-center gap-2 text-xs font-semibold text-text cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={allDay}
+                  onChange={(e) => setAllDay(e.target.checked)}
+                  className="rounded border-border text-accent focus:ring-accent w-4 h-4"
+                />
+                <span>All Day Event</span>
+              </label>
+
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-text-muted">Repeat</label>
+                <select
+                  value={repeatOption}
+                  onChange={(e) => setRepeatOption(e.target.value as any)}
+                  className="bg-surface border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer"
+                >
+                  <option value="none">No repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
               </div>
             </div>
-            {startTime >= endTime && (
+
+            {!allDay && (
+              <div className="flex gap-3 animate-in fade-in duration-200">
+                <div className="flex-1">
+                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Start</label>
+                  <input type="time" required={!allDay} value={startTime} onChange={e => setStartTime(e.target.value)}
+                    className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">End</label>
+                  <input type="time" required={!allDay} value={endTime} onChange={e => setEndTime(e.target.value)} min={startTime}
+                    className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+                </div>
+              </div>
+            )}
+
+            {!allDay && startTime >= endTime && (
               <p className="text-xs text-danger">End time must be after start time.</p>
             )}
-            <button type="submit" disabled={!description.trim() || startTime >= endTime || addBlock.isPending}
+            <button type="submit" disabled={!description.trim() || (!allDay && startTime >= endTime) || addBlock.isPending}
               className="w-full bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
               {addBlock.isPending ? 'Scheduling…' : 'Schedule Block'}
             </button>

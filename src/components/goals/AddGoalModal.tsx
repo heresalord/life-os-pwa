@@ -127,6 +127,8 @@ const DAYS_OF_WEEK = [
   { label: 'S', value: 6 }
 ]
 
+import { useProjectsQuery } from '../../hooks/useProjectsQuery'
+
 export function AddGoalModal() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -139,7 +141,9 @@ export function AddGoalModal() {
   const [habitFrequency, setHabitFrequency] = useState<'daily' | 'weekly'>('daily')
   const [habitDays, setHabitDays] = useState<number[]>([])
   const [initialMilestones, setInitialMilestones] = useState('')
+  const [projectId, setProjectId] = useState('')
 
+  const { data: projects } = useProjectsQuery()
   const { addGoal, addMilestone } = useGoalMutations()
 
   const handleSelectTemplate = (tpl: typeof TEMPLATES[number]) => {
@@ -182,7 +186,8 @@ export function AddGoalModal() {
       habit_schedule: trackerType === 'habit' ? {
         frequency: habitFrequency,
         days: habitDays
-      } : undefined
+      } : undefined,
+      project_id: projectId || null,
     })
 
     // If it is a project with initial milestones
@@ -207,6 +212,7 @@ export function AddGoalModal() {
     setHabitFrequency('daily')
     setHabitDays([])
     setInitialMilestones('')
+    setProjectId('')
     setOpen(false)
   }
 
@@ -437,6 +443,28 @@ export function AddGoalModal() {
                 />
               </div>
             )}
+
+            {/* Link to Project */}
+            <div>
+              <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
+                Link to Project (optional)
+              </label>
+              <div className="relative">
+                <select
+                  value={projectId}
+                  onChange={e => setProjectId(e.target.value)}
+                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-sm text-text focus:outline-none appearance-none cursor-pointer transition-colors"
+                >
+                  <option value="">No Project</option>
+                  {projects?.filter(p => !p.archived).map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-xs">▼</span>
+              </div>
+            </div>
 
             {/* Date / Deadline Selector (SMART) */}
             <div className="grid grid-cols-2 gap-3">

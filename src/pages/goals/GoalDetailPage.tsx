@@ -25,6 +25,7 @@ import {
 import { useGoalQuery, useHabitLogsQuery, useMilestonesQuery } from '../../hooks/useGoalsQuery'
 import { useGoalEventsQuery } from '../../hooks/useGoalEventsQuery'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
+import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays, parseISO } from 'date-fns'
 import clsx from 'clsx'
 
@@ -100,6 +101,10 @@ export function GoalDetailPage() {
   const [editHabitFreq, setEditHabitFreq] = useState<'daily' | 'weekly'>('daily')
   const [editHabitDays, setEditHabitDays] = useState<number[]>([])
   const [editState, setEditState] = useState<'active' | 'paused' | 'completed' | 'abandoned'>('active')
+  const [editProjectId, setEditProjectId] = useState('')
+
+  const { data: projects } = useProjectsQuery()
+  const linkedProject = useMemo(() => projects?.find(p => p.id === goal?.project_id), [projects, goal?.project_id])
 
   // Log progress state (Target / Average)
   const [logVal, setLogVal] = useState('1')
@@ -120,6 +125,7 @@ export function GoalDetailPage() {
     setEditStartDate(goal.start_date || '')
     setEditEndDate(goal.end_date || '')
     setEditState(goal.state)
+    setEditProjectId(goal.project_id || '')
     if (goal.habit_schedule && typeof goal.habit_schedule === 'object') {
       const hs = goal.habit_schedule as any
       setEditHabitFreq(hs.frequency || 'daily')
@@ -145,6 +151,7 @@ export function GoalDetailPage() {
         end_date: editEndDate || null,
         state: editState,
         is_completed: editState === 'completed',
+        project_id: editProjectId || null,
         habit_schedule: editTrackerType === 'habit' ? {
           frequency: editHabitFreq,
           days: editHabitDays
@@ -628,6 +635,11 @@ export function GoalDetailPage() {
             <span className="text-[10px] font-bold text-text-secondary bg-surface-2 border border-border/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               {goal.tracker_type} Tracker
             </span>
+            {linkedProject && (
+              <span className="text-[10px] font-bold text-accent bg-accent/10 border border-accent/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Project: {linkedProject.name}
+              </span>
+            )}
             <span className={clsx(
               'text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ml-auto',
               goal.state === 'active' ? 'bg-success/10 border-success/20 text-success'
@@ -827,6 +839,22 @@ export function GoalDetailPage() {
                   <option value="abandoned">Archived</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1">Link to Project (optional)</label>
+              <select
+                value={editProjectId}
+                onChange={e => setEditProjectId(e.target.value)}
+                className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-3 py-2 text-xs text-text focus:outline-none cursor-pointer"
+              >
+                <option value="">No Project</option>
+                {projects?.filter(p => !p.archived).map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex gap-2.5 pt-2">

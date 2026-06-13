@@ -80,9 +80,9 @@ export function GoalsPage() {
             onChange={e => setStateFilter(e.target.value as StateFilter)}
             className="appearance-none bg-surface border border-border rounded-xl pl-3.5 pr-8 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer transition-colors shadow-sm"
           >
-            <option value="active">🟢 Active Goals</option>
-            <option value="completed">🏆 Completed</option>
-            <option value="abandoned">📦 Archived</option>
+            <option value="active">Active Goals</option>
+            <option value="completed">Completed</option>
+            <option value="abandoned">Archived</option>
           </select>
           <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted" />
         </div>

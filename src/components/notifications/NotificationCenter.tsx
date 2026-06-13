@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '../../hooks/useNotifications'
 import {
   Bell, Sun, Moon, CheckSquare, Flame, AlertTriangle,
-  Trophy, CalendarDays, Check, Circle, Sparkles
+  Trophy, CalendarDays, Check, Circle, Sparkles, X
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, isToday, isYesterday } from 'date-fns'
 import clsx from 'clsx'
 
 // Helper to map notification type to icon and colors
@@ -76,7 +76,14 @@ const getNotificationMeta = (type: string) => {
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification, 
+    deleteAllNotifications 
+  } = useNotifications()
   const navigate = useNavigate()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -102,6 +109,21 @@ export function NotificationCenter() {
       navigate(actionUrl)
     }
   }
+
+  // Group notifications by date
+  const getGroup = (dateStr: string) => {
+    const d = new Date(dateStr)
+    if (isToday(d)) return 'Today'
+    if (isYesterday(d)) return 'Yesterday'
+    return 'Earlier'
+  }
+
+  const grouped = notifications.reduce((acc, notif) => {
+    const grp = getGroup(notif.created_at)
+    if (!acc[grp]) acc[grp] = []
+    acc[grp].push(notif)
+    return acc
+  }, {} as Record<string, typeof notifications>)
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -139,70 +161,110 @@ export function NotificationCenter() {
                   </span>
                 )}
               </div>
-              {unreadCount > 0 && (
-                <button
-                  onClick={() => markAllAsRead.mutate()}
-                  className="text-xs font-medium text-accent hover:text-accent-dim flex items-center gap-1 transition-colors"
-                >
-                  <Check size={13} />
-                  Mark all read
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 ? (
+                  <button
+                    onClick={() => markAllAsRead.mutate()}
+                    className="text-xs font-medium text-accent hover:text-accent-dim flex items-center gap-1 transition-colors"
+                  >
+                    <Check size={13} />
+                    Mark all read
+                  </button>
+                ) : notifications.length > 0 ? (
+                  <button
+                    onClick={() => deleteAllNotifications.mutate()}
+                    className="text-xs font-medium text-text-muted hover:text-danger flex items-center gap-1 transition-colors"
+                  >
+                    <X size={13} />
+                    Clear all
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {/* List */}
             <div className="max-h-[360px] overflow-y-auto divide-y divide-border/60">
               {notifications.length === 0 ? (
                 <div className="px-4 py-12 text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-surface-2 border border-border flex items-center justify-center mx-auto text-text-muted">
+                  <div className="w-12 h-12 rounded-full bg-surface-2 border border-border flex items-center justify-center mx-auto text-text-muted animate-pulse">
                     <Bell size={18} />
                   </div>
                   <p className="text-xs text-text-muted font-medium">All caught up!</p>
                   <p className="text-[10px] text-text-muted/65 max-w-[200px] mx-auto">No notifications right now. Keep up the good work!</p>
                 </div>
               ) : (
-                notifications.map((notif) => {
-                  const meta = getNotificationMeta(notif.type)
-                  const Icon = meta.icon
-                  let distance = ''
-                  try {
-                    distance = formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })
-                  } catch {
-                    distance = 'recently'
-                  }
+                ['Today', 'Yesterday', 'Earlier'].map((groupName) => {
+                  const items = grouped[groupName]
+                  if (!items || items.length === 0) return null
 
                   return (
-                    <button
-                      key={notif.id}
-                      onClick={() => handleNotificationClick(notif.id, notif.action_url)}
-                      className={clsx(
-                        "w-full px-4 py-3.5 flex items-start gap-3 text-left transition-all hover:bg-surface-2/65",
-                        !notif.read ? "bg-accent/[0.02]" : "opacity-80"
-                      )}
-                    >
-                      {/* Icon container */}
-                      <div className={clsx("w-9 h-9 flex items-center justify-center rounded-xl border flex-shrink-0", meta.bgColor)}>
-                        <Icon size={16} className={meta.iconColor} />
+                    <div key={groupName} className="flex flex-col">
+                      <div className="px-4 py-1.5 bg-surface-2/30 text-[9px] font-bold text-text-muted uppercase tracking-wider border-b border-border/30">
+                        {groupName}
                       </div>
+                      <div className="divide-y divide-border/40">
+                        {items.map((notif) => {
+                          const meta = getNotificationMeta(notif.type)
+                          const Icon = meta.icon
+                          let distance = ''
+                          try {
+                            distance = formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })
+                          } catch {
+                            distance = 'recently'
+                          }
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="flex items-start justify-between gap-1.5">
-                          <p className={clsx("text-xs font-semibold truncate", !notif.read ? "text-text" : "text-text-secondary")}>
-                            {notif.title}
-                          </p>
-                          {!notif.read && (
-                            <Circle size={6} className="fill-accent text-accent mt-1.5 flex-shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-xs text-text-secondary leading-normal line-clamp-2">
-                          {notif.body}
-                        </p>
-                        <p className="text-[10px] text-text-muted pt-0.5">
-                          {distance}
-                        </p>
+                          return (
+                            <div
+                              key={notif.id}
+                              className="relative group/item w-full flex items-start text-left transition-all hover:bg-surface-2/65"
+                            >
+                              <button
+                                onClick={() => handleNotificationClick(notif.id, notif.action_url)}
+                                className={clsx(
+                                  "flex-1 px-4 py-3.5 flex items-start gap-3 text-left transition-all",
+                                  !notif.read ? "bg-accent/[0.02]" : "opacity-85"
+                                )}
+                              >
+                                {/* Icon container */}
+                                <div className={clsx("w-9 h-9 flex items-center justify-center rounded-xl border flex-shrink-0", meta.bgColor)}>
+                                  <Icon size={16} className={meta.iconColor} />
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex-1 min-w-0 space-y-0.5 pr-6">
+                                  <div className="flex items-start justify-between gap-1.5">
+                                    <p className={clsx("text-xs font-semibold truncate", !notif.read ? "text-text" : "text-text-secondary")}>
+                                      {notif.title}
+                                    </p>
+                                    {!notif.read && (
+                                      <Circle size={6} className="fill-accent text-accent mt-1.5 flex-shrink-0 animate-pulse" />
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-text-secondary leading-normal line-clamp-2">
+                                    {notif.body}
+                                  </p>
+                                  <p className="text-[10px] text-text-muted pt-0.5">
+                                    {distance}
+                                  </p>
+                                </div>
+                              </button>
+
+                              {/* Dismiss button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteNotification.mutate(notif.id)
+                                }}
+                                className="absolute right-3 top-3.5 p-1 text-text-muted hover:text-danger opacity-0 group-hover/item:opacity-100 focus:opacity-100 transition-opacity rounded-md hover:bg-surface-2"
+                                title="Dismiss notification"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          )
+                        })}
                       </div>
-                    </button>
+                    </div>
                   )
                 })
               )}

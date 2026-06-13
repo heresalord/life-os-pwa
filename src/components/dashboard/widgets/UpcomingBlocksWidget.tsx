@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Clock } from 'lucide-react'
+import { Clock, Zap, CalendarDays } from 'lucide-react'
 import { useAgendaQuery } from '../../../hooks/useAgendaQuery'
 import { useTasksQuery } from '../../../hooks/useTasksQuery'
 import { useAppStore } from '../../../store/useAppStore'
@@ -94,8 +94,18 @@ export function UpcomingBlocksWidget() {
                   <p className="text-xs text-text-secondary font-medium truncate group-hover/item:text-text transition-colors">
                     {item.title}
                   </p>
-                  <p className="text-[9px] text-text-muted">
-                    {item.type === 'task' ? '⚡ Scheduled Task' : '📅 Agenda Block'}
+                  <p className="text-[9px] text-text-muted flex items-center gap-1 mt-0.5">
+                    {item.type === 'task' ? (
+                      <>
+                        <Zap size={10} className="text-warning flex-shrink-0" />
+                        <span>Scheduled Task</span>
+                      </>
+                    ) : (
+                      <>
+                        <CalendarDays size={10} className="text-accent flex-shrink-0" />
+                        <span>Agenda Block</span>
+                      </>
+                    )}
                     {item.endTime && ` · ends ${item.endTime}`}
                   </p>
                 </div>

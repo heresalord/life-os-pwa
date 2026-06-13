@@ -40,3 +40,20 @@ export function collectAllTags(contents: string[]): string[] {
   for (const c of contents) extractTags(c).forEach(t => all.add(t))
   return [...all].sort()
 }
+
+/**
+ * Turn a chunk of note text (often a selected line) into a clean task title:
+ * strips markdown list/checkbox/heading/quote markers, collapses to a single
+ * line, and trims to a reasonable length.
+ */
+export function cleanTaskTitle(text: string, maxLength = 200): string {
+  const firstLine = text.trim().split('\n')[0] ?? ''
+  const cleaned = firstLine
+    .replace(/^\s*[-*+]\s*(\[[ xX]?\]\s*)?/, '') // "- ", "* ", "- [ ] ", "- [x] "
+    .replace(/^\s*\d+[.)]\s*/, '')               // "1. ", "2) "
+    .replace(/^\s*#{1,6}\s*/, '')                // "## "
+    .replace(/^\s*>\s*/, '')                     // "> "
+    .trim()
+  const result = cleaned || text.trim()
+  return result.length > maxLength ? result.slice(0, maxLength - 1).trimEnd() + '…' : result
+}

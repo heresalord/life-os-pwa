@@ -13,6 +13,8 @@ interface NotificationContextValue {
   unreadCount: number
   markAsRead: UseMutationResult<void, Error, string, unknown>
   markAllAsRead: UseMutationResult<void, Error, void, unknown>
+  deleteNotification: UseMutationResult<void, Error, string, unknown>
+  deleteAllNotifications: UseMutationResult<void, Error, void, unknown>
 }
 
 export const NotificationContext = createContext<NotificationContextValue | null>(null)
@@ -198,12 +200,105 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   })
 
+  const deleteNotification = useMutation({
+    mutationFn: async (id: string) => {
+      await db.notifications.delete(id)
+      if (navigator.onLine) {
+        try {
+          const { error } = await (supabase as any)
+            .from('notifications')
+            .delete()
+            .eq('id', id)
+          if (error) throw error
+        } catch (err) {
+          console.warn('[deleteNotification] Supabase sync failed, queuing:', err)
+          const queueItem = {
+            id: crypto.randomUUID(),
+            table: 'notifications',
+            operation: 'delete' as const,
+            payload: { id },
+            created_at: Date.now(),
+            retries: 0,
+            synced: false
+          }
+          await db.sync_queue.put(queueItem)
+        }
+      } else {
+        const queueItem = {
+          id: crypto.randomUUID(),
+          table: 'notifications',
+          operation: 'delete' as const,
+          payload: { id },
+          created_at: Date.now(),
+          retries: 0,
+          synced: false
+        }
+        await db.sync_queue.put(queueItem)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] })
+    }
+  })
+
+  const deleteAllNotifications = useMutation({
+    mutationFn: async () => {
+      if (!user) return
+      const allLocal = await db.notifications.toArray()
+      const idsToDelete = allLocal.map(n => n.id)
+      if (idsToDelete.length > 0) {
+        await db.notifications.bulkDelete(idsToDelete)
+      }
+      if (navigator.onLine) {
+        try {
+          const { error } = await (supabase as any)
+            .from('notifications')
+            .delete()
+            .eq('user_id', user.id)
+          if (error) throw error
+        } catch (err) {
+          console.warn('[deleteAllNotifications] Supabase sync failed, queuing:', err)
+          for (const id of idsToDelete) {
+            const queueItem = {
+              id: crypto.randomUUID(),
+              table: 'notifications',
+              operation: 'delete' as const,
+              payload: { id },
+              created_at: Date.now(),
+              retries: 0,
+              synced: false
+            }
+            await db.sync_queue.put(queueItem)
+          }
+        }
+      } else {
+        for (const id of idsToDelete) {
+          const queueItem = {
+            id: crypto.randomUUID(),
+            table: 'notifications',
+            operation: 'delete' as const,
+            payload: { id },
+            created_at: Date.now(),
+            retries: 0,
+            synced: false
+          }
+          await db.sync_queue.put(queueItem)
+        }
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] })
+    }
+  })
+
   const value: NotificationContextValue = {
     notifications: query.data || [],
     isLoading: query.isLoading,
     unreadCount: (query.data || []).filter(n => !n.read).length,
     markAsRead,
-    markAllAsRead
+    markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications
   }
 
   return (
