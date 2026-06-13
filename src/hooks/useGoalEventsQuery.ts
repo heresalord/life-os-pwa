@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import type { GoalEvent } from '../db/schema'
 
 export function useGoalEventsQuery(goalIds: string[]) {
   const { user } = useAuth()
@@ -23,8 +24,9 @@ export function useGoalEventsQuery(goalIds: string[]) {
             .order('created_at', { ascending: false })
           if (error) throw error
           if (data) {
-            await db.goal_events.bulkPut(data as Parameters<typeof db.goal_events.bulkPut>[0])
-            queryClient.setQueryData(['goal_events', goalIds, user!.id], data)
+            const reconciled = await reconcilePendingSync('goal_events', data as GoalEvent[])
+            await db.goal_events.bulkPut(reconciled)
+            queryClient.setQueryData(['goal_events', goalIds, user!.id], reconciled)
           }
         })
       }

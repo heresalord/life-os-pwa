@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useTasksQuery } from '../../../hooks/useTasksQuery'
 import { useTaskMutations } from '../../../hooks/useTaskMutations'
 import { useAppStore } from '../../../store/useAppStore'
+import { useScrollToHighlight } from '../../../hooks/useScrollToHighlight'
 import { TaskItem } from '../../../components/tasks/TaskItem'
 import { AddTaskModal } from '../../../components/tasks/AddTaskModal'
 import { EmptyState } from '../../../components/EmptyState'
@@ -12,11 +13,13 @@ import type { Task } from '../../../db/schema'
 
 interface Subtask { id: string; title: string; completed: boolean }
 
-export function ListTab() {
+export function ListTab({ highlightId }: { highlightId?: string | null } = {}) {
   const { selectedDate } = useAppStore()
   const { data: tasks = [], isLoading } = useTasksQuery(selectedDate)
   const { updateTask, deleteTask } = useTaskMutations(selectedDate)
   const [pendingOrder, setPendingOrder] = useState<Task[]>([])
+
+  useScrollToHighlight(highlightId, !isLoading)
 
   const completed = tasks.filter((t: Task) => t.completed)
   const skipped   = tasks.filter((t: Task) => t.skipped)
@@ -57,16 +60,18 @@ export function ListTab() {
     updateTask.mutate({ id, updates: { subtasks } })
 
   const renderTask = (t: Task, dragHandleProps?: Parameters<typeof TaskItem>[0]['dragHandleProps']) => (
-    <TaskItem
-      key={t.id}
-      task={t as Parameters<typeof TaskItem>[0]['task']}
-      dragHandleProps={dragHandleProps}
-      onToggleComplete={handleToggleComplete}
-      onToggleSkip={handleToggleSkip}
-      onDelete={handleDelete}
-      onEdit={handleEdit}
-      onUpdateSubtasks={handleUpdateSubtasks}
-    />
+    <div data-item-id={t.id} className="rounded-xl">
+      <TaskItem
+        key={t.id}
+        task={t as Parameters<typeof TaskItem>[0]['task']}
+        dragHandleProps={dragHandleProps}
+        onToggleComplete={handleToggleComplete}
+        onToggleSkip={handleToggleSkip}
+        onDelete={handleDelete}
+        onEdit={handleEdit}
+        onUpdateSubtasks={handleUpdateSubtasks}
+      />
+    </div>
   )
 
   return (

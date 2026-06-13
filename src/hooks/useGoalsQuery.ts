@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
-import type { Goal } from '../db/schema'
+import type { Goal, HabitLog, Milestone } from '../db/schema'
 
 export function useGoalsQuery(state = 'active') {
   const { user } = useAuth()
@@ -22,8 +22,9 @@ export function useGoalsQuery(state = 'active') {
             .order('created_at', { ascending: false })
           if (error) throw error
           if (data) {
-            await db.goals.bulkPut(data as Goal[])
-            queryClient.setQueryData(['goals', state, user!.id], data)
+            const reconciled = await reconcilePendingSync('goals', data as Goal[])
+            await db.goals.bulkPut(reconciled)
+            queryClient.setQueryData(['goals', state, user!.id], reconciled)
           }
         })
       }
@@ -83,8 +84,9 @@ export function useHabitLogsQuery(goalId?: string) {
           const { data, error } = await query.order('date', { ascending: false })
           if (error) throw error
           if (data) {
-            await db.habit_logs.bulkPut(data)
-            queryClient.setQueryData(['habit_logs', goalId, user!.id], data)
+            const reconciled = await reconcilePendingSync('habit_logs', data as HabitLog[])
+            await db.habit_logs.bulkPut(reconciled)
+            queryClient.setQueryData(['habit_logs', goalId, user!.id], reconciled)
           }
         })
       }
@@ -111,8 +113,9 @@ export function useMilestonesQuery(goalId?: string) {
           const { data, error } = await query.order('created_at', { ascending: true })
           if (error) throw error
           if (data) {
-            await db.milestones.bulkPut(data)
-            queryClient.setQueryData(['milestones', goalId, user!.id], data)
+            const reconciled = await reconcilePendingSync('milestones', data as Milestone[])
+            await db.milestones.bulkPut(reconciled)
+            queryClient.setQueryData(['milestones', goalId, user!.id], reconciled)
           }
         })
       }

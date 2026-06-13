@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { BarChart3, Landmark, List, Target, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import { OverviewTab }     from './components/OverviewTab'
@@ -35,6 +36,22 @@ export function FinancePage() {
   const today = getUserLocalDate(timezone)
   const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month')
   const [referenceDate, setReferenceDate] = useState<string>(today)
+
+  const [searchParams] = useSearchParams()
+  const highlightId = searchParams.get('highlight')
+
+  // Deep link from search: jump to the right tab + date so the
+  // highlighted transaction is in range.
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    const date = searchParams.get('date')
+    if (tab && TABS.some(t => t.value === tab)) setActive(tab as TabValue)
+    if (date) {
+      setPeriod('day')
+      setReferenceDate(date)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const adjustPeriod = (direction: 'prev' | 'next') => {
     const d = new Date(referenceDate + 'T12:00:00')
@@ -164,7 +181,7 @@ export function FinancePage() {
         )}
         {active === 'accounts' && <AccountsTab currency={currency} />}
         {active === 'transactions' && (
-          <TransactionsTab currency={currency} from={dateRange.from} to={dateRange.to} today={today} />
+          <TransactionsTab currency={currency} from={dateRange.from} to={dateRange.to} today={today} highlightId={highlightId} />
         )}
         {active === 'budgets' && <BudgetsTab currency={currency} />}
       </div>

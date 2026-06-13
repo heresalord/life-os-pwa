@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useNotesQuery } from '../../hooks/useNotesQuery'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
+import { useScrollToHighlight } from '../../hooks/useScrollToHighlight'
 import { NoteCard } from '../../components/notes/NoteCard'
 import { NoteEditorModal } from '../../components/notes/NoteEditorModal'
 import { RichTextToolbar } from '../../components/notes/RichTextToolbar'
@@ -11,6 +13,7 @@ import { extractTags, stripTags, applyTags, collectAllTags } from '../../lib/not
 import {
   FileText, Plus, Search, X, Eye, Edit3,
   FolderOpen, FolderPlus, ChevronDown, ArrowUpDown,
+  Folder, Pin, BookText, LayoutTemplate, FolderTree,
 } from 'lucide-react'
 import type { Note } from '../../db/schema'
 import ReactMarkdown from 'react-markdown'
@@ -219,6 +222,8 @@ function DesktopEditorPlaceholder() {
 export function NotesPage() {
   const { data: notes = [], isLoading } = useNotesQuery()
   const { deleteNote } = useNoteMutations()
+  const [searchParams] = useSearchParams()
+  const highlight = searchParams.get('highlight')
 
   const [activeNoteId, setActiveNoteId]   = useState<string | null>(null)
   const [modalOpen, setModalOpen]         = useState(false)
@@ -239,6 +244,22 @@ export function NotesPage() {
   const allFolders = [...SYSTEM_FOLDERS, ...customFolders]
 
   const allTags = collectAllTags((notes as Note[]).map(n => n.content || ''))
+
+  // Deep link from search: open the highlighted note and clear filters that
+  // could hide it from the list.
+  useEffect(() => {
+    if (!highlight || isLoading) return
+    const note = (notes as Note[]).find(n => n.id === highlight)
+    if (!note) return
+    setActiveFolder('All')
+    setSearch('')
+    setActiveTag(null)
+    setActiveNoteId(note.id)
+    if (window.innerWidth < 1024) setModalOpen(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlight, isLoading, notes])
+
+  useScrollToHighlight(highlight, !isLoading)
 
   // Filtered + sorted
   const filtered = useMemo(() => {
@@ -310,11 +331,11 @@ export function NotesPage() {
   }
 
   const folderIcon = (f: string) => {
-    if (f === 'All')       return '📁'
-    if (f === 'Pinned')    return '📌'
-    if (f === 'Journal')   return '📔'
-    if (f === 'Templates') return '📋'
-    return '🗂️'
+    if (f === 'All')       return <Folder size={14} />
+    if (f === 'Pinned')    return <Pin size={14} />
+    if (f === 'Journal')   return <BookText size={14} />
+    if (f === 'Templates') return <LayoutTemplate size={14} />
+    return <FolderTree size={14} />
   }
 
   const folderCount = (f: string) => {
@@ -355,7 +376,7 @@ export function NotesPage() {
                 )}
               >
                 <span className="flex items-center gap-2 truncate min-w-0">
-                  <span className="text-sm">{folderIcon(f)}</span>
+                  <span className="text-text-muted flex-shrink-0">{folderIcon(f)}</span>
                   <span className="truncate">{f}</span>
                 </span>
                 <span className="text-[10px] text-text-muted tabular-nums flex-shrink-0">{folderCount(f)}</span>
@@ -406,18 +427,39 @@ export function NotesPage() {
           </button>
         </header>
 
-        {/* Mobile folder dropdown */}
-        <div className="lg:hidden">
+        {/* Mobile folder dropdown + new-folder action */}
+        <div className="lg:hidden flex items-center gap-2">
           <select
             value={activeFolder}
             onChange={e => setActiveFolder(e.target.value)}
-            className="w-full bg-surface border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none"
+            className="flex-1 bg-surface border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none"
           >
             {allFolders.map(f => (
-              <option key={f} value={f}>{folderIcon(f)} {f} ({folderCount(f)})</option>
+              <option key={f} value={f}>{f} ({folderCount(f)})</option>
             ))}
           </select>
+          <button
+            onClick={() => setShowNewFolder(v => !v)}
+            title="New folder"
+            className="flex-shrink-0 w-10 h-10 rounded-xl border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 flex items-center justify-center transition-colors"
+          >
+            <FolderPlus size={16} />
+          </button>
         </div>
+        {showNewFolder && (
+          <div className="lg:hidden flex items-center gap-1">
+            <input
+              autoFocus
+              type="text"
+              value={newFolderInput}
+              onChange={e => setNewFolderInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addCustomFolder(); if (e.key === 'Escape') { setShowNewFolder(false); setNewFolderInput('') } }}
+              placeholder="Folder name…"
+              className="flex-1 bg-surface border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none"
+            />
+            <button onClick={addCustomFolder} className="px-3 py-2 text-sm font-medium text-accent hover:text-accent/80">Add</button>
+          </div>
+        )}
 
         {/* Search */}
         {(notes as Note[]).length > 0 && (
@@ -506,17 +548,18 @@ export function NotesPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
             {filtered.map(note => (
-              <NoteCard
-                key={note.id}
-                note={note}
-                isActive={activeNoteId === note.id}
-                folders={customFolders}
-                onClick={() => handleNoteClick(note.id)}
-                onDelete={(id) => {
-                  deleteNote.mutate(id)
-                  if (activeNoteId === id) setActiveNoteId(null)
-                }}
-              />
+              <div key={note.id} data-item-id={note.id} className="rounded-2xl">
+                <NoteCard
+                  note={note}
+                  isActive={activeNoteId === note.id}
+                  folders={customFolders}
+                  onClick={() => handleNoteClick(note.id)}
+                  onDelete={(id) => {
+                    deleteNote.mutate(id)
+                    if (activeNoteId === id) setActiveNoteId(null)
+                  }}
+                />
+              </div>
             ))}
           </div>
         )}

@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import type { InboxItem } from '../db/schema'
 
 export function useInboxQuery(processedOnly = false) {
   const { user } = useAuth()
@@ -24,8 +25,9 @@ export function useInboxQuery(processedOnly = false) {
             .order('captured_at', { ascending: false })
           if (error) throw error
           if (data) {
-            await db.inbox_items.bulkPut(data as Parameters<typeof db.inbox_items.bulkPut>[0])
-            queryClient.setQueryData(['inbox_items', processedOnly, user!.id], data)
+            const reconciled = await reconcilePendingSync('inbox_items', data as InboxItem[])
+            await db.inbox_items.bulkPut(reconciled)
+            queryClient.setQueryData(['inbox_items', processedOnly, user!.id], reconciled)
           }
         })
       }

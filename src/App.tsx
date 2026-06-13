@@ -8,6 +8,7 @@ import { useAuth } from './hooks/useAuth'
 import { useCapacitorPush } from './hooks/useCapacitorPush'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { WifiOff } from 'lucide-react'
 
 const SignInPage = React.lazy(() => import('./pages/auth/SignInPage').then(m => ({ default: m.SignInPage })))
 const SignUpPage = React.lazy(() => import('./pages/auth/SignUpPage').then(m => ({ default: m.SignUpPage })))
@@ -49,8 +50,8 @@ function App() {
         <BrowserRouter>
           {/* Global offline banner */}
           {!isOnline && (
-            <div className="fixed top-0 left-0 right-0 z-[100] bg-warning/20 border-b border-warning/40 text-warning text-xs text-center py-1.5 font-medium">
-              ⚡ Offline — changes will sync when you reconnect
+            <div className="fixed top-0 left-0 right-0 z-[100] bg-warning/20 border-b border-warning/40 text-warning text-xs text-center py-1.5 font-medium flex items-center justify-center gap-1.5">
+              <WifiOff size={12} /> Offline — changes will sync when you reconnect
             </div>
           )}
 

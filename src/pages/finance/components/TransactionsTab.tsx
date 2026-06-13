@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { format, subDays } from 'date-fns'
 import { useTransactionsRange } from '../../../hooks/useRangeQueries'
 import { useTransactionMutations } from '../../../hooks/useTransactionMutations'
+import { useScrollToHighlight } from '../../../hooks/useScrollToHighlight'
 import { TransactionItem } from '../../../components/finance/TransactionItem'
 import { AddTransactionModal } from '../../../components/finance/AddTransactionModal'
 import { EmptyState } from '../../../components/EmptyState'
@@ -20,9 +21,11 @@ interface TransactionsTabProps {
   /** Today's local date (yyyy-MM-dd) — passed from FinancePage so the prop
    *  is stable and doesn't re-derive timezone on every render. */
   today: string
+  /** Transaction id to scroll to and highlight, from a search deep link. */
+  highlightId?: string | null
 }
 
-export function TransactionsTab({ currency, from, to, today }: TransactionsTabProps) {
+export function TransactionsTab({ currency, from, to, today, highlightId }: TransactionsTabProps) {
   const { selectedDate, timezone } = useAppStore()
 
   const [typeFilter,     setTypeFilter]     = useState<TypeFilter>('all')
@@ -30,6 +33,8 @@ export function TransactionsTab({ currency, from, to, today }: TransactionsTabPr
   const [search,         setSearch]         = useState('')
 
   const { data: txns = [], isLoading } = useTransactionsRange(from, to)
+
+  useScrollToHighlight(highlightId, !isLoading)
 
   // For delete optimistic updates — the hook only needs any valid date key;
   // selectedDate is fine here since onSettled invalidates all caches anyway.
@@ -186,12 +191,13 @@ export function TransactionsTab({ currency, from, to, today }: TransactionsTabPr
                 </div>
                 <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
                   {items.map(t => (
-                    <TransactionItem
-                      key={t.id}
-                      transaction={t}
-                      onDelete={(id) => deleteTransaction.mutate(id)}
-                      currency={currency}
-                    />
+                    <div key={t.id} data-item-id={t.id} className="rounded-xl">
+                      <TransactionItem
+                        transaction={t}
+                        onDelete={(id) => deleteTransaction.mutate(id)}
+                        currency={currency}
+                      />
+                    </div>
                   ))}
                 </div>
               </section>

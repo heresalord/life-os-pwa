@@ -45,6 +45,7 @@ export interface Database {
           income_categories: string[]
           category_budgets: Json
           theme: string
+          accent_color: string | null
           morning_reminder_time: string | null
           night_reminder_time: string | null
           notifications_enabled: boolean
@@ -60,6 +61,7 @@ export interface Database {
           income_categories?: string[]
           category_budgets?: Json
           theme?: string
+          accent_color?: string | null
           morning_reminder_time?: string | null
           night_reminder_time?: string | null
           notifications_enabled?: boolean
@@ -75,6 +77,7 @@ export interface Database {
           income_categories?: string[]
           category_budgets?: Json
           theme?: string
+          accent_color?: string | null
           morning_reminder_time?: string | null
           night_reminder_time?: string | null
           notifications_enabled?: boolean

@@ -10,8 +10,9 @@ import {
   User, Palette, Bell, DollarSign, Database,
   LogOut, Download, Upload, AlertTriangle,
   CheckCircle, XCircle, Loader, Moon, Sun,
-  X, Plus, Layout, Quote, Check
+  X, Plus, Layout, Quote, Check, Pipette
 } from 'lucide-react'
+import { ACCENT_PRESETS, type AccentPreset } from '../../lib/colorUtils'
 import {
   pushSupported, isPushSubscribed, subscribeToPush, unsubscribeFromPush
 } from '../../lib/pushNotifications'
@@ -148,7 +149,7 @@ const TABS: { id: Tab; label: string; icon: React.FC<any> }[] = [
 export function SettingsPage() {
   const { user, refreshProfile } = useAuth()
   const { data: settings, upsert } = useUserSettings()
-  const { theme, setTheme, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours } = useAppStore()
+  const { theme, setTheme, accentColor, setAccentColor, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [saving, setSaving] = useState(false)
@@ -193,11 +194,15 @@ export function SettingsPage() {
       setNotificationsEnabled(settings.notifications_enabled ?? false)
       setMorningTime(settings.morning_reminder_time?.slice(0, 5) || '08:00')
       setNightTime(settings.night_reminder_time?.slice(0, 5) || '21:00')
+      // Sync accent color from the server on a fresh device — local choice
+      // (made on this device, via setAccentColor below) always wins once set.
+      if (settings.accent_color && !accentColor) setAccentColor(settings.accent_color)
       const settingsAny = settings as any
       if (settingsAny.notification_preferences) {
         setPrefs(p => ({ ...p, ...settingsAny.notification_preferences }))
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings])
 
   useEffect(() => {
@@ -226,6 +231,7 @@ export function SettingsPage() {
       }
       await upsert.mutateAsync({
         currency, theme,
+        accent_color: accentColor,
         expense_categories: expenseCats,
         income_categories:  incomeCats,
         notifications_enabled: notificationsEnabled,
@@ -362,6 +368,59 @@ export function SettingsPage() {
           >
             <Sun size={15} /> Light
           </button>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Accent Color" icon={Pipette}>
+        <p className="text-xs text-text-muted pt-3 pb-3 leading-relaxed">
+          Replaces the highlight color used for buttons, active states, and progress indicators.
+        </p>
+        <div className="grid grid-cols-4 gap-2">
+          {ACCENT_PRESETS.map((preset: AccentPreset) => {
+            const selected = (accentColor ?? ACCENT_PRESETS[0].value) === preset.value
+            return (
+              <button
+                key={preset.value}
+                onClick={() => setAccentColor(preset.value)}
+                title={preset.name}
+                className={clsx(
+                  'flex flex-col items-center gap-1.5 py-2.5 rounded-xl border transition-all',
+                  selected ? 'border-accent bg-surface-2' : 'border-border hover:border-text-muted/40'
+                )}
+              >
+                <span
+                  className="w-6 h-6 rounded-full border border-border/60 flex items-center justify-center"
+                  style={{ backgroundColor: preset.value }}
+                >
+                  {selected && <Check size={12} className="text-bg" strokeWidth={3} />}
+                </span>
+                <span className="text-[11px] text-text-muted">{preset.name}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/50">
+          <label className="relative w-9 h-9 rounded-full border border-border overflow-hidden flex-shrink-0 cursor-pointer">
+            <input
+              type="color"
+              value={accentColor ?? ACCENT_PRESETS[0].value}
+              onChange={e => setAccentColor(e.target.value)}
+              className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+            />
+            <span className="absolute inset-0" style={{ backgroundColor: accentColor ?? ACCENT_PRESETS[0].value }} />
+          </label>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-text">Custom color</p>
+            <p className="text-[11px] text-text-muted">Tap the swatch to pick any color</p>
+          </div>
+          {accentColor && (
+            <button
+              onClick={() => setAccentColor(null)}
+              className="ml-auto text-xs font-medium text-text-muted hover:text-danger transition-colors"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </SectionCard>
 

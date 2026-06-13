@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
 import type { ReadingGoal } from '../db/schema'
 import { enqueueSync } from '../db/syncQueue'
@@ -22,8 +22,9 @@ export function useReadingGoalsQuery() {
             .from('reading_goals').select('*').eq('user_id', user!.id)
           if (error) throw error
           if (data) {
-            await db.reading_goals.bulkPut(data as ReadingGoal[])
-            queryClient.setQueryData(['reading_goals', user!.id], data)
+            const reconciled = await reconcilePendingSync('reading_goals', data as ReadingGoal[])
+            await db.reading_goals.bulkPut(reconciled)
+            queryClient.setQueryData(['reading_goals', user!.id], reconciled)
           }
         })
       }

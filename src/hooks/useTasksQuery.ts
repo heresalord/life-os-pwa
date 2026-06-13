@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import type { Task } from '../db/schema'
 
 export function useTasksQuery(date: string) {
   const { user } = useAuth()
@@ -22,8 +23,9 @@ export function useTasksQuery(date: string) {
             .order('created_at')
           if (error) throw error
           if (data) {
-            await db.tasks.bulkPut(data as Parameters<typeof db.tasks.bulkPut>[0])
-            queryClient.setQueryData(['tasks', date, user!.id], data)
+            const reconciled = await reconcilePendingSync('tasks', data as Task[])
+            await db.tasks.bulkPut(reconciled)
+            queryClient.setQueryData(['tasks', date, user!.id], reconciled)
           }
         })
       }

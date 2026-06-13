@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import type { Book } from '../db/schema'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useBooksQuery() {
@@ -31,8 +32,9 @@ export function useBooksQuery() {
               const loc = localBooks[i]
               return (!remote.cover_url && loc?.cover_url) ? { ...remote, cover_url: loc.cover_url } : remote
             })
-            await db.books.bulkPut(merged as Parameters<typeof db.books.bulkPut>[0])
-            queryClient.setQueryData(['books', user!.id], merged)
+            const reconciled = await reconcilePendingSync('books', merged as Book[])
+            await db.books.bulkPut(reconciled)
+            queryClient.setQueryData(['books', user!.id], reconciled)
           }
         })
       }

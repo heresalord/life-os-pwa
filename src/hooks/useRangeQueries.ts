@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import type { Transaction } from '../db/schema'
 
 export function useTransactionsRange(from: string, to: string) {
   const { user } = useAuth()
@@ -28,8 +29,9 @@ export function useTransactionsRange(from: string, to: string) {
             .order('created_at', { ascending: false })
           if (error) throw error
           if (data) {
-            await db.transactions.bulkPut(data as Parameters<typeof db.transactions.bulkPut>[0])
-            queryClient.setQueryData(['transactions_range', from, to, user!.id], data)
+            const reconciled = await reconcilePendingSync('transactions', data as Transaction[])
+            await db.transactions.bulkPut(reconciled)
+            queryClient.setQueryData(['transactions_range', from, to, user!.id], reconciled)
           }
         })
       }

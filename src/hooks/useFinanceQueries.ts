@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
 import type { Wallet, Budget, SavingsGoal, Debt } from '../db/schema'
 
@@ -21,8 +21,9 @@ export function useWallets() {
             .eq('user_id', user!.id).order('created_at')
           if (error) throw error
           if (data) {
-            await db.wallets.bulkPut(data as Wallet[])
-            queryClient.setQueryData(['wallets', user!.id], data)
+            const reconciled = await reconcilePendingSync('wallets', data as Wallet[])
+            await db.wallets.bulkPut(reconciled)
+            queryClient.setQueryData(['wallets', user!.id], reconciled)
           }
         })
       }
@@ -46,8 +47,9 @@ export function useBudgets() {
             .eq('user_id', user!.id).order('created_at')
           if (error) throw error
           if (data) {
-            await db.budgets.bulkPut(data as Budget[])
-            queryClient.setQueryData(['budgets', user!.id], data)
+            const reconciled = await reconcilePendingSync('budgets', data as Budget[])
+            await db.budgets.bulkPut(reconciled)
+            queryClient.setQueryData(['budgets', user!.id], reconciled)
           }
         })
       }
@@ -71,8 +73,9 @@ export function useSavingsGoals() {
             .eq('user_id', user!.id).order('created_at')
           if (error) throw error
           if (data) {
-            await db.savings_goals.bulkPut(data as SavingsGoal[])
-            queryClient.setQueryData(['savings_goals', user!.id], data)
+            const reconciled = await reconcilePendingSync('savings_goals', data as SavingsGoal[])
+            await db.savings_goals.bulkPut(reconciled)
+            queryClient.setQueryData(['savings_goals', user!.id], reconciled)
           }
         })
       }
@@ -96,8 +99,9 @@ export function useDebts() {
             .eq('user_id', user!.id).order('created_at')
           if (error) throw error
           if (data) {
-            await db.debts.bulkPut(data as Debt[])
-            queryClient.setQueryData(['debts', user!.id], data)
+            const reconciled = await reconcilePendingSync('debts', data as Debt[])
+            await db.debts.bulkPut(reconciled)
+            queryClient.setQueryData(['debts', user!.id], reconciled)
           }
         })
       }

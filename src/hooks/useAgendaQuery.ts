@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
 import { useAuth } from './useAuth'
-import { bgSync } from '../lib/localFirst'
+import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import type { AgendaBlock } from '../db/schema'
 
 export function useAgendaQuery(date: string) {
   const { user } = useAuth()
@@ -22,8 +23,9 @@ export function useAgendaQuery(date: string) {
             .order('start_time')
           if (error) throw error
           if (data) {
-            await db.agenda_blocks.bulkPut(data as Parameters<typeof db.agenda_blocks.bulkPut>[0])
-            queryClient.setQueryData(['agenda_blocks', date, user!.id], data)
+            const reconciled = await reconcilePendingSync('agenda_blocks', data as AgendaBlock[])
+            await db.agenda_blocks.bulkPut(reconciled)
+            queryClient.setQueryData(['agenda_blocks', date, user!.id], reconciled)
           }
         })
       }

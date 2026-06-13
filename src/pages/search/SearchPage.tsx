@@ -101,7 +101,8 @@ export function SearchPage() {
       for (const t of (data.tasks as any[])) {
         if (match(t.title)) {
           hits.push({ id: t.id, module: 'tasks', title: t.title,
-            subtitle: t.completed ? 'Completed' : 'Pending', date: t.date, url: '/tasks' })
+            subtitle: t.completed ? 'Completed' : 'Pending', date: t.date,
+            url: `/tasks?date=${t.date}&highlight=${t.id}` })
         }
       }
     }
@@ -110,7 +111,7 @@ export function SearchPage() {
       for (const n of (data.notes as any[])) {
         if (match(n.title) || match(n.content)) {
           hits.push({ id: n.id, module: 'notes', title: n.title,
-            subtitle: n.content?.slice(0, 60), date: n.date, url: '/notes' })
+            subtitle: n.content?.slice(0, 60), date: n.date, url: `/notes?highlight=${n.id}` })
         }
       }
     }
@@ -119,7 +120,7 @@ export function SearchPage() {
       for (const g of (data.goals as any[])) {
         if (match(g.name)) {
           hits.push({ id: g.id, module: 'goals', title: g.name,
-            subtitle: g.state, url: '/goals' })
+            subtitle: g.state, url: `/goals/${g.id}` })
         }
       }
     }
@@ -128,7 +129,7 @@ export function SearchPage() {
       for (const b of (data.books as any[])) {
         if (match(b.title) || match(b.author)) {
           hits.push({ id: b.id, module: 'books', title: b.title,
-            subtitle: b.author ?? b.status, url: '/books' })
+            subtitle: b.author ?? b.status, url: `/books/${b.id}` })
         }
       }
     }
@@ -139,7 +140,7 @@ export function SearchPage() {
           hits.push({ id: t.id, module: 'transactions',
             title: t.description || t.category,
             subtitle: `${t.type === 'income' ? '+' : ''}${Number(t.amount).toFixed(2)} · ${t.category}`,
-            date: t.date, url: '/finance' })
+            date: t.date, url: `/finance?tab=transactions&date=${t.date}&highlight=${t.id}` })
         }
       }
     }
@@ -148,7 +149,7 @@ export function SearchPage() {
       for (const i of (data.inbox as any[])) {
         if (match(i.text)) {
           hits.push({ id: i.id, module: 'inbox', title: i.text,
-            subtitle: i.processed ? 'Processed' : 'Pending', url: '/inbox' })
+            subtitle: i.processed ? 'Processed' : 'Pending', url: `/inbox?highlight=${i.id}` })
         }
       }
     }

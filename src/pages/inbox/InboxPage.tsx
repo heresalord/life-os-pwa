@@ -1,5 +1,7 @@
+import { useSearchParams } from 'react-router-dom'
 import { useInboxQuery } from '../../hooks/useInboxQuery'
 import { useInboxMutations } from '../../hooks/useInboxMutations'
+import { useScrollToHighlight } from '../../hooks/useScrollToHighlight'
 import { InboxItemCard } from '../../components/inbox/InboxItemCard'
 import { EmptyState } from '../../components/EmptyState'
 import { Inbox } from 'lucide-react'
@@ -7,6 +9,10 @@ import { Inbox } from 'lucide-react'
 export function InboxPage() {
   const { data: items = [], isLoading } = useInboxQuery(false)
   const { deleteItem } = useInboxMutations()
+  const [searchParams] = useSearchParams()
+  const highlight = searchParams.get('highlight')
+
+  useScrollToHighlight(highlight, !isLoading)
 
   return (
     <div className="space-y-6 lg:max-w-4xl">
@@ -29,11 +35,12 @@ export function InboxPage() {
         // ── Desktop: 2-column card grid; mobile: single column ──
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {items.map(item => (
-            <InboxItemCard
-              key={item.id}
-              item={item as any}
-              onDelete={(id) => deleteItem.mutate(id)}
-            />
+            <div key={item.id} data-item-id={item.id} className="rounded-2xl">
+              <InboxItemCard
+                item={item as any}
+                onDelete={(id) => deleteItem.mutate(id)}
+              />
+            </div>
           ))}
         </div>
       )}
