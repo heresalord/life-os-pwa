@@ -39,10 +39,10 @@ export function useGlobalSearch(query: string) {
         if (!isMounted) return
 
         const formatted: SearchResult[] = [
-          ...tasks.map(t => ({ id: t.id, type: 'task' as const, title: t.title, subtitle: t.completed ? 'Completed' : 'Pending', date: t.date, path: '/tasks' })),
-          ...notes.map(n => ({ id: n.id, type: 'note' as const, title: n.title, subtitle: `Note • ${n.date}`, date: n.date, path: '/notes' })),
-          ...inbox.map(i => ({ id: i.id, type: 'inbox' as const, title: i.text, subtitle: `Inbox • ${i.processed ? 'Processed' : 'Pending'}`, path: '/inbox' })),
-          ...books.map(b => ({ id: b.id, type: 'book' as const, title: b.title, subtitle: b.author || 'Book', path: '/books' }))
+          ...tasks.map(t => ({ id: t.id, type: 'task' as const, title: t.title, subtitle: t.completed ? 'Completed' : 'Pending', date: t.date, path: `/tasks?date=${t.date}&highlight=${t.id}` })),
+          ...notes.map(n => ({ id: n.id, type: 'note' as const, title: n.title, subtitle: `Note · ${n.date}`, date: n.date, path: `/notes?highlight=${n.id}` })),
+          ...inbox.map(i => ({ id: i.id, type: 'inbox' as const, title: i.text, subtitle: `Inbox · ${i.processed ? 'Processed' : 'Pending'}`, path: `/inbox?highlight=${i.id}` })),
+          ...books.map(b => ({ id: b.id, type: 'book' as const, title: b.title, subtitle: b.author || 'Book', path: `/books/${b.id}` }))
         ]
 
         setResults(formatted)

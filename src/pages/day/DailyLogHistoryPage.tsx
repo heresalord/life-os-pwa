@@ -2,13 +2,14 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays } from 'date-fns'
-import { Flame, Calendar, ChevronRight, TrendingUp, Trophy, Target, CalendarDays } from 'lucide-react'
+import { Flame, Calendar, ChevronRight, TrendingUp, Trophy, Target, CalendarDays, Frown, Annoyed, Meh, Smile, Laugh } from 'lucide-react'
 import { db } from '../../db'
 import { useAppStore } from '../../store/useAppStore'
 import { displayDate, getUserLocalDate } from '../../lib/dateUtils'
 import clsx from 'clsx'
 
-const EMOJIS = ['😶', '😕', '😐', '🙂', '😊']
+const MOOD_ICONS = [Frown, Annoyed, Meh, Smile, Laugh]
+const MOOD_LABELS = ['Low', 'Difficult', 'Okay', 'Good', 'Great']
 
 export function DailyLogHistoryPage() {
   const navigate = useNavigate()
@@ -273,11 +274,14 @@ export function DailyLogHistoryPage() {
                     <span className="text-xs font-semibold text-text group-hover:text-accent transition-colors">
                       {displayDate(rec.date, 'EEEE, MMM d, yyyy')}
                     </span>
-                    {rec.mood && (
-                      <span className="text-sm" title={`Mood: ${EMOJIS[rec.mood - 1]}`}>
-                        {EMOJIS[rec.mood - 1]}
-                      </span>
-                    )}
+                    {rec.mood && (() => {
+                      const MoodIcon = MOOD_ICONS[rec.mood - 1]
+                      return (
+                        <span title={MOOD_LABELS[rec.mood - 1]}>
+                          <MoodIcon size={14} className="text-text-muted" />
+                        </span>
+                      )
+                    })()}
                   </div>
                   
                   {/* Intention and Win snippets */}

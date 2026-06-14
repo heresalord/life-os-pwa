@@ -12,6 +12,7 @@ import {
   CheckCircle, XCircle, Loader, Moon, Sun,
   X, Plus, Layout, Quote, Check, Pipette,
   CalendarCheck, Flame, Wallet, PartyPopper, PiggyBank, BarChart3,
+  Monitor,
 } from 'lucide-react'
 import { ACCENT_PRESETS, type AccentPreset } from '../../lib/colorUtils'
 import {
@@ -150,7 +151,7 @@ const TABS: { id: Tab; label: string; icon: React.FC<any> }[] = [
 export function SettingsPage() {
   const { user, refreshProfile } = useAuth()
   const { data: settings, upsert } = useUserSettings()
-  const { theme, setTheme, accentColor, setAccentColor, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours } = useAppStore()
+  const { theme, setTheme, accentColor, setAccentColor, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours, autoTheme, setAutoTheme } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [saving, setSaving] = useState(false)
@@ -198,7 +199,11 @@ export function SettingsPage() {
       // Sync accent color from the server on a fresh device — local choice
       // (made on this device, via setAccentColor below) always wins once set.
       if (settings.accent_color && !accentColor) setAccentColor(settings.accent_color)
+      // Restore auto-theme mode from the server on a fresh device.
       const settingsAny = settings as any
+      if (settingsAny.auto_theme && autoTheme === 'off' && settingsAny.auto_theme !== 'off') {
+        setAutoTheme(settingsAny.auto_theme)
+      }
       if (settingsAny.notification_preferences) {
         setPrefs(p => ({ ...p, ...settingsAny.notification_preferences }))
       }
@@ -239,6 +244,7 @@ export function SettingsPage() {
         morning_reminder_time: morningTime + ':00',
         night_reminder_time:   nightTime   + ':00',
         notification_preferences: prefs,
+        auto_theme: autoTheme,
       } as any)
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 2500)
@@ -369,6 +375,43 @@ export function SettingsPage() {
           >
             <Sun size={15} /> Light
           </button>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Theme Mode" icon={Monitor}>
+        <p className="text-xs text-text-muted pt-3 pb-3 leading-relaxed">
+          Override the manual toggle with automatic switching.
+        </p>
+        <div className="space-y-2">
+          {([
+            { value: 'off',    label: 'Manual',        sub: 'Use the light/dark toggle above' },
+            { value: 'time',   label: 'Time-based',    sub: 'Light 6 AM–7 PM, dark overnight' },
+            { value: 'system', label: 'Follow system', sub: 'Matches your device theme' },
+          ] as const).map(opt => (
+            <label key={opt.value}
+              className={clsx(
+                'flex items-center gap-3 px-3.5 py-3 rounded-xl border cursor-pointer transition-all',
+                autoTheme === opt.value
+                  ? 'bg-accent/5 border-accent/25'
+                  : 'bg-surface-2 border-border hover:border-text-muted/40'
+              )}
+            >
+              <input type="radio" name="auto_theme"
+                value={opt.value}
+                checked={autoTheme === opt.value}
+                onChange={() => setAutoTheme(opt.value)}
+                className="sr-only"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-text">{opt.label}</p>
+                <p className="text-[11px] text-text-muted">{opt.sub}</p>
+              </div>
+              <div className={clsx(
+                'w-4 h-4 rounded-full border-2 transition-all',
+                autoTheme === opt.value ? 'border-accent bg-accent' : 'border-border'
+              )} />
+            </label>
+          ))}
         </div>
       </SectionCard>
 
