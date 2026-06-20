@@ -2,8 +2,8 @@ import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
-  CalendarDays, Inbox, FileText, Search, Settings, LogOut, Heart,
-  Sun, Moon, Clock, Briefcase
+  CalendarDays, Inbox, FileText, Search, Clock, Heart,
+  Briefcase, MoreHorizontal,
 } from 'lucide-react'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useAuth } from '../../hooks/useAuth'
@@ -16,34 +16,33 @@ import { DesktopTopbar } from './DesktopTopbar'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { useNavSync } from '../../hooks/useNavSync'
 import { useWidgetSync } from '../../hooks/useWidgetSync'
+import { useTranslation } from '../../i18n'
 import { ErrorBoundary } from '../ErrorBoundary'
 import clsx from 'clsx'
 
 export const ALL_NAV_OPTIONS = [
-  { key: 'day',     to: '/day',     icon: Heart,        label: 'Daily Log' },
-  { key: 'tasks',   to: '/tasks',   icon: CheckSquare,  label: 'Tasks'   },
-  { key: 'finance', to: '/finance', icon: DollarSign,   label: 'Finance' },
-  { key: 'goals',   to: '/goals',   icon: Target,       label: 'Goals'   },
-  { key: 'projects',to: '/projects',icon: Briefcase,    label: 'Projects'},
-  { key: 'books',   to: '/books',   icon: BookOpen,     label: 'Books'   },
-  { key: 'agenda',  to: '/agenda',  icon: CalendarDays, label: 'Agenda'  },
-  { key: 'inbox',   to: '/inbox',   icon: Inbox,        label: 'Inbox'   },
-  { key: 'notes',   to: '/notes',   icon: FileText,     label: 'Notes'   },
-  { key: 'search',  to: '/search',  icon: Search,       label: 'Search'  },
+  { key: 'day',      to: '/day',      icon: Heart,        label: 'Daily Log' },
+  { key: 'tasks',    to: '/tasks',    icon: CheckSquare,  label: 'Tasks'     },
+  { key: 'finance',  to: '/finance',  icon: DollarSign,   label: 'Finance'   },
+  { key: 'goals',    to: '/goals',    icon: Target,       label: 'Goals'     },
+  { key: 'projects', to: '/projects', icon: Briefcase,    label: 'Projects'  },
+  { key: 'books',    to: '/books',    icon: BookOpen,     label: 'Books'     },
+  { key: 'agenda',   to: '/agenda',   icon: CalendarDays, label: 'Agenda'    },
+  { key: 'inbox',    to: '/inbox',    icon: Inbox,        label: 'Inbox'     },
+  { key: 'notes',    to: '/notes',    icon: FileText,     label: 'Notes'     },
+  { key: 'search',   to: '/search',   icon: Search,       label: 'Search'    },
 ]
 
 const HOME_NAV = { key: 'home', to: '/', icon: LayoutDashboard, label: 'Home' }
 
-interface AppShellProps {
-  children: React.ReactNode
-}
+interface AppShellProps { children: React.ReactNode }
 
 export function AppShell({ children }: AppShellProps) {
-  const { profile, signOut } = useAuth()
+  const { profile } = useAuth()
   const { selectedDate, timezone, navItems } = useAppStore()
   const navigate = useNavigate()
   const location = useLocation()
-  const [menuOpen, setMenuOpen] = React.useState(false)
+  const { t } = useTranslation()
   const [animKey, setAnimKey] = React.useState(location.pathname)
 
   useNavSync()
@@ -56,8 +55,6 @@ export function AppShell({ children }: AppShellProps) {
       .filter(Boolean) as typeof ALL_NAV_OPTIONS,
   ]
 
-  const hiddenPages = ALL_NAV_OPTIONS.filter(o => !navItems.includes(o.key))
-
   React.useEffect(() => {
     setAnimKey(location.pathname)
   }, [location.pathname])
@@ -68,6 +65,10 @@ export function AppShell({ children }: AppShellProps) {
   const displayName = profile?.display_name || 'You'
   const initials = displayName.slice(0, 2).toUpperCase()
 
+  // Translate nav label using JSON keys; fall back to the English label
+  const navLabel = (key: string, fallback: string) =>
+    t(`nav.${key}`, fallback)
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-bg">
 
@@ -75,18 +76,14 @@ export function AppShell({ children }: AppShellProps) {
 
       <div className="flex flex-col flex-1 min-w-0">
 
-        {/* ── Mobile header ──────────────────────────────────────────────
-            paddingTop: env(safe-area-inset-top) pushes the content below
-            the phone's status bar (notch, Dynamic Island, punch-hole).
-            The background colour extends up behind the status bar, which
-            looks intentional rather than broken.
-            The inner div keeps a fixed h-14 for the actual nav content. */}
+        {/* ── Mobile header ─────────────────────────────────────────────── */}
         <header
-          className="md:hidden sticky top-0 z-30 bg-bg/70 backdrop-blur-xl border-b border-border/40 supports-backdrop-filter:bg-bg/70"
+          className="md:hidden sticky top-0 z-30 bg-bg border-b border-border"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
 
+            {/* Left: app name + date picker */}
             <div className="flex flex-col leading-tight relative group">
               <span className="text-xs text-text-muted font-body uppercase tracking-widest">Life OS</span>
               <div className="relative">
@@ -102,14 +99,14 @@ export function AppShell({ children }: AppShellProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Right: actions */}
+            <div className="flex items-center gap-2.5">
               <SyncStatusDot />
-              
-              {/* Notifications */}
+
               <ErrorBoundary inline>
                 <NotificationCenter />
               </ErrorBoundary>
-              
+
               <button
                 onClick={() => navigate('/search')}
                 className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors"
@@ -118,98 +115,40 @@ export function AppShell({ children }: AppShellProps) {
                 <Search size={18} />
               </button>
 
-              <div className="relative">
-                <button
-                  onClick={() => navigate('/profile')}
-                  className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
-                >
-                  {initials}
-                </button>
-              </div>
-
-              {/* Menu hamburger trigger */}
+              {/* Avatar → Profile */}
               <button
-                onClick={() => setMenuOpen(v => !v)}
-                className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
-                aria-label="Menu"
+                onClick={() => navigate('/profile')}
+                className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
+                aria-label="Profile"
               >
-                <Settings size={18} />
+                {initials}
               </button>
 
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-10 z-50 w-52 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
-                    <div className="px-4 py-3 border-b border-border">
-                      <p className="text-sm text-text font-medium truncate">{displayName}</p>
-                      <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
-                    </div>
-
-                    <nav className="py-1 max-h-72 overflow-y-auto">
-                      <NavLink to="/profile" onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                        <Search size={15} className="opacity-0 w-0" /> {/* spacing placeholder / dummy layout */}
-                        Profile Page
-                      </NavLink>
-
-                      {hiddenPages.map(({ to, icon: Icon, label }) => (
-                        <NavLink
-                          key={to}
-                          to={to}
-                          onClick={() => setMenuOpen(v => !v)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors"
-                        >
-                          <Icon size={15} />
-                          {label}
-                        </NavLink>
-                      ))}
-
-                      <div className="border-t border-border my-1" />
-
-                      <NavLink to="/day?guided=morning" onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                        <Sun size={15} /> Start Morning
-                      </NavLink>
-                      <NavLink to="/day?guided=evening" onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                        <Moon size={15} /> Start Evening
-                      </NavLink>
-
-                      <div className="border-t border-border my-1" />
-
-                      <NavLink to="/settings" onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                        <Settings size={15} />
-                        Settings
-                      </NavLink>
-
-                      <button
-                        onClick={() => { signOut(); setMenuOpen(false) }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
-                      >
-                        <LogOut size={15} />
-                        Sign Out
-                      </button>
-                    </nav>
-                  </div>
-                </>
-              )}
+              {/* More → /more page */}
+              <button
+                onClick={() => navigate('/more')}
+                className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
+                aria-label="More"
+              >
+                <MoreHorizontal size={18} />
+              </button>
             </div>
           </div>
         </header>
 
         <DesktopTopbar />
 
+        {/* Time-travel banner */}
         {isTimeTravel && (
           <div className="bg-timetravel/15 border-b border-timetravel/30 px-4 py-2 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs text-timetravel font-medium">
-              <Clock size={14} /> Viewing {displayDate(selectedDate, 'MMMM d, yyyy')}
+              <Clock size={14} /> {t('common.viewing', 'Viewing')} {displayDate(selectedDate, 'MMMM d, yyyy')}
             </span>
             <button
               onClick={() => useAppStore.getState().resetToToday()}
               className="text-xs text-timetravel underline hover:no-underline"
             >
-              Back to Today
+              {t('common.back_to_today', 'Back to Today')}
             </button>
           </div>
         )}
@@ -231,11 +170,9 @@ export function AppShell({ children }: AppShellProps) {
 
       <InstallBanner />
 
-      {/* ── Mobile bottom nav ───────────────────────────────────────────
-          paddingBottom: env(safe-area-inset-bottom) lifts the nav above
-          the home indicator on iPhone / gesture bar on Android. */}
+      {/* ── Mobile bottom nav ─────────────────────────────────────────── */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-bg/80 backdrop-blur-xl border-t border-border/40 supports-backdrop-filter:bg-bg/80"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-bg border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="max-w-2xl mx-auto flex items-center justify-around h-16">
@@ -255,7 +192,7 @@ export function AppShell({ children }: AppShellProps) {
                 <>
                   <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
                   <span className={clsx('text-[10px] font-medium', isActive ? 'text-accent' : '')}>
-                    {label}
+                    {navLabel(key, label)}
                   </span>
                 </>
               )}

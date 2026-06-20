@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { 
   Sun, Moon, Zap, Award, FileText, CheckCircle2, 
   ArrowRight, Check, Plus, Edit2, Play, Eye, ChevronLeft, ChevronRight,
@@ -294,9 +295,10 @@ export function DailyLogPage() {
   }
 
   // Mood Emoji scale render helper
-  const renderMoodScale = (currentVal: number, onChange: (val: number) => void, readonly = false) => {
+  // compact=true → smaller padding + no label text (used inside the wizard overlay)
+  const renderMoodScale = (currentVal: number, onChange: (val: number) => void, readonly = false, compact = false) => {
     return (
-      <div className="flex justify-between gap-3">
+      <div className="flex justify-between gap-2">
         {[1, 2, 3, 4, 5].map(val => {
           const MoodIcon = MOOD_ICONS[val - 1]
           return (
@@ -305,16 +307,27 @@ export function DailyLogPage() {
               disabled={readonly}
               type="button"
               onClick={() => onChange(val)}
-              className={`flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
+              className={`flex-1 flex flex-col items-center justify-center ${
+                compact ? 'py-3 px-1' : 'p-3'
+              } rounded-2xl border transition-all ${
                 currentVal === val
                   ? 'bg-info/10 border-info text-info scale-105'
                   : 'bg-surface-2 border-border hover:border-info/30 hover:bg-surface-2/80'
               }`}
             >
-              <MoodIcon size={24} className={`mb-1 ${currentVal === val ? '' : 'text-text-muted'}`} />
-              <span className={`text-[9px] font-bold uppercase tracking-wider ${currentVal === val ? 'text-info' : 'text-text-muted'}`}>
-                {MOOD_LABELS[val - 1]}
-              </span>
+              <MoodIcon
+                size={compact ? 22 : 24}
+                className={`${compact ? '' : 'mb-1'} ${
+                  currentVal === val ? '' : 'text-text-muted'
+                }`}
+              />
+              {!compact && (
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                  currentVal === val ? 'text-info' : 'text-text-muted'
+                }`}>
+                  {MOOD_LABELS[val - 1]}
+                </span>
+              )}
             </button>
           )
         })}
@@ -783,7 +796,7 @@ export function DailyLogPage() {
       {/* ========================================================
           GUIDED MODE — FULL-SCREEN IMMERSIVE WIZARD
           ======================================================== */}
-      {(guidedMode === 'morning' || guidedMode === 'evening') && (() => {
+      {(guidedMode === 'morning' || guidedMode === 'evening') && createPortal((() => {
         const isMorning = guidedMode === 'morning'
         const totalSteps = 4
         const pct = Math.round((wizardStep / totalSteps) * 100)
@@ -972,7 +985,7 @@ export function DailyLogPage() {
                       <h2 className="text-2xl font-display font-bold text-white">How was your day?</h2>
                       <p className="text-white/60 text-sm mt-1">Take a moment to check in with your mood.</p>
                     </div>
-                    {renderMoodScale(mood, setMood)}
+                    {renderMoodScale(mood, setMood, false, true)}
                   </div>
                 )}
 
@@ -1086,7 +1099,7 @@ export function DailyLogPage() {
             </div>
           </div>
         )
-      })()}
+      })(), document.body)}
     </div>
   )
 }

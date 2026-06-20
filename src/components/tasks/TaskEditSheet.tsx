@@ -4,6 +4,7 @@ import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import type { Task } from '../../db/schema'
 import { ShareModal } from '../dashboard/ShareModal'
+import { Portal } from '../Portal'
 import clsx from 'clsx'
 
 interface TaskEditSheetProps {
@@ -83,7 +84,8 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-bg/80 backdrop-blur-sm" onClick={onClose} />
 
@@ -265,5 +267,6 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
         itemName={task.title}
       />
     </div>
+    </Portal>
   )
 }

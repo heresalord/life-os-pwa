@@ -114,5 +114,28 @@
     "system": "System",
     "notifications": "Notifications",
     "profile": "Profile"
+  },
+  "nav": {
+    "home": "Home",
+    "day": "Daily",
+    "tasks": "Tasks",
+    "finance": "Finance",
+    "goals": "Goals",
+    "projects": "Projects",
+    "books": "Books",
+    "agenda": "Agenda",
+    "inbox": "Inbox",
+    "notes": "Notes",
+    "search": "Search"
+  },
+  "more": {
+    "routines": "Routines",
+    "morning": "Morning",
+    "evening": "Evening",
+    "guided_mode": "Guided mode",
+    "more_modules": "More Modules",
+    "pinned": "Pinned in Nav",
+    "account": "Account",
+    "sign_out": "Sign Out"
   }
 }

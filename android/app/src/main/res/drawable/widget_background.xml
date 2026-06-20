@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  widget_background.xml  (res/drawable/)
-  Light glass effect: semi-transparent white surface with rounded corners.
-  Used as the background for all Life OS widgets in light mode.
+  widget_background.xml  (res/drawable/ — light mode)
+
+  Dark-glass effect: semi-transparent near-black with rounded corners.
+  Using a dark tint in both light and dark mode ensures white widget text
+  is always legible regardless of the wallpaper brightness.
+
+  We deliberately use the same dark glass in light mode instead of a
+  white glass, because Android widgets cannot dynamically adapt text
+  color to wallpaper brightness without Android 12's Dynamic Color API.
 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <!-- ~70% opacity white = frosted light glass -->
-    <solid android:color="#B3FFFFFF" />
+    <!-- ~72% opacity near-black = frosted dark glass -->
+    <solid android:color="#B8101018" />
     <corners android:radius="24dp" />
     <stroke
         android:width="1dp"
-        android:color="#28000000" />
+        android:color="#30FFFFFF" />
 </shape>

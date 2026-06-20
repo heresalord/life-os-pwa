@@ -114,5 +114,28 @@
     "system": "Système",
     "notifications": "Notifications",
     "profile": "Profil"
+  },
+  "nav": {
+    "home": "Accueil",
+    "day": "Journal",
+    "tasks": "Tâches",
+    "finance": "Finance",
+    "goals": "Objectifs",
+    "projects": "Projets",
+    "books": "Livres",
+    "agenda": "Agenda",
+    "inbox": "Boîte",
+    "notes": "Notes",
+    "search": "Recherche"
+  },
+  "more": {
+    "routines": "Routines",
+    "morning": "Matin",
+    "evening": "Soir",
+    "guided_mode": "Mode guidé",
+    "more_modules": "Plus de modules",
+    "pinned": "Épinglés",
+    "account": "Compte",
+    "sign_out": "Se déconnecter"
   }
 }
