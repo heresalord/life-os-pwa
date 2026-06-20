@@ -781,343 +781,312 @@ export function DailyLogPage() {
       </div>
 
       {/* ========================================================
-          GUIDED MODE OVERLAY DIALOGS
+          GUIDED MODE — FULL-SCREEN IMMERSIVE WIZARD
           ======================================================== */}
-      {guidedMode === 'morning' && (
-        <div className="fixed inset-0 bg-bg/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6 relative max-h-[90dvh] overflow-y-auto">
-            <button 
-              onClick={() => setSearchParams({})}
-              className="absolute right-4 top-4 text-text-muted hover:text-text"
-            >
-              <X size={18} />
-            </button>
+      {(guidedMode === 'morning' || guidedMode === 'evening') && (() => {
+        const isMorning = guidedMode === 'morning'
+        const totalSteps = 4
+        const pct = Math.round((wizardStep / totalSteps) * 100)
 
-            <header>
-              <div className="flex items-center gap-2 mb-1">
-                <Sun size={18} className="text-warning" />
-                <span className="text-xs font-bold text-warning uppercase tracking-widest">Morning Guided Routine</span>
-              </div>
-              <div className="w-full bg-surface-2 rounded-full h-1 overflow-hidden mt-3">
-                <div className="bg-warning h-full transition-all duration-300" style={{ width: `${(wizardStep / 4) * 100}%` }} />
-              </div>
-            </header>
+        // Gradient config
+        const gradientFrom = isMorning ? 'from-amber-950' : 'from-indigo-950'
+        const gradientTo   = isMorning ? 'to-orange-900'  : 'to-blue-950'
+        const accentColor  = isMorning ? '#f59e0b' : '#60a5fa'
+        const accentLight  = isMorning ? 'text-amber-400'  : 'text-blue-400'
+        const accentBg     = isMorning ? 'bg-amber-400'    : 'bg-blue-400'
+        const accentBorder = isMorning ? 'border-amber-400/30' : 'border-blue-400/30'
+        const accentFocusBorder = isMorning ? 'focus:border-amber-400' : 'focus:border-blue-400'
+        const btnPrimary   = isMorning
+          ? 'bg-amber-400 hover:bg-amber-300 text-gray-900'
+          : 'bg-blue-500  hover:bg-blue-400  text-white'
+        const btnFinish    = 'bg-emerald-500 hover:bg-emerald-400 text-white'
 
-            {/* Step 1: Energy AM */}
-            {wizardStep === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-text">How is your morning energy?</h3>
-                <p className="text-xs text-text-secondary">Rate your energy level as you start the day.</p>
-                <div className="flex justify-center py-2">
-                  {renderLightningScale(energyAm, setEnergyAm)}
-                </div>
-                {carryOverRunning && (
-                  <p className="text-[10px] text-text-muted text-center flex items-center justify-center gap-1 animate-pulse">
-                    <Zap size={11} /> Checking yesterday's tasks to carry over...
-                  </p>
-                )}
-                {carryOverCount !== null && carryOverCount > 0 && (
-                  <p className="text-[10px] text-warning bg-warning/5 border border-warning/10 p-2.5 rounded-xl text-center flex items-center justify-center gap-1.5">
-                    <Zap size={11} /> Carried over {carryOverCount} pending tasks from yesterday.
-                  </p>
-                )}
-                {carryOverCount !== null && carryOverCount === 0 && (
-                  <p className="text-[10px] text-text-muted text-center flex items-center justify-center gap-1.5">
-                    <Zap size={11} /> No pending tasks to carry over from yesterday.
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setWizardStep(2)}
-                  disabled={carryOverRunning}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-warning text-bg font-semibold rounded-xl hover:bg-warning/90 transition-colors mt-2 disabled:opacity-50"
-                >
-                  Continue <ArrowRight size={16} />
-                </button>
-              </div>
-            )}
+        // Progress ring (SVG)
+        const r = 28
+        const circ = 2 * Math.PI * r
+        const dash = circ - (circ * pct) / 100
 
-            {/* Step 2: Intention */}
-            {wizardStep === 2 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-text">Set your intention</h3>
-                <p className="text-xs text-text-secondary">What is the single most important direction or focus for you today?</p>
-                <input
-                  autoFocus
-                  type="text"
-                  value={intention}
-                  onChange={(e) => setIntention(e.target.value)}
-                  placeholder="Today, I intend to..."
-                  className="w-full bg-surface-2 border border-border focus:border-warning rounded-xl px-4 py-3 text-sm text-text focus:outline-none transition-all"
-                />
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(1)}
-                    className="flex-1 py-3 bg-surface-2 text-text font-semibold rounded-xl hover:bg-muted transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(3)}
-                    className="flex-[2] flex items-center justify-center gap-2 py-3 bg-warning text-bg font-semibold rounded-xl hover:bg-warning/90 transition-colors"
-                  >
-                    Continue <ArrowRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
+        return (
+          <div className={`fixed inset-0 z-50 bg-gradient-to-br ${gradientFrom} ${gradientTo} flex flex-col overflow-hidden`}>
+            {/* Decorative blobs */}
+            <div className="absolute top-0 right-0 w-80 h-80 rounded-full opacity-10 blur-3xl"
+              style={{ backgroundColor: accentColor, transform: 'translate(30%, -30%)' }} />
+            <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-10 blur-3xl"
+              style={{ backgroundColor: accentColor, transform: 'translate(-30%, 30%)' }} />
 
-            {/* Step 3: Gratitude */}
-            {wizardStep === 3 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-text">Morning Gratitude</h3>
-                <p className="text-xs text-text-secondary">Write down 3 things you are genuinely grateful for this morning.</p>
-                <div className="space-y-2.5">
-                  {gratitude.map((g, idx) => (
-                    <input
-                      key={idx}
-                      type="text"
-                      value={g}
-                      onChange={(e) => {
-                        const copy = [...gratitude]
-                        copy[idx] = e.target.value
-                        setGratitude(copy)
-                      }}
-                      placeholder={`I am grateful for... (${idx + 1})`}
-                      className="w-full bg-surface-2 border border-border focus:border-warning rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none transition-all"
-                    />
-                  ))}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(2)}
-                    className="flex-1 py-3 bg-surface-2 text-text font-semibold rounded-xl hover:bg-muted transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(4)}
-                    className="flex-[2] flex items-center justify-center gap-2 py-3 bg-warning text-bg font-semibold rounded-xl hover:bg-warning/90 transition-colors"
-                  >
-                    Continue <ArrowRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Top bar */}
+            <div className="relative flex items-center justify-between px-5 pt-safe pt-4 pb-3">
+              {/* Close */}
+              <button
+                onClick={() => setSearchParams({})}
+                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm"
+              >
+                <X size={17} className="text-white" />
+              </button>
 
-            {/* Step 4: Priorities */}
-            {wizardStep === 4 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-text">Verify your priorities</h3>
-                <p className="text-xs text-text-secondary">Select or add high-priority tasks to focus on today.</p>
-                <div className="max-h-36 overflow-y-auto space-y-2 pr-1">
-                  {priorities.map(t => (
-                    <div key={t.id} className="flex items-center gap-2 p-2 bg-surface-2 border border-border rounded-lg text-xs">
-                      <Check size={14} className="text-warning font-bold" />
-                      <span className="truncate flex-1 text-text">{t.title}</span>
-                    </div>
-                  ))}
-                  {priorities.length === 0 && (
-                    <p className="text-xs text-text-muted italic text-center py-2">Add high-priority tasks using the form below.</p>
-                  )}
-                </div>
-                <form onSubmit={handleAddPriorityTask} className="flex gap-2 border-t border-border pt-3">
-                  <input
-                    type="text"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="New priority task..."
-                    className="flex-1 bg-surface-2 border border-border rounded-lg px-2 py-1.5 text-xs text-text focus:outline-none"
+              {/* Progress ring */}
+              <div className="relative w-16 h-16 flex items-center justify-center">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r={r} stroke="white" strokeOpacity="0.15" strokeWidth="4" fill="none" />
+                  <circle
+                    cx="32" cy="32" r={r}
+                    stroke={accentColor}
+                    strokeWidth="4"
+                    fill="none"
+                    strokeDasharray={circ}
+                    strokeDashoffset={dash}
+                    strokeLinecap="round"
+                    className="transition-all duration-500"
                   />
-                  <button type="submit" className="px-2.5 bg-warning text-bg rounded-lg hover:bg-warning/90">Add</button>
-                </form>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(3)}
-                    className="flex-1 py-3 bg-surface-2 text-text font-semibold rounded-xl hover:bg-muted transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={finishMorningWizard}
-                    className="flex-[2] flex items-center justify-center gap-2 py-3 bg-success text-bg font-semibold rounded-xl hover:bg-success/90 transition-colors"
-                  >
-                    Finish Morning <CheckCircle2 size={16} />
-                  </button>
-                </div>
+                </svg>
+                <span className="absolute text-xs font-bold text-white">{wizardStep}/{totalSteps}</span>
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {guidedMode === 'evening' && (
-        <div className="fixed inset-0 bg-bg/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6 relative max-h-[90dvh] overflow-y-auto">
-            <button 
-              onClick={() => setSearchParams({})}
-              className="absolute right-4 top-4 text-text-muted hover:text-text"
-            >
-              <X size={18} />
-            </button>
-
-            <header>
-              <div className="flex items-center gap-2 mb-1">
-                <Moon size={18} className="text-info" />
-                <span className="text-xs font-bold text-info uppercase tracking-widest">Evening Guided Reflection</span>
+              {/* Mode label */}
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm border ${accentBorder}`}>
+                {isMorning ? <Sun size={13} className={accentLight} /> : <Moon size={13} className={accentLight} />}
+                <span className={`text-[11px] font-bold uppercase tracking-wider ${accentLight}`}>
+                  {isMorning ? 'Morning' : 'Evening'}
+                </span>
               </div>
-              <div className="w-full bg-surface-2 rounded-full h-1 overflow-hidden mt-3">
-                <div className="bg-info h-full transition-all duration-300" style={{ width: `${(wizardStep / 4) * 100}%` }} />
-              </div>
-            </header>
+            </div>
 
-            {/* Step 1: Mood */}
-            {wizardStep === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-text">How was your day?</h3>
-                <p className="text-xs text-text-secondary">Take a second to check in with your overall mood.</p>
-                {renderMoodScale(mood, setMood)}
+            {/* Progress bar */}
+            <div className="mx-5 mb-2 h-0.5 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${accentBg} transition-all duration-500 rounded-full`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+
+            {/* Step content — scrollable */}
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <div className="max-w-md mx-auto">
+
+                {/* ── MORNING STEPS ── */}
+                {isMorning && wizardStep === 1 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-400">
+                    <div>
+                      <p className="text-amber-300/70 text-sm font-medium mb-1">Step 1 · Energy Check</p>
+                      <h2 className="text-2xl font-display font-bold text-white">How's your morning energy?</h2>
+                      <p className="text-white/60 text-sm mt-1">Rate how energised you feel right now.</p>
+                    </div>
+                    <div className="flex justify-center gap-3 py-2">
+                      {renderLightningScale(energyAm, setEnergyAm)}
+                    </div>
+                    {carryOverRunning && (
+                      <p className="text-xs text-amber-300/70 text-center flex items-center justify-center gap-1.5 animate-pulse">
+                        <Zap size={11} /> Checking yesterday's tasks…
+                      </p>
+                    )}
+                    {carryOverCount !== null && carryOverCount > 0 && (
+                      <div className="bg-white/5 border border-amber-400/20 rounded-xl p-3 text-center">
+                        <p className="text-xs text-amber-300 flex items-center justify-center gap-1.5">
+                          <Zap size={11} className="fill-amber-400" /> Carried over {carryOverCount} task{carryOverCount !== 1 ? 's' : ''} from yesterday
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isMorning && wizardStep === 2 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-400">
+                    <div>
+                      <p className="text-amber-300/70 text-sm font-medium mb-1">Step 2 · Intention</p>
+                      <h2 className="text-2xl font-display font-bold text-white">Set your intention</h2>
+                      <p className="text-white/60 text-sm mt-1">What's the single most important thing today?</p>
+                    </div>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={intention}
+                      onChange={e => setIntention(e.target.value)}
+                      placeholder="Today, I intend to…"
+                      className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} focus:ring-0 rounded-2xl px-4 py-4 text-white placeholder-white/30 text-sm outline-none backdrop-blur-sm transition-colors`}
+                    />
+                  </div>
+                )}
+
+                {isMorning && wizardStep === 3 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-400">
+                    <div>
+                      <p className="text-amber-300/70 text-sm font-medium mb-1">Step 3 · Gratitude</p>
+                      <h2 className="text-2xl font-display font-bold text-white">Morning Gratitude</h2>
+                      <p className="text-white/60 text-sm mt-1">3 things you're genuinely grateful for.</p>
+                    </div>
+                    <div className="space-y-3">
+                      {gratitude.map((g, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <span className={`w-7 h-7 rounded-full ${accentBg}/20 flex items-center justify-center text-xs font-bold ${accentLight} flex-shrink-0`}>{idx + 1}</span>
+                          <input
+                            type="text"
+                            value={g}
+                            onChange={e => { const c = [...gratitude]; c[idx] = e.target.value; setGratitude(c) }}
+                            placeholder={`I'm grateful for…`}
+                            className={`flex-1 bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-3 text-white placeholder-white/30 text-sm outline-none transition-colors`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isMorning && wizardStep === 4 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-400">
+                    <div>
+                      <p className="text-amber-300/70 text-sm font-medium mb-1">Step 4 · Priorities</p>
+                      <h2 className="text-2xl font-display font-bold text-white">Today's Priorities</h2>
+                      <p className="text-white/60 text-sm mt-1">Your top tasks to focus on today.</p>
+                    </div>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {priorities.map(t => (
+                        <div key={t.id} className="flex items-center gap-2.5 p-3 bg-white/5 border border-white/10 rounded-xl">
+                          <Check size={13} className={accentLight} />
+                          <span className="text-sm text-white/90 truncate">{t.title}</span>
+                        </div>
+                      ))}
+                      {priorities.length === 0 && (
+                        <p className="text-white/40 text-xs italic text-center py-2">Add priority tasks below.</p>
+                      )}
+                    </div>
+                    <form onSubmit={handleAddPriorityTask} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={e => setNewTaskTitle(e.target.value)}
+                        placeholder="Add priority task…"
+                        className={`flex-1 bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm outline-none`}
+                      />
+                      <button type="submit" className={`px-3 ${accentBg} text-gray-900 rounded-xl font-bold hover:opacity-90 transition-opacity`}>
+                        <Plus size={14} />
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* ── EVENING STEPS ── */}
+                {!isMorning && wizardStep === 1 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-400">
+                    <div>
+                      <p className="text-blue-300/70 text-sm font-medium mb-1">Step 1 · Mood Check</p>
+                      <h2 className="text-2xl font-display font-bold text-white">How was your day?</h2>
+                      <p className="text-white/60 text-sm mt-1">Take a moment to check in with your mood.</p>
+                    </div>
+                    {renderMoodScale(mood, setMood)}
+                  </div>
+                )}
+
+                {!isMorning && wizardStep === 2 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-400">
+                    <div>
+                      <p className="text-blue-300/70 text-sm font-medium mb-1">Step 2 · Energy</p>
+                      <h2 className="text-2xl font-display font-bold text-white">Evening energy</h2>
+                      <p className="text-white/60 text-sm mt-1">How's your physical/mental energy right now?</p>
+                    </div>
+                    <div className="flex justify-center py-2">
+                      {renderLightningScale(energyPm, setEnergyPm)}
+                    </div>
+                  </div>
+                )}
+
+                {!isMorning && wizardStep === 3 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-400">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-blue-300/70 text-sm font-medium mb-1">Step 3 · Win of the Day</p>
+                        <h2 className="text-2xl font-display font-bold text-white">Your biggest win?</h2>
+                      </div>
+                      <span className={`text-[10px] font-semibold mt-1 ${winOfDay.length > 260 ? 'text-red-400' : 'text-white/30'}`}>{winOfDay.length}/280</span>
+                    </div>
+                    <p className="text-white/60 text-sm -mt-3">Pick the single best thing that happened today.</p>
+                    <textarea
+                      autoFocus
+                      value={winOfDay}
+                      maxLength={280}
+                      onChange={e => setWinOfDay(e.target.value)}
+                      placeholder="Today, my win was…"
+                      rows={4}
+                      className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-2xl px-4 py-3 text-white placeholder-white/30 text-sm outline-none resize-none transition-colors`}
+                    />
+                  </div>
+                )}
+
+                {!isMorning && wizardStep === 4 && (
+                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-400">
+                    <div>
+                      <p className="text-blue-300/70 text-sm font-medium mb-1">Step 4 · Reflection</p>
+                      <h2 className="text-2xl font-display font-bold text-white">Structured Reflection</h2>
+                      <p className="text-white/60 text-sm mt-1">Brief review before you close the day.</p>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-1.5 font-bold">What went well?</label>
+                        <textarea value={wentWell} onChange={e => setWentWell(e.target.value)}
+                          placeholder="Wins, good habits, smooth moments…" rows={2}
+                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-1.5 font-bold">What I'd do differently?</label>
+                        <textarea value={doDifferently} onChange={e => setDoDifferently(e.target.value)}
+                          placeholder="Challenges, errors to improve…" rows={2}
+                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-1.5 font-bold">Tomorrow's Focus</label>
+                        <textarea value={tomorrowFocus} onChange={e => setTomorrowFocus(e.target.value)}
+                          placeholder="What's your key direction tomorrow?" rows={2}
+                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom nav buttons */}
+            <div className="px-5 pb-safe pb-6 pt-3 flex gap-3 max-w-md mx-auto w-full">
+              {wizardStep > 1 ? (
                 <button
-                  type="button"
-                  onClick={() => setWizardStep(2)}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-info text-bg font-semibold rounded-xl hover:bg-info/90 transition-colors mt-2"
+                  onClick={() => setWizardStep(s => s - 1)}
+                  className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0"
                 >
-                  Continue <ArrowRight size={16} />
+                  <ArrowRight size={18} className="text-white rotate-180" />
                 </button>
-              </div>
-            )}
+              ) : (
+                <div className="w-12" /> // spacer
+              )}
 
-            {/* Step 2: Energy PM */}
-            {wizardStep === 2 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-text">Rate your evening energy</h3>
-                <p className="text-xs text-text-secondary">How is your physical/mental energy level right now?</p>
-                <div className="flex justify-center py-2">
-                  {renderLightningScale(energyPm, setEnergyPm)}
-                </div>
-                <div className="flex gap-3">
+              {wizardStep < totalSteps ? (
+                <>
+                  {/* Skip button on optional steps (gratitude/structured reflection) */}
+                  {(wizardStep === 3) && (
+                    <button
+                      onClick={() => setWizardStep(s => s + 1)}
+                      className="px-4 h-12 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 text-sm transition-colors"
+                    >
+                      Skip
+                    </button>
+                  )}
                   <button
-                    type="button"
-                    onClick={() => setWizardStep(1)}
-                    className="flex-1 py-3 bg-surface-2 text-text font-semibold rounded-xl hover:bg-muted transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(3)}
-                    className="flex-[2] flex items-center justify-center gap-2 py-3 bg-info text-bg font-semibold rounded-xl hover:bg-info/90 transition-colors"
+                    onClick={() => setWizardStep(s => s + 1)}
+                    disabled={carryOverRunning && wizardStep === 1}
+                    className={`flex-1 h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 ${btnPrimary} transition-colors disabled:opacity-50`}
                   >
                     Continue <ArrowRight size={16} />
                   </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Win of the Day */}
-            {wizardStep === 3 && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-text">What was your Win of the Day?</h3>
-                  <span className={`text-[10px] font-semibold ${winOfDay.length > 280 ? 'text-danger' : 'text-text-muted'}`}>
-                    {winOfDay.length}/280
-                  </span>
-                </div>
-                <p className="text-xs text-text-secondary">Forces conciseness. Pick the single best thing that happened.</p>
-                <textarea
-                  autoFocus
-                  value={winOfDay}
-                  maxLength={280}
-                  onChange={(e) => setWinOfDay(e.target.value)}
-                  placeholder="Today, my win was..."
-                  rows={4}
-                  className="w-full bg-surface-2 border border-border focus:border-info rounded-xl px-4 py-3 text-sm text-text focus:outline-none transition-all resize-none"
-                />
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(2)}
-                    className="flex-1 py-3 bg-surface-2 text-text font-semibold rounded-xl hover:bg-muted transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(4)}
-                    className="flex-[2] flex items-center justify-center gap-2 py-3 bg-info text-bg font-semibold rounded-xl hover:bg-info/90 transition-colors"
-                  >
-                    Continue <ArrowRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: structured prompts */}
-            {wizardStep === 4 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-text">Structured Reflection</h3>
-                <p className="text-xs text-text-secondary">Take a brief moment to log what went well and tomorrow's focus.</p>
-                
-                <div className="space-y-3 pr-1">
-                  <div>
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">What went well?</label>
-                    <textarea
-                      value={wentWell}
-                      onChange={(e) => setWentWell(e.target.value)}
-                      placeholder="Wins, achievements, positive habits..."
-                      rows={2}
-                      className="w-full bg-surface-2 border border-border focus:border-info rounded-lg p-2 text-xs text-text focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">What I'd do differently?</label>
-                    <textarea
-                      value={doDifferently}
-                      onChange={(e) => setDoDifferently(e.target.value)}
-                      placeholder="Challenges, errors, changes for next time..."
-                      rows={2}
-                      className="w-full bg-surface-2 border border-border focus:border-info rounded-lg p-2 text-xs text-text focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Tomorrow's Focus</label>
-                    <textarea
-                      value={tomorrowFocus}
-                      onChange={(e) => setTomorrowFocus(e.target.value)}
-                      placeholder="What is your focus for tomorrow?"
-                      rows={2}
-                      className="w-full bg-surface-2 border border-border focus:border-info rounded-lg p-2 text-xs text-text focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(3)}
-                    className="flex-1 py-3 bg-surface-2 text-text font-semibold rounded-xl hover:bg-muted transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={finishEveningWizard}
-                    className="flex-[2] flex items-center justify-center gap-2 py-3 bg-success text-bg font-semibold rounded-xl hover:bg-success/90 transition-colors"
-                  >
-                    Finish Evening <CheckCircle2 size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
+                </>
+              ) : (
+                <button
+                  onClick={isMorning ? finishMorningWizard : finishEveningWizard}
+                  className={`flex-1 h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 ${btnFinish} transition-colors`}
+                >
+                  <CheckCircle2 size={16} /> Finish {isMorning ? 'Morning' : 'Evening'}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

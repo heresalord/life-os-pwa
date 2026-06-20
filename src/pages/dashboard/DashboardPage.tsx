@@ -25,6 +25,9 @@ import { QuoteWidget } from '../../components/dashboard/widgets/QuoteWidget'
 import { RecentNotesWidget } from '../../components/dashboard/widgets/RecentNotesWidget'
 import { UpcomingBlocksWidget } from '../../components/dashboard/widgets/UpcomingBlocksWidget'
 import { WellbeingHeatmapWidget } from '../../components/dashboard/widgets/WellbeingHeatmapWidget'
+import { InboxWidget } from '../../components/dashboard/widgets/InboxWidget'
+ import { WeeklyRecapModal } from '../../components/dashboard/WeeklyRecapModal'
+import { useTranslation } from '../../i18n'
 
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -60,6 +63,7 @@ const WIDGET_METADATA: {
   { id: 'recent_notes',     label: 'Recent Notes',          defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
   { id: 'quote_of_day',     label: 'Quote of the Day',      defaultSize: { w: 6,  h: 3 }, minSize: { w: 4, h: 2 } },
   { id: 'wellbeing_heatmap',label: 'Wellbeing Heatmap',     defaultSize: { w: 12, h: 3 }, minSize: { w: 6, h: 3 } },
+  { id: 'inbox_quick',      label: 'Inbox Quick View',      defaultSize: { w: 6,  h: 4 }, minSize: { w: 4, h: 3 } },
 ]
 
 const WIDGET_COMPONENTS: Record<string, React.ComponentType> = {
@@ -73,6 +77,7 @@ const WIDGET_COMPONENTS: Record<string, React.ComponentType> = {
   recent_notes:      RecentNotesWidget,
   upcoming_blocks:   UpcomingBlocksWidget,
   wellbeing_heatmap: WellbeingHeatmapWidget,
+  inbox_quick:       InboxWidget,
 }
 
 const DEFAULT_WIDGET_PREFS: DashboardWidgetPref[] = [
@@ -86,15 +91,16 @@ const DEFAULT_WIDGET_PREFS: DashboardWidgetPref[] = [
   { id: 'recent_notes',     order: 7, size: { w: 6,  h: 4 }, x: 0, y: 14, visible: true },
   { id: 'quote_of_day',     order: 8, size: { w: 6,  h: 3 }, x: 6, y: 14, visible: true },
   { id: 'wellbeing_heatmap',order: 9, size: { w: 12, h: 3 }, x: 0, y: 17, visible: true },
+  { id: 'inbox_quick',      order: 10,size: { w: 6,  h: 4 }, x: 0, y: 20, visible: true },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getGreeting() {
   const h = new Date().getHours()
-  if (h < 12) return { text: 'Good morning',   icon: <Sun  size={16} className="text-warning" /> }
-  if (h < 18) return { text: 'Good afternoon', icon: <Sun  size={16} className="text-accent"  /> }
-  return             { text: 'Good evening',   icon: <Moon size={16} className="text-info"    /> }
+  if (h < 12) return { key: 'dashboard.greeting_morning',   icon: <Sun  size={16} className="text-warning" /> }
+  if (h < 18) return { key: 'dashboard.greeting_afternoon', icon: <Sun  size={16} className="text-accent"  /> }
+  return             { key: 'dashboard.greeting_evening',   icon: <Moon size={16} className="text-info"    /> }
 }
 
 function mergeWithDefaults(saved: DashboardWidgetPref[]): DashboardWidgetPref[] {
@@ -161,8 +167,10 @@ function WidgetSkeleton() {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
+  const { t } = useTranslation()
   const { profile }                                            = useAuth()
-  const { text: greeting, icon }                               = getGreeting()
+  const { key: greetingKey, icon }                             = getGreeting()
+  const greeting = t(greetingKey)
   const { data: settings, isLoading: settingsLoading, upsert } = useUserSettings()
 
   const [widgetPrefs, setWidgetPrefs] = useState<DashboardWidgetPref[]>([])
@@ -287,6 +295,8 @@ export function DashboardPage() {
 
   return (
     <div className={`space-y-4 ${isEditing ? 'is-editing' : ''}`}>
+      {/* Weekly Recap modal — self-determines visibility */}
+      <WeeklyRecapModal />
       <style>{`
         .react-resizable-handle { opacity: 0; transition: opacity 0.2s; pointer-events: none; }
         .is-editing .react-resizable-handle { opacity: 1; pointer-events: auto; }

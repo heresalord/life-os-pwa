@@ -29,16 +29,28 @@ export const processSyncQueue = async () => {
       try {
         if (item.operation === 'insert') {
           const { error } = await supa.from(item.table).upsert([item.payload], { onConflict: 'id', ignoreDuplicates: false })
-          if (!error) success = true
+          if (error) {
+            console.error(`[sync] Insert error in table ${item.table}:`, error)
+          } else {
+            success = true
+          }
         } else if (item.operation === 'update') {
           const { error } = await supa.from(item.table).update(item.payload).eq('id', item.payload.id)
-          if (!error) success = true
+          if (error) {
+            console.error(`[sync] Update error in table ${item.table}:`, error)
+          } else {
+            success = true
+          }
         } else if (item.operation === 'delete') {
           const { error } = await supa.from(item.table).delete().eq('id', item.payload.id)
-          if (!error) success = true
+          if (error) {
+            console.error(`[sync] Delete error in table ${item.table}:`, error)
+          } else {
+            success = true
+          }
         }
       } catch (err) {
-        console.warn('[sync] error:', err)
+        console.error('[sync] Unhandled error during sync step:', err)
       }
 
       if (success) {

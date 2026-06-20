@@ -29,6 +29,7 @@ const DailyLogPage = React.lazy(() => import('./pages/day/DailyLogPage').then(m 
 const DailyLogHistoryPage = React.lazy(() => import('./pages/day/DailyLogHistoryPage').then(m => ({ default: m.DailyLogHistoryPage })))
 const ProjectsPage = React.lazy(() => import('./pages/projects/ProjectsPage').then(m => ({ default: m.ProjectsPage })))
 const ProjectDetailPage = React.lazy(() => import('./pages/projects/ProjectDetailPage').then(m => ({ default: m.ProjectDetailPage })))
+const ProfilePage = React.lazy(() => import('./pages/profile/ProfilePage').then(m => ({ default: m.ProfilePage })))
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-bg">
@@ -91,6 +92,7 @@ function App() {
                           <Route path="/notes"    element={<NotesPage />} />
                           <Route path="/search"   element={<SearchPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="/profile"  element={<ProfilePage />} />
                           <Route path="*"         element={<Navigate to="/" replace />} />
                         </Routes>
                       </AppShell>

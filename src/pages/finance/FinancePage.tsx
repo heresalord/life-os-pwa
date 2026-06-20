@@ -7,6 +7,7 @@ import { AccountsTab }     from './components/AccountsTab'
 import { TransactionsTab } from './components/TransactionsTab'
 import { BudgetsTab }      from './components/BudgetsTab'
 import { useAppStore } from '../../store/useAppStore'
+import { useTranslation } from '../../i18n'
 import { getUserLocalDate } from '../../lib/dateUtils'
 import {
   format,
@@ -19,15 +20,16 @@ import {
 import clsx from 'clsx'
 
 const TABS = [
-  { value: 'overview',     icon: BarChart3, label: 'Overview'     },
-  { value: 'accounts',     icon: Landmark,  label: 'Accounts'     },
-  { value: 'transactions', icon: List,      label: 'Activity'     },
-  { value: 'budgets',      icon: Target,    label: 'Budgets'      },
+  { value: 'overview',     icon: BarChart3, labelKey: 'finance.overview',     defaultLabel: 'Overview'     },
+  { value: 'accounts',     icon: Landmark,  labelKey: 'finance.accounts',     defaultLabel: 'Accounts'     },
+  { value: 'transactions', icon: List,      labelKey: 'finance.activity',     defaultLabel: 'Activity'     },
+  { value: 'budgets',      icon: Target,    labelKey: 'finance.budgets',      defaultLabel: 'Budgets'      },
 ] as const
 
 type TabValue = typeof TABS[number]['value']
 
 export function FinancePage() {
+  const { t } = useTranslation()
   const { data: settings } = useUserSettings()
   const currency = settings?.currency ?? 'USD'
   const [active, setActive] = useState<TabValue>('overview')
@@ -109,7 +111,7 @@ export function FinancePage() {
   return (
     <div className="space-y-4 lg:max-w-5xl">
       <header>
-        <h1 className="text-2xl font-display text-text">Finance</h1>
+        <h1 className="text-2xl font-display text-text">{t('finance.title', 'Finance')}</h1>
       </header>
 
       {/* ── Tab bar ─────────────────────────────────────────────────────── */}
@@ -128,7 +130,7 @@ export function FinancePage() {
             >
               <Icon size={16} strokeWidth={isActive ? 2.5 : 1.75} />
               <span className={clsx('text-xs sm:text-sm', isActive ? 'inline' : 'hidden sm:inline')}>
-                {tab.label}
+                {t(tab.labelKey, tab.defaultLabel)}
               </span>
             </button>
           )
@@ -149,7 +151,7 @@ export function FinancePage() {
                   period === p ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
                 )}
               >
-                {p}
+                {t(`finance.period_${p}`, p)}
               </button>
             ))}
           </div>

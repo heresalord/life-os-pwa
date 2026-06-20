@@ -21,7 +21,7 @@ export function useInboxQuery(processedOnly = false) {
         bgSync(`inbox-${processedOnly}-${user!.id}`, async () => {
           const { data, error } = await supabase
             .from('inbox_items').select('*')
-            .eq('user_id', user!.id).eq('processed', processedOnly)
+            .eq('processed', processedOnly)
             .order('captured_at', { ascending: false })
           if (error) throw error
           if (data) {

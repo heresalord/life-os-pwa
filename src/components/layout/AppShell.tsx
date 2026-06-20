@@ -15,6 +15,7 @@ import { DesktopSidebar } from './DesktopSidebar'
 import { DesktopTopbar } from './DesktopTopbar'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { useNavSync } from '../../hooks/useNavSync'
+import { useWidgetSync } from '../../hooks/useWidgetSync'
 import { ErrorBoundary } from '../ErrorBoundary'
 import clsx from 'clsx'
 
@@ -46,6 +47,7 @@ export function AppShell({ children }: AppShellProps) {
   const [animKey, setAnimKey] = React.useState(location.pathname)
 
   useNavSync()
+  useWidgetSync()
 
   const dynamicNav = [
     HOME_NAV,
@@ -80,7 +82,7 @@ export function AppShell({ children }: AppShellProps) {
             looks intentional rather than broken.
             The inner div keeps a fixed h-14 for the actual nav content. */}
         <header
-          className="md:hidden sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-border"
+          className="md:hidden sticky top-0 z-30 bg-bg/70 backdrop-blur-xl border-b border-border/40 supports-backdrop-filter:bg-bg/70"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -118,65 +120,80 @@ export function AppShell({ children }: AppShellProps) {
 
               <div className="relative">
                 <button
-                  onClick={() => setMenuOpen(v => !v)}
+                  onClick={() => navigate('/profile')}
                   className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
                 >
                   {initials}
                 </button>
-
-                {menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-10 z-50 w-52 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
-                      <div className="px-4 py-3 border-b border-border">
-                        <p className="text-sm text-text font-medium truncate">{displayName}</p>
-                        <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
-                      </div>
-
-                      <nav className="py-1 max-h-72 overflow-y-auto">
-                        {hiddenPages.map(({ to, icon: Icon, label }) => (
-                          <NavLink
-                            key={to}
-                            to={to}
-                            onClick={() => setMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors"
-                          >
-                            <Icon size={15} />
-                            {label}
-                          </NavLink>
-                        ))}
-
-                        <div className="border-t border-border my-1" />
-
-                        <NavLink to="/day?guided=morning" onClick={() => setMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <Sun size={15} /> Start Morning
-                        </NavLink>
-                        <NavLink to="/day?guided=evening" onClick={() => setMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <Moon size={15} /> Start Evening
-                        </NavLink>
-
-                        <div className="border-t border-border my-1" />
-
-                        <NavLink to="/settings" onClick={() => setMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                          <Settings size={15} />
-                          Settings
-                        </NavLink>
-
-                        <button
-                          onClick={() => { signOut(); setMenuOpen(false) }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
-                        >
-                          <LogOut size={15} />
-                          Sign Out
-                        </button>
-                      </nav>
-                    </div>
-                  </>
-                )}
               </div>
+
+              {/* Menu hamburger trigger */}
+              <button
+                onClick={() => setMenuOpen(v => !v)}
+                className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
+                aria-label="Menu"
+              >
+                <Settings size={18} />
+              </button>
+
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-10 z-50 w-52 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-border">
+                      <p className="text-sm text-text font-medium truncate">{displayName}</p>
+                      <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
+                    </div>
+
+                    <nav className="py-1 max-h-72 overflow-y-auto">
+                      <NavLink to="/profile" onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                        <Search size={15} className="opacity-0 w-0" /> {/* spacing placeholder / dummy layout */}
+                        Profile Page
+                      </NavLink>
+
+                      {hiddenPages.map(({ to, icon: Icon, label }) => (
+                        <NavLink
+                          key={to}
+                          to={to}
+                          onClick={() => setMenuOpen(v => !v)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors"
+                        >
+                          <Icon size={15} />
+                          {label}
+                        </NavLink>
+                      ))}
+
+                      <div className="border-t border-border my-1" />
+
+                      <NavLink to="/day?guided=morning" onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                        <Sun size={15} /> Start Morning
+                      </NavLink>
+                      <NavLink to="/day?guided=evening" onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                        <Moon size={15} /> Start Evening
+                      </NavLink>
+
+                      <div className="border-t border-border my-1" />
+
+                      <NavLink to="/settings" onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                        <Settings size={15} />
+                        Settings
+                      </NavLink>
+
+                      <button
+                        onClick={() => { signOut(); setMenuOpen(false) }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
+                      >
+                        <LogOut size={15} />
+                        Sign Out
+                      </button>
+                    </nav>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -218,7 +235,7 @@ export function AppShell({ children }: AppShellProps) {
           paddingBottom: env(safe-area-inset-bottom) lifts the nav above
           the home indicator on iPhone / gesture bar on Android. */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-border"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-bg/80 backdrop-blur-xl border-t border-border/40 supports-backdrop-filter:bg-bg/80"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="max-w-2xl mx-auto flex items-center justify-around h-16">

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  widget_inbox.xml
+  "Inbox" homescreen widget layout.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_inbox_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="16dp"
+    android:gravity="center_vertical">
+
+    <!-- Header -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="INBOX"
+        android:textSize="9sp"
+        android:letterSpacing="0.12"
+        android:textColor="#99FFFFFF"
+        android:fontFamily="sans-serif-medium"
+        android:textAllCaps="true"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Unprocessed count label -->
+    <TextView
+        android:id="@+id/widget_inbox_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0 unprocessed"
+        android:textSize="22sp"
+        android:textColor="#FFFFFF"
+        android:fontFamily="sans-serif-light"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#22FFFFFF"
+        android:layout_marginBottom="10dp" />
+
+    <!-- First item preview -->
+    <TextView
+        android:id="@+id/widget_inbox_first"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tap to capture a thought"
+        android:textSize="12sp"
+        android:textColor="#CCFFFFFF"
+        android:fontFamily="sans-serif"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+</LinearLayout>

@@ -19,15 +19,19 @@ export function HabitStreakWidget() {
   const end      = endOfWeek(new Date(), { weekStartsOn: 1 })
   const weekDays = eachDayOfInterval({ start, end })
 
-  const handleHabitToggle = (e: React.MouseEvent, goalId: string, dateStr: string, currentStatus: 'check' | 'fail' | 'none') => {
+  const handleHabitToggle = async (e: React.MouseEvent, goalId: string, dateStr: string, currentStatus: 'check' | 'fail' | 'none') => {
     e.stopPropagation()
     haptic('light')
-    if (currentStatus === 'none') {
-      addHabitLog.mutate({ goal_id: goalId, date: dateStr, value: 1 })
-    } else if (currentStatus === 'check') {
-      addHabitLog.mutate({ goal_id: goalId, date: dateStr, value: 0 })
-    } else {
-      deleteHabitLog.mutate({ goal_id: goalId, date: dateStr })
+    try {
+      if (currentStatus === 'none') {
+        await addHabitLog.mutateAsync({ goal_id: goalId, date: dateStr, value: 1 })
+      } else if (currentStatus === 'check') {
+        await addHabitLog.mutateAsync({ goal_id: goalId, date: dateStr, value: 0 })
+      } else {
+        await deleteHabitLog.mutateAsync({ goal_id: goalId, date: dateStr })
+      }
+    } catch (err) {
+      console.error('Failed to toggle habit log:', err)
     }
   }
 

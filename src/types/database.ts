@@ -9,10 +9,46 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      shared_items: {
+        Row: {
+          id: string
+          shared_by: string
+          shared_with_email: string
+          shared_with_id: string | null
+          item_type: 'project' | 'task' | 'inbox'
+          item_id: string
+          code: string
+          status: 'pending' | 'accepted'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          shared_by: string
+          shared_with_email: string
+          shared_with_id?: string | null
+          item_type: 'project' | 'task' | 'inbox'
+          item_id: string
+          code: string
+          status?: 'pending' | 'accepted'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          shared_by?: string
+          shared_with_email?: string
+          shared_with_id?: string | null
+          item_type?: 'project' | 'task' | 'inbox'
+          item_id?: string
+          code?: string
+          status?: 'pending' | 'accepted'
+          created_at?: string
+        }
+      }
       user_profiles: {
         Row: {
           id: string
           display_name: string | null
+          avatar_url: string | null
           timezone: string
           onboarded: boolean
           created_at: string
@@ -21,6 +57,7 @@ export interface Database {
         Insert: {
           id: string
           display_name?: string | null
+          avatar_url?: string | null
           timezone?: string
           onboarded?: boolean
           created_at?: string
@@ -29,6 +66,7 @@ export interface Database {
         Update: {
           id?: string
           display_name?: string | null
+          avatar_url?: string | null
           timezone?: string
           onboarded?: boolean
           created_at?: string

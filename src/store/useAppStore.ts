@@ -37,6 +37,8 @@ export interface AppState {
   setNavItems: (items: string[]) => void
   setQuoteIntervalHours: (h: number) => void
   resetToToday: () => void
+  locale: string
+  setLocale: (locale: string) => void
 }
 
 // Apply theme visually to <html> and the PWA theme-color meta tag.
@@ -98,6 +100,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   accentColor: savedAccent,
   navItems: loadNavItems(),
   quoteIntervalHours: loadQuoteInterval(),
+  locale: localStorage.getItem('lifeos-locale') || 'en',
 
   setSelectedDate: (date) => set({ selectedDate: date }),
   setDate: (date) => set({ selectedDate: date }),
@@ -154,4 +157,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   resetToToday: () => set({ selectedDate: getUserLocalDate(get().timezone) }),
+  setLocale: (locale) => {
+    localStorage.setItem('lifeos-locale', locale)
+    set({ locale })
+  },
 }))

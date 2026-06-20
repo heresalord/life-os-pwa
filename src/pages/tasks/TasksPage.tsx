@@ -5,17 +5,19 @@ import { ListTab } from './components/ListTab'
 import { CalendarTab } from './components/CalendarTab'
 import { TimeBlocksTab } from './components/TimeBlocksTab'
 import { useAppStore } from '../../store/useAppStore'
+import { useTranslation } from '../../i18n'
 import clsx from 'clsx'
 
 type View = 'list' | 'calendar' | 'timeblocks'
 
 const VIEWS = [
-  { id: 'list'       as View, label: 'List',        icon: List       },
-  { id: 'calendar'   as View, label: 'Calendar',    icon: Calendar   },
-  { id: 'timeblocks' as View, label: 'Time Blocks', icon: Clock      },
+  { id: 'list'       as View, labelKey: 'tasks.list',       defaultLabel: 'List',        icon: List       },
+  { id: 'calendar'   as View, labelKey: 'tasks.calendar',   defaultLabel: 'Calendar',    icon: Calendar   },
+  { id: 'timeblocks' as View, labelKey: 'tasks.timeblocks', defaultLabel: 'Time Blocks', icon: Clock      },
 ] as const
 
 export function TasksPage() {
+  const { t } = useTranslation()
   const [view, setView] = useState<View>('list')
   const [searchParams, setSearchParams] = useSearchParams()
   const { setSelectedDate } = useAppStore()
@@ -37,7 +39,7 @@ export function TasksPage() {
   return (
     <div className="space-y-4 lg:max-w-5xl">
       <header>
-        <h1 className="text-2xl font-display text-text">Tasks</h1>
+        <h1 className="text-2xl font-display text-text">{t('tasks.title', 'Tasks')}</h1>
       </header>
 
       {/* View switcher - Grid with 3 columns matching Finance module tab layout */}
@@ -62,7 +64,7 @@ export function TasksPage() {
                 'text-xs sm:text-sm',
                 isActive ? 'inline' : 'hidden sm:inline'
               )}>
-                {v.label}
+                {t(v.labelKey, v.defaultLabel)}
               </span>
             </button>
           )

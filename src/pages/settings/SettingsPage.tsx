@@ -6,13 +6,14 @@ import { exportAllDataToJson, exportTransactionsCSV } from '../../lib/exportUtil
 import { db } from '../../db'
 import { useAppStore } from '../../store/useAppStore'
 import { ALL_NAV_OPTIONS } from '../../components/layout/AppShell'
+import { useTranslation } from '../../i18n'
 import {
   User, Palette, Bell, DollarSign, Database,
   LogOut, Download, Upload, AlertTriangle,
   CheckCircle, XCircle, Loader, Moon, Sun,
   X, Plus, Layout, Quote, Check, Pipette,
   CalendarCheck, Flame, Wallet, PartyPopper, PiggyBank, BarChart3,
-  Monitor,
+  Monitor, Globe,
 } from 'lucide-react'
 import { ACCENT_PRESETS, type AccentPreset } from '../../lib/colorUtils'
 import {
@@ -152,6 +153,7 @@ export function SettingsPage() {
   const { user, refreshProfile } = useAuth()
   const { data: settings, upsert } = useUserSettings()
   const { theme, setTheme, accentColor, setAccentColor, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours, autoTheme, setAutoTheme } = useAppStore()
+  const { t, locale, setLocale } = useTranslation()
 
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [saving, setSaving] = useState(false)
@@ -528,6 +530,32 @@ export function SettingsPage() {
               {h}h
             </button>
           ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard title={t('settings.language', 'Language')} icon={Globe}>
+        <p className="text-xs text-text-muted pt-3 pb-3 leading-relaxed">
+          Select your preferred language for the workspace.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setLocale('en')}
+            className={clsx(
+              'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all',
+              locale === 'en' ? 'bg-surface-2 border-accent text-accent shadow-sm' : 'border-border text-text-muted hover:text-text hover:border-text-muted'
+            )}
+          >
+            English
+          </button>
+          <button
+            onClick={() => setLocale('fr')}
+            className={clsx(
+              'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all',
+              locale === 'fr' ? 'bg-surface-2 border-accent text-accent shadow-sm' : 'border-border text-text-muted hover:text-text hover:border-text-muted'
+            )}
+          >
+            Français
+          </button>
         </div>
       </SectionCard>
     </div>

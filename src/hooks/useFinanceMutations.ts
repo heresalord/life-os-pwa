@@ -15,12 +15,34 @@ export function useFinanceMutations() {
   // ── Wallets ──────────────────────────────────────────────────────────
   const addWallet = useMutation({
     mutationFn: async (wallet: Omit<Wallet, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'archived'> & { archived?: boolean }) => {
-      if (!user) return
-      const now = new Date().toISOString()
-      const newWallet = { ...wallet, id: crypto.randomUUID(), user_id: user.id, archived: wallet.archived ?? false, created_at: now, updated_at: now } as Wallet
-      await db.wallets.add(newWallet)
-      await write('wallets', 'insert', newWallet as Record<string, unknown>)
-      return newWallet
+      if (!user) throw new Error('User not authenticated')
+      try {
+        const now = new Date().toISOString()
+        const newWallet: Wallet = {
+          id: crypto.randomUUID(),
+          user_id: user.id,
+          name: wallet.name,
+          type: wallet.type,
+          currency: wallet.currency || 'USD',
+          balance: wallet.balance ?? 0,
+          color: wallet.color ?? null,
+          archived: wallet.archived ?? false,
+          created_at: now,
+          updated_at: now
+        }
+        console.log('[FinanceMutation] Adding local wallet:', newWallet)
+        await db.wallets.add(newWallet)
+        console.log('[FinanceMutation] Enqueueing sync for wallet:', newWallet.id)
+        await write('wallets', 'insert', newWallet as Record<string, unknown>)
+        return newWallet
+      } catch (err) {
+        console.error('[FinanceMutation] addWallet mutationFn failed:', err)
+        throw err
+      }
+    },
+    onError: (err) => {
+      console.error('[FinanceMutation] addWallet mutation failed:', err)
+      window.alert(`Failed to add account: ${err instanceof Error ? err.message : 'Unknown error'}`)
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['wallets'] }),
   })

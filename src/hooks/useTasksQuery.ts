@@ -30,7 +30,7 @@ export function useTasksQuery(date: string) {
         bgSync(`tasks-${date}-${user!.id}`, async () => {
           const { data, error } = await supabase
             .from('tasks').select('*')
-            .eq('date', date).eq('user_id', user!.id)
+            .eq('date', date)
             .order('created_at')
           if (error) throw error
           if (data) {

@@ -47,7 +47,7 @@ export function DesktopTopbar() {
   const initials = displayName.slice(0, 2).toUpperCase()
 
   return (
-    <header className="hidden md:flex h-16 items-center justify-between px-6 bg-bg/85 backdrop-blur-md border-b border-border sticky top-0 z-30 flex-shrink-0">
+    <header className="hidden md:flex h-16 items-center justify-between px-6 bg-bg/60 backdrop-blur-xl border-b border-border/40 sticky top-0 z-30 flex-shrink-0">
 
       {/* Left: page title + greeting */}
       <div className="flex items-center gap-3 min-w-0">

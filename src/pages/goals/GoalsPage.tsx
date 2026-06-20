@@ -3,6 +3,7 @@ import { useGoalsQuery } from '../../hooks/useGoalsQuery'
 import { GoalItem } from '../../components/goals/GoalItem'
 import { AddGoalModal } from '../../components/goals/AddGoalModal'
 import { EmptyState } from '../../components/EmptyState'
+import { useTranslation } from '../../i18n'
 import {
   Target,
   Grid,
@@ -28,11 +29,11 @@ type TrackerTypeFilter = 'all' | 'target' | 'habit' | 'average' | 'project'
 type StateFilter = 'active' | 'completed' | 'abandoned'
 
 const TYPE_FILTERS = [
-  { value: 'all', label: 'All', icon: Layers },
-  { value: 'target', label: 'Targets', icon: Target },
-  { value: 'habit', label: 'Habits', icon: Flame },
-  { value: 'average', label: 'Averages', icon: TrendingUp },
-  { value: 'project', label: 'Projects', icon: MilestoneIcon },
+  { value: 'all', labelKey: 'goals.all', defaultLabel: 'All', icon: Layers },
+  { value: 'target', labelKey: 'goals.targets', defaultLabel: 'Targets', icon: Target },
+  { value: 'habit', labelKey: 'goals.habits', defaultLabel: 'Habits', icon: Flame },
+  { value: 'average', labelKey: 'goals.averages', defaultLabel: 'Averages', icon: TrendingUp },
+  { value: 'project', labelKey: 'goals.projects', defaultLabel: 'Projects', icon: MilestoneIcon },
 ] as const
 
 const CATEGORY_CHIPS = [
@@ -50,6 +51,7 @@ const CATEGORY_CHIPS = [
 ]
 
 export function GoalsPage() {
+  const { t } = useTranslation()
   const [selectedType, setSelectedType] = useState<TrackerTypeFilter>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [stateFilter, setStateFilter] = useState<StateFilter>('active')
@@ -69,8 +71,8 @@ export function GoalsPage() {
     <div className="space-y-5 lg:max-w-5xl">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display text-text">Goals</h1>
-          <p className="text-xs text-text-muted mt-0.5">Track, build habits, and complete milestones</p>
+          <h1 className="text-2xl font-display text-text">{t('goals.title', 'Goals')}</h1>
+          <p className="text-xs text-text-muted mt-0.5">{t('goals.track_build_habits', 'Track, build habits, and complete milestones')}</p>
         </div>
 
         {/* State Filter dropdown */}
@@ -80,9 +82,9 @@ export function GoalsPage() {
             onChange={e => setStateFilter(e.target.value as StateFilter)}
             className="appearance-none bg-surface border border-border rounded-xl pl-3.5 pr-8 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer transition-colors shadow-sm"
           >
-            <option value="active">Active Goals</option>
-            <option value="completed">Completed</option>
-            <option value="abandoned">Archived</option>
+            <option value="active">{t('goals.active_goals', 'Active Goals')}</option>
+            <option value="completed">{t('goals.completed_goals', 'Completed')}</option>
+            <option value="abandoned">{t('goals.archived_goals', 'Archived')}</option>
           </select>
           <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted" />
         </div>
@@ -110,7 +112,7 @@ export function GoalsPage() {
                 'text-[11px] sm:text-xs',
                 isActive ? 'inline' : 'hidden md:inline'
               )}>
-                {filter.label}
+                {t(filter.labelKey, filter.defaultLabel)}
               </span>
             </button>
           )
@@ -134,7 +136,7 @@ export function GoalsPage() {
               )}
             >
               <Icon size={12} />
-              <span>{cat.name}</span>
+              <span>{t(`goals.categories.${cat.name}`, cat.name)}</span>
             </button>
           )
         })}
@@ -149,8 +151,8 @@ export function GoalsPage() {
       ) : filteredGoals.length === 0 ? (
         <EmptyState
           icon={<Target size={40} />}
-          title="No goals found"
-          message="Try changing filters or set a new goal to begin."
+          title={t('goals.no_goals_found', 'No goals found')}
+          message={t('goals.try_changing_filters', 'Try changing filters or set a new goal to begin.')}
         />
       ) : (
         // Desktop: 2-column grid; mobile: single column stack

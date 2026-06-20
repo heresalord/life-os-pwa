@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  widget_tasks.xml
+  "Tasks Today" homescreen widget layout.
+  Glass background auto-switches dark/light via drawable qualifier.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_tasks_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="16dp"
+    android:gravity="center_vertical">
+
+    <!-- Header row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="TASKS TODAY"
+            android:textSize="9sp"
+            android:letterSpacing="0.12"
+            android:textColor="#99FFFFFF"
+            android:fontFamily="sans-serif-medium"
+            android:textAllCaps="true" />
+
+        <!-- Completed badge -->
+        <TextView
+            android:id="@+id/widget_tasks_completed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 done"
+            android:textSize="10sp"
+            android:textColor="#99FFFFFF"
+            android:fontFamily="sans-serif" />
+    </LinearLayout>
+
+    <!-- Pending count — large number -->
+    <TextView
+        android:id="@+id/widget_tasks_pending"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0"
+        android:textSize="40sp"
+        android:textColor="#FFFFFF"
+        android:fontFamily="sans-serif-light"
+        android:lineSpacingExtra="-4dp"
+        android:layout_marginBottom="2dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="pending"
+        android:textSize="11sp"
+        android:textColor="#80FFFFFF"
+        android:fontFamily="sans-serif"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#22FFFFFF"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Top priority task title -->
+    <TextView
+        android:id="@+id/widget_tasks_top"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No priority task"
+        android:textSize="12sp"
+        android:textColor="#CCFFFFFF"
+        android:fontFamily="sans-serif"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+</LinearLayout>

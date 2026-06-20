@@ -13,28 +13,58 @@ import {
 import clsx from 'clsx'
 import * as Dialog from '@radix-ui/react-dialog'
 
-const WALLET_TYPES = [
-  { value: 'bank',    label: 'Bank',    icon: Landmark   },
-  { value: 'cash',    label: 'Cash',    icon: WalletIcon },
-  { value: 'credit',  label: 'Credit',  icon: CreditCard },
-  { value: 'savings', label: 'Savings', icon: PiggyBank  },
-] as const
-
-const WALLET_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#a78bfa', '#f87171', '#34d399', '#fb923c']
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 type SheetMode = 'add_account' | 'transfer' | 'edit_account' | null
 
+const WALLET_COLORS = [
+  '#4ade80', '#60a5fa', '#f59e0b', '#f87171',
+  '#a78bfa', '#fb923c', '#34d399', '#e879f9',
+]
+
+const WALLET_TYPES = [
+  { value: 'bank'    as const, label: 'Bank',    icon: Landmark  },
+  { value: 'cash'    as const, label: 'Cash',    icon: WalletIcon },
+  { value: 'credit'  as const, label: 'Credit',  icon: CreditCard },
+  { value: 'savings' as const, label: 'Savings', icon: PiggyBank  },
+]
+
+// ── Currency list ─────────────────────────────────────────────────────────────
+const COMMON_CURRENCIES = [
+  { code: 'USD', symbol: '$',   name: 'US Dollar'      },
+  { code: 'EUR', symbol: '€',   name: 'Euro'           },
+  { code: 'GBP', symbol: '£',   name: 'British Pound'  },
+  { code: 'XOF', symbol: 'CFA', name: 'West African CFA' },
+  { code: 'XAF', symbol: 'CFA', name: 'Central African CFA' },
+  { code: 'CAD', symbol: '$',   name: 'Canadian Dollar' },
+  { code: 'CHF', symbol: 'Fr',  name: 'Swiss Franc'    },
+  { code: 'JPY', symbol: '¥',   name: 'Japanese Yen'   },
+  { code: 'CNY', symbol: '¥',   name: 'Chinese Yuan'   },
+  { code: 'INR', symbol: '₹',   name: 'Indian Rupee'   },
+  { code: 'MAD', symbol: 'د.م', name: 'Moroccan Dirham' },
+  { code: 'NGN', symbol: '₦',   name: 'Nigerian Naira' },
+  { code: 'GHS', symbol: '₵',   name: 'Ghanaian Cedi'  },
+  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling' },
+  { code: 'ZAR', symbol: 'R',   name: 'South African Rand' },
+  { code: 'BRL', symbol: 'R$',  name: 'Brazilian Real' },
+  { code: 'MXN', symbol: '$',   name: 'Mexican Peso'   },
+  { code: 'AUD', symbol: '$',   name: 'Australian Dollar' },
+  { code: 'SGD', symbol: '$',   name: 'Singapore Dollar' },
+  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham'     },
+]
+
 // ── Add Account Sheet ────────────────────────────────────────────────────────
-function AddAccountSheet({ currency, onClose }: { currency: string; onClose: () => void }) {
+function AddAccountSheet({ currency: defaultCurrency, onClose }: { currency: string; onClose: () => void }) {
   const { addWallet } = useFinanceMutations()
-  const [name, setName]     = useState('')
-  const [balance, setBalance] = useState('0')
-  const [type, setType]     = useState<'bank' | 'cash' | 'credit' | 'savings'>('bank')
-  const [color, setColor]   = useState(WALLET_COLORS[0])
+  const [name, setName]         = useState('')
+  const [balance, setBalance]   = useState('0')
+  const [type, setType]         = useState<'bank' | 'cash' | 'credit' | 'savings'>('bank')
+  const [color, setColor]       = useState(WALLET_COLORS[0])
+  const [walletCurrency, setWalletCurrency] = useState(defaultCurrency)
 
   const handleAdd = () => {
     if (!name.trim()) return
-    addWallet.mutate({ name: name.trim(), type, balance: Number(balance), currency, color })
+    addWallet.mutate({ name: name.trim(), type, balance: Number(balance), currency: walletCurrency, color })
     onClose()
   }
 
@@ -58,8 +88,21 @@ function AddAccountSheet({ currency, onClose }: { currency: string; onClose: () 
           })}
         </div>
       </div>
+      {/* Currency selector */}
       <div>
-        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Opening Balance ({currency})</label>
+        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Currency</label>
+        <select
+          value={walletCurrency}
+          onChange={e => setWalletCurrency(e.target.value)}
+          className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent outline-none appearance-none cursor-pointer text-sm"
+        >
+          {COMMON_CURRENCIES.map(c => (
+            <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Opening Balance ({walletCurrency})</label>
         <input type="number" step="0.01" value={balance} onChange={e => setBalance(e.target.value)}
           className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent outline-none" />
       </div>
@@ -152,7 +195,7 @@ function EditAccountSheet({
         </div>
       </div>
       <div>
-        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Balance ({currency})</label>
+        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Balance ({wallet.currency || currency})</label>
         <input type="number" step="0.01" value={balance} onChange={e => setBalance(e.target.value)}
           className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent outline-none" />
         <p className="text-[10px] text-text-muted mt-1 leading-normal">
@@ -228,7 +271,7 @@ function TransferSheet({ wallets, currency, onClose }: { wallets: Wallet[]; curr
             }
           }}
             className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-accent outline-none appearance-none">
-            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            {wallets.map(w => <option key={w.id} value={w.id}>{w.name} ({w.currency || currency})</option>)}
           </select>
         </div>
         <ArrowLeftRight size={16} className="text-text-muted mt-5 flex-shrink-0" />
@@ -236,12 +279,12 @@ function TransferSheet({ wallets, currency, onClose }: { wallets: Wallet[]; curr
           <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">To</label>
           <select value={toId} onChange={e => setToId(e.target.value)}
             className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-accent outline-none appearance-none">
-            {wallets.filter(w => w.id !== fromId).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            {wallets.filter(w => w.id !== fromId).map(w => <option key={w.id} value={w.id}>{w.name} ({w.currency || currency})</option>)}
           </select>
         </div>
       </div>
       <div>
-        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Amount ({currency})</label>
+        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Amount</label>
         <input autoFocus type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleTransfer()}
           className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text text-lg focus:border-accent outline-none" />
@@ -289,11 +332,16 @@ export function AccountsTab({ currency }: { currency: string }) {
   const savingsAccounts = activeWallets.filter(w => w.type === 'savings')
   const debtAccounts    = activeWallets.filter(w => w.type === 'credit')
 
+  // For net worth, we sum numerically (amounts in their own currency — no FX conversion)
   const liquidBalance  = liquidAccounts.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
   const savingsBalance = savingsAccounts.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
   const debtBalance    = debtAccounts.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
-
   const netWorth = liquidBalance + savingsBalance - debtBalance
+
+  // Detect mixed currencies
+  const uniqueCurrencies = [...new Set(activeWallets.map(w => w.currency || currency).filter(Boolean))]
+  const hasMixedCurrencies = uniqueCurrencies.length > 1
+  const primaryCurrency = uniqueCurrencies[0] || currency
 
   const renderWalletList = (list: Wallet[], emptyMsg: string) => {
     if (list.length === 0) {
@@ -303,6 +351,7 @@ export function AccountsTab({ currency }: { currency: string }) {
       <div className="space-y-2">
         {list.map((w: Wallet) => {
           const TypeIcon = WALLET_TYPES.find(t => t.value === w.type)?.icon ?? WalletIcon
+          const walletCurrency = w.currency || currency
           return (
             <div key={w.id} onClick={() => { setEditingWallet(w); setSheet('edit_account') }}
               className="flex items-center gap-3 p-4 bg-surface border border-border rounded-xl group transition-all hover:bg-surface-2/40 cursor-pointer select-none">
@@ -316,9 +365,9 @@ export function AccountsTab({ currency }: { currency: string }) {
               </div>
               <div className="text-right flex-shrink-0">
                 <p className={clsx('font-semibold text-sm', w.type === 'credit' ? 'text-warning' : Number(w.balance) < 0 ? 'text-danger' : 'text-text')}>
-                  {w.type === 'credit' ? '-' : ''}{Number(w.balance).toFixed(2)}
+                  {w.type === 'credit' ? '-' : ''}{Number(w.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-                <p className="text-[10px] text-text-muted">{w.currency || currency}</p>
+                <p className="text-[10px] font-semibold text-text-muted">{walletCurrency}</p>
               </div>
               <button onClick={(e) => {
                 e.stopPropagation()
@@ -340,9 +389,18 @@ export function AccountsTab({ currency }: { currency: string }) {
       {/* Unified Net balance summary */}
       <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm">
         <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Total Net Balance</p>
-        <p className={clsx('text-3xl font-display font-medium', netWorth >= 0 ? 'text-text' : 'text-danger')}>
-          {netWorth.toFixed(2)} <span className="text-lg text-text-muted">{currency}</span>
-        </p>
+        <div className="flex items-baseline gap-2">
+          <p className={clsx('text-3xl font-display font-medium', netWorth >= 0 ? 'text-text' : 'text-danger')}>
+            {netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="text-lg text-text-muted ml-1">{primaryCurrency}</span>
+          </p>
+        </div>
+        {hasMixedCurrencies && (
+          <p className="text-[10px] text-text-muted mt-1 flex items-center gap-1">
+            <span className="w-1 h-1 rounded-full bg-warning inline-block" />
+            Accounts span {uniqueCurrencies.length} currencies ({uniqueCurrencies.join(', ')}) — totals shown without FX conversion
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-border/60 text-xs">
           <div>
             <p className="text-text-muted text-[10px] uppercase tracking-wider">Liquid</p>
@@ -358,6 +416,7 @@ export function AccountsTab({ currency }: { currency: string }) {
           </div>
         </div>
       </div>
+
 
       {/* Action buttons */}
       <div className="flex gap-2">

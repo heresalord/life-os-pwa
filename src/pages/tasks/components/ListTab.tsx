@@ -8,12 +8,14 @@ import { useScrollToHighlight } from '../../../hooks/useScrollToHighlight'
 import { TaskItem } from '../../../components/tasks/TaskItem'
 import { AddTaskModal } from '../../../components/tasks/AddTaskModal'
 import { EmptyState } from '../../../components/EmptyState'
+import { useTranslation } from '../../../i18n'
 import { CheckSquare } from 'lucide-react'
 import type { Task } from '../../../db/schema'
 
 interface Subtask { id: string; title: string; completed: boolean }
 
 export function ListTab({ highlightId }: { highlightId?: string | null } = {}) {
+  const { t } = useTranslation()
   const { selectedDate } = useAppStore()
   const { data: tasks = [], isLoading } = useTasksQuery(selectedDate)
   const { updateTask, deleteTask } = useTaskMutations(selectedDate)
@@ -83,17 +85,21 @@ export function ListTab({ highlightId }: { highlightId?: string | null } = {}) {
           <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
         </div>
       ) : tasks.length === 0 ? (
-        <EmptyState icon={<CheckSquare size={40} />} title="No tasks yet" message="Add your first task for today." />
+        <EmptyState
+          icon={<CheckSquare size={40} />}
+          title={t('tasks.no_tasks', 'No tasks yet')}
+          message={t('tasks.add_first_task', 'Add your first task for today.')}
+        />
       ) : (
         <div className="space-y-6">
           {pendingOrder.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider pl-1">Pending</h2>
+              <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider pl-1">{t('tasks.pending', 'Pending')}</h2>
               <DragDropContext onDragEnd={handleDragEnd}>
                 <Droppable droppableId="pending-tasks">
                   {(provided, snapshot) => (
                     <div ref={provided.innerRef} {...provided.droppableProps}
-                      className={snapshot.isDraggingOver ? 'space-y-2 rounded-xl bg-accent/5 p-1 -m-1 transition-colors' : 'space-y-2'}>
+                       className={snapshot.isDraggingOver ? 'space-y-2 rounded-xl bg-accent/5 p-1 -m-1 transition-colors' : 'space-y-2'}>
                       {pendingOrder.map((t, index) => (
                         <Draggable key={t.id} draggableId={t.id} index={index}>
                           {(prov, snap) => (
@@ -115,14 +121,14 @@ export function ListTab({ highlightId }: { highlightId?: string | null } = {}) {
 
           {completed.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider pl-1">Completed</h2>
+              <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider pl-1">{t('tasks.completed', 'Completed')}</h2>
               <div className="space-y-2 opacity-70">{completed.map((t: Task) => renderTask(t))}</div>
             </section>
           )}
 
           {skipped.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider pl-1">Skipped</h2>
+              <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider pl-1">{t('tasks.skipped', 'Skipped')}</h2>
               <div className="space-y-2 opacity-50">{skipped.map((t: Task) => renderTask(t))}</div>
             </section>
           )}

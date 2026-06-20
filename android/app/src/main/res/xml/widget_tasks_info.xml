@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  widget_tasks_info.xml
+  AppWidgetProviderInfo for the Tasks Today widget.
+
+  minWidth/minHeight: 2x2 cells (each cell ≈ 74dp on most launchers).
+  updatePeriodMillis: 1800000 = 30 minutes (Android minimum is ~30 min).
+  The plugin also triggers an immediate update whenever the app writes data.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="146dp"
+    android:minHeight="146dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_tasks"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_tasks_description" />

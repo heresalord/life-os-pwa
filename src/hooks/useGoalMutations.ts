@@ -12,7 +12,8 @@ async function write(table: string, op: 'insert' | 'update' | 'delete', payload:
 
 function calculateStreak(
   logs: { date: string; value: number }[],
-  schedule: any
+  schedule: any,
+  todayStr: string = format(new Date(), 'yyyy-MM-dd')
 ) {
   const checkedDates = new Set(
     logs.filter(l => l.value === 1).map(l => l.date)
@@ -29,8 +30,10 @@ function calculateStreak(
     days = Array.isArray(schedule.days) ? schedule.days : []
   }
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd')
-  const yesterdayStr = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+  // Parse todayStr safely to avoid timezone shifts
+  const parseDate = (dStr: string) => new Date(dStr + 'T12:00:00')
+  const baseToday = parseDate(todayStr)
+  const yesterdayStr = format(subDays(baseToday, 1), 'yyyy-MM-dd')
 
   let streak = 0
   let lastCheckin: string | null = null
@@ -51,7 +54,7 @@ function calculateStreak(
     lastCheckin = todayStr
   }
 
-  let curr = subDays(new Date(), 1)
+  let curr = subDays(baseToday, 1)
 
   for (let i = 0; i < 365; i++) {
     const currStr = format(curr, 'yyyy-MM-dd')
@@ -76,7 +79,7 @@ function calculateStreak(
 
   if (streak === 0 && checkedDates.has(yesterdayStr)) {
     let tempStreak = 0
-    let tempCurr = subDays(new Date(), 1)
+    let tempCurr = subDays(baseToday, 1)
     for (let i = 0; i < 365; i++) {
       const currStr = format(tempCurr, 'yyyy-MM-dd')
       const scheduled = isScheduled(tempCurr)
@@ -283,7 +286,7 @@ export function useGoalMutations() {
       const logs = await db.habit_logs.where('goal_id').equals(payload.goal_id).toArray()
       const goal = await db.goals.get(payload.goal_id)
       if (goal) {
-        const { streak, lastCheckin } = calculateStreak(logs, goal.habit_schedule)
+        const { streak, lastCheckin } = calculateStreak(logs, goal.habit_schedule, payload.date)
         const updates = {
           habit_streak: streak,
           last_checkin: lastCheckin,
@@ -294,6 +297,52 @@ export function useGoalMutations() {
         if (updatedGoal) await write('goals', 'update', updatedGoal as Record<string, unknown>)
       }
       return log
+    },
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey: activeKey })
+      await qc.cancelQueries({ queryKey: ['habit_logs'] })
+
+      const prevGoals = qc.getQueryData<AnyItem[]>(activeKey)
+      const prevLogs = qc.getQueryData<AnyItem[]>(['habit_logs'])
+
+      // Optimistic Log
+      const optLog = {
+        id: `opt-${Date.now()}`,
+        user_id: user?.id,
+        goal_id: payload.goal_id,
+        date: payload.date,
+        value: payload.value,
+        note: payload.note ?? null,
+        created_at: new Date().toISOString()
+      }
+
+      // Optimistic Logs list
+      const nextLogs = prevLogs ? [...prevLogs.filter(l => !(l.goal_id === payload.goal_id && l.date === payload.date)), optLog] : [optLog]
+      qc.setQueryData(['habit_logs'], nextLogs)
+
+      // Optimistic Goals list (recalculate streak)
+      if (prevGoals) {
+        const nextGoals = prevGoals.map(g => {
+          if (g.id !== payload.goal_id) return g
+          
+          const goalLogs = nextLogs.filter(l => l.goal_id === g.id)
+          const { streak, lastCheckin } = calculateStreak(goalLogs as any, g.habit_schedule, payload.date)
+          
+          return {
+            ...g,
+            habit_streak: streak,
+            last_checkin: lastCheckin,
+            updated_at: new Date().toISOString()
+          }
+        })
+        qc.setQueryData(activeKey, nextGoals)
+      }
+
+      return { prevGoals, prevLogs }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevGoals !== undefined) qc.setQueryData(activeKey, ctx.prevGoals)
+      if (ctx?.prevLogs !== undefined) qc.setQueryData(['habit_logs'], ctx.prevLogs)
     },
     onSettled: () => {
       invalidateGoals()
@@ -317,7 +366,7 @@ export function useGoalMutations() {
       const logs = await db.habit_logs.where('goal_id').equals(payload.goal_id).toArray()
       const goal = await db.goals.get(payload.goal_id)
       if (goal) {
-        const { streak, lastCheckin } = calculateStreak(logs, goal.habit_schedule)
+        const { streak, lastCheckin } = calculateStreak(logs, goal.habit_schedule, payload.date)
         const updates = {
           habit_streak: streak,
           last_checkin: lastCheckin,
@@ -327,6 +376,41 @@ export function useGoalMutations() {
         const updatedGoal = await db.goals.get(payload.goal_id)
         if (updatedGoal) await write('goals', 'update', updatedGoal as Record<string, unknown>)
       }
+    },
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey: activeKey })
+      await qc.cancelQueries({ queryKey: ['habit_logs'] })
+
+      const prevGoals = qc.getQueryData<AnyItem[]>(activeKey)
+      const prevLogs = qc.getQueryData<AnyItem[]>(['habit_logs'])
+
+      // Optimistic Logs list
+      const nextLogs = prevLogs ? prevLogs.filter(l => !(l.goal_id === payload.goal_id && l.date === payload.date)) : []
+      qc.setQueryData(['habit_logs'], nextLogs)
+
+      // Optimistic Goals list (recalculate streak)
+      if (prevGoals) {
+        const nextGoals = prevGoals.map(g => {
+          if (g.id !== payload.goal_id) return g
+          
+          const goalLogs = nextLogs.filter(l => l.goal_id === g.id)
+          const { streak, lastCheckin } = calculateStreak(goalLogs as any, g.habit_schedule, payload.date)
+          
+          return {
+            ...g,
+            habit_streak: streak,
+            last_checkin: lastCheckin,
+            updated_at: new Date().toISOString()
+          }
+        })
+        qc.setQueryData(activeKey, nextGoals)
+      }
+
+      return { prevGoals, prevLogs }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevGoals !== undefined) qc.setQueryData(activeKey, ctx.prevGoals)
+      if (ctx?.prevLogs !== undefined) qc.setQueryData(['habit_logs'], ctx.prevLogs)
     },
     onSettled: () => {
       invalidateGoals()

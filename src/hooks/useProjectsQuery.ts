@@ -19,7 +19,6 @@ export function useProjectsQuery() {
         bgSync(`projects-${user.id}`, async () => {
           const { data, error } = await supabase
             .from('projects').select('*')
-            .eq('user_id', user.id)
             .order('created_at')
           if (error) throw error
           if (data) {

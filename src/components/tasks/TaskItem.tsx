@@ -5,6 +5,7 @@ import type { Task } from '../../db/schema'
 import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import { format, isPast, isToday } from 'date-fns'
 import { useProjectsQuery } from '../../hooks/useProjectsQuery'
+import { TaskEditSheet } from './TaskEditSheet'
 import clsx from 'clsx'
 
 interface Subtask { id: string; title: string; completed: boolean }
@@ -27,15 +28,14 @@ interface TaskItemProps {
 }
 
 export function TaskItem({
-  task, onToggleComplete, onToggleSkip, onDelete, onEdit, onUpdateSubtasks, dragHandleProps
+  task, onToggleComplete, onToggleSkip, onDelete, onEdit: _onEdit, onUpdateSubtasks, dragHandleProps
 }: TaskItemProps) {
   const [swiped, setSwiped]           = useState(false)
-  const [editing, setEditing]         = useState(false)
-  const [editValue, setEditValue]     = useState(task.title)
+  const [editSheetOpen, setEditSheetOpen] = useState(false)
   const [justCompleted, setJustCompleted] = useState(false)
   const [expanded, setExpanded]       = useState(false)
   const touchStartX = useRef<number | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { data: projects } = useProjectsQuery()
   const linkedProject = projects?.find(p => p.id === task.project_id)
@@ -47,32 +47,31 @@ export function TaskItem({
     return `${hr % 12 || 12}:${m} ${ampm}`
   }
 
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
-  const handleTouchMove  = (e: React.TouchEvent) => {
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    longPressTimer.current = setTimeout(() => {
+      haptic('heavy')
+      setEditSheetOpen(true)
+    }, 350)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current)
     if (!touchStartX.current) return
     const diff = touchStartX.current - e.touches[0].clientX
     if (diff > 50)  setSwiped(true)
     if (diff < -50) setSwiped(false)
   }
-  const handleTouchEnd = () => { touchStartX.current = null }
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current)
+    touchStartX.current = null
+  }
 
   const handleCheckClick = () => {
     if (!task.completed) { haptic('success'); setJustCompleted(true); setTimeout(() => setJustCompleted(false), 600) }
     else haptic('light')
     onToggleComplete(task.id, task.completed)
-  }
-
-  const startEdit = () => {
-    setEditValue(task.title)
-    setEditing(true)
-    setSwiped(false)
-    setTimeout(() => inputRef.current?.focus(), 50)
-  }
-
-  const commitEdit = () => {
-    const val = editValue.trim()
-    if (val && val !== task.title && onEdit) onEdit(task.id, val)
-    setEditing(false)
   }
 
   const isPending  = !task.completed && !task.skipped
@@ -131,83 +130,74 @@ export function TaskItem({
 
         {/* Content */}
         <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-          {editing ? (
-            <input ref={inputRef} value={editValue} onChange={e => setEditValue(e.target.value)}
-              onBlur={commitEdit}
-              onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') { setEditing(false); setEditValue(task.title) } }}
-              className="text-sm text-text bg-transparent border-b border-accent focus:outline-none w-full py-0.5" />
-          ) : (
-            <span onDoubleClick={isPending ? startEdit : undefined}
-              className={clsx('text-sm truncate select-none', task.completed || task.skipped ? 'text-text-muted line-through' : 'text-text')}>
-              {task.title}
-            </span>
-          )}
+          <span onDoubleClick={isPending ? () => setEditSheetOpen(true) : undefined}
+            className={clsx('text-sm truncate select-none', task.completed || task.skipped ? 'text-text-muted line-through' : 'text-text')}>
+            {task.title}
+          </span>
 
           {/* Metadata row */}
-          {!editing && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {task.carried_from && (
-                <span className="text-[10px] text-text-muted flex items-center gap-0.5 select-none">
-                  <RotateCw size={9} /> Carried
-                </span>
-              )}
-              {dueDateStr && (
-                <span className={clsx('text-[10px] flex items-center gap-0.5 select-none', isOverdue ? 'text-danger font-medium' : 'text-text-muted')}>
-                  <CalendarDays size={9} /> {dueDateStr}{isOverdue ? ' · Overdue' : ''}
-                </span>
-              )}
-              {task.time_block_start && (
-                <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 select-none">
-                  <Clock size={9} /> {formatTime(task.time_block_start)}{task.time_block_end ? ` – ${formatTime(task.time_block_end)}` : ''}
-                </span>
-              )}
-              {linkedProject && (
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider flex items-center gap-0.5 select-none"
-                  style={{
-                    borderColor: `${linkedProject.color}33`,
-                    color: linkedProject.color || '#3b82f6',
-                    backgroundColor: `${linkedProject.color}11`
-                  }}
-                >
-                  {linkedProject.name}
-                </span>
-              )}
-              {hasSubtasks && (
-                <span className="text-[10px] text-text-muted select-none">{doneCount}/{subtasks.length} subtasks</span>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {task.carried_from && (
+              <span className="text-[10px] text-text-muted flex items-center gap-0.5 select-none">
+                <RotateCw size={9} /> Carried
+              </span>
+            )}
+            {dueDateStr && (
+              <span className={clsx('text-[10px] flex items-center gap-0.5 select-none', isOverdue ? 'text-danger font-medium' : 'text-text-muted')}>
+                <CalendarDays size={9} /> {dueDateStr}{isOverdue ? ' · Overdue' : ''}
+              </span>
+            )}
+            {task.time_block_start && (
+              <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 select-none">
+                <Clock size={9} /> {formatTime(task.time_block_start)}{task.time_block_end ? ` – ${formatTime(task.time_block_end)}` : ''}
+              </span>
+            )}
+            {linkedProject && (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider flex items-center gap-0.5 select-none"
+                style={{
+                  borderColor: `${linkedProject.color}33`,
+                  color: linkedProject.color || '#3b82f6',
+                  backgroundColor: `${linkedProject.color}11`
+                }}
+              >
+                {linkedProject.name}
+              </span>
+            )}
+            {hasSubtasks && (
+              <span className="text-[10px] text-text-muted select-none">{doneCount}/{subtasks.length} subtasks</span>
+            )}
+          </div>
         </div>
 
         {/* Priority badge */}
-        {task.priority && isPending && !editing && (
+        {task.priority && isPending && (
           <span className={clsx('text-[10px] font-semibold px-1.5 py-0.5 rounded border flex-shrink-0 select-none', PRIORITY_STYLES[task.priority] ?? PRIORITY_STYLES[4])}>
             P{task.priority}
           </span>
         )}
 
         {/* Subtask expand toggle */}
-        {hasSubtasks && isPending && !editing && (
+        {hasSubtasks && isPending && (
           <button onClick={() => setExpanded(v => !v)} className="text-text-muted hover:text-text flex-shrink-0 p-1 transition-colors">
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
         )}
 
-        {/* Edit (desktop hover) */}
-        {isPending && !editing && onEdit && (
-          <button onClick={startEdit} className="text-text-muted hover:text-accent p-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all">
+        {/* Edit button */}
+        {isPending && (
+          <button onClick={() => setEditSheetOpen(true)} className="text-text-muted hover:text-accent p-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all">
             <Pencil size={13} />
           </button>
         )}
 
         {/* Skip / Undo */}
-        {isPending && !editing && (
+        {isPending && (
           <button onClick={() => onToggleSkip(task.id, task.skipped)} className="text-text-muted hover:text-warning p-1 flex-shrink-0 select-none" title="Skip">
             <X size={16} />
           </button>
         )}
-        {(task.completed || task.skipped) && !editing && (
+        {(task.completed || task.skipped) && (
           <button onClick={() => { if (task.completed) onToggleComplete(task.id, true); else onToggleSkip(task.id, true) }}
             className="text-[10px] text-text-muted hover:text-text border border-border px-2 py-1 rounded flex-shrink-0 select-none">
             Undo
@@ -239,6 +229,13 @@ export function TaskItem({
       {justCompleted && (
         <div className="absolute inset-0 bg-success/10 rounded-xl pointer-events-none animate-ping-once" />
       )}
+
+      {/* Full Task Edit sheet */}
+      <TaskEditSheet 
+        task={task} 
+        open={editSheetOpen} 
+        onClose={() => setEditSheetOpen(false)} 
+      />
     </div>
   )
 }

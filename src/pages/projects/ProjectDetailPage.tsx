@@ -10,7 +10,8 @@ import {
   Target,
   Plus,
   Trash,
-  Calendar
+  Calendar,
+  Share2
 } from 'lucide-react'
 import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 import { useProjectMutations } from '../../hooks/useProjectMutations'
@@ -19,6 +20,7 @@ import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { useAuth } from '../../hooks/useAuth'
 import { db } from '../../db'
 import { GoalItem } from '../../components/goals/GoalItem'
+import { ShareModal } from '../../components/dashboard/ShareModal'
 import clsx from 'clsx'
 
 const PRESET_COLORS = [
@@ -78,6 +80,7 @@ export function ProjectDetailPage() {
   const [editDesc, setEditDesc] = useState('')
   const [editColor, setEditColor] = useState('#3b82f6')
   const [editArchived, setEditArchived] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
 
   // Quick Add Task state
   const [newTaskTitle, setNewTaskTitle] = useState('')
@@ -226,6 +229,12 @@ export function ProjectDetailPage() {
         <div className="flex gap-2">
           {!isEditing && (
             <>
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="flex items-center gap-1 text-xs text-text-secondary hover:text-text bg-surface border border-border px-3 py-1.5 rounded-xl transition-colors shadow-sm"
+              >
+                <Share2 size={13} /> Share Project
+              </button>
               <button
                 onClick={startEditing}
                 className="flex items-center gap-1 text-xs text-text-secondary hover:text-text bg-surface border border-border px-3 py-1.5 rounded-xl transition-colors shadow-sm"
@@ -523,6 +532,14 @@ export function ProjectDetailPage() {
           </div>
         )}
       </div>
+
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        itemType="project"
+        itemId={project.id}
+        itemName={project.name}
+      />
     </div>
   )
 }

@@ -4,4 +4,7 @@
     <string name="title_activity_main">Life OS</string>
     <string name="package_name">com.kmsstudio.lifeos</string>
     <string name="custom_url_scheme">com.kmsstudio.lifeos</string>
+    <string name="widget_tasks_description">Shows pending and completed tasks for today</string>
+    <string name="widget_finance_description">Shows total balance and today\'s income and expenses</string>
+    <string name="widget_inbox_description">Shows unprocessed inbox items and latest capture</string>
 </resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  widget_finance_info.xml
+  AppWidgetProviderInfo for the Finance Snapshot widget.
+  2x2 minimum, up to 4x2 for a wider layout on larger launchers.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="146dp"
+    android:minHeight="146dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_finance"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_finance_description" />
