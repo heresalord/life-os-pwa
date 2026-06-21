@@ -1,13 +1,15 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Sun, Moon, Settings, LogOut,
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
   CalendarDays, Inbox, FileText, Search, Heart, Briefcase,
-  ChevronRight,
+  ChevronRight, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../i18n'
+import { WeeklyRecapModal } from '../../components/dashboard/WeeklyRecapModal'
 
 // All modules — order determines display order in the grid
 const ALL_MODULES = [
@@ -29,6 +31,7 @@ export function MorePage() {
   const { profile, signOut } = useAuth()
   const { navItems } = useAppStore()
   const { t } = useTranslation()
+  const [recapOpen, setRecapOpen] = useState(false)
 
   const displayName = profile?.display_name || 'You'
   const initials    = displayName.slice(0, 2).toUpperCase()
@@ -53,6 +56,21 @@ export function MorePage() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-text truncate">{displayName}</p>
           <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
+        </div>
+        <ChevronRight size={16} className="text-text-muted flex-shrink-0" />
+      </button>
+
+      {/* Weekly Recap */}
+      <button
+        onClick={() => setRecapOpen(true)}
+        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 rounded-2xl hover:from-violet-500/20 hover:to-blue-500/20 transition-all text-left"
+      >
+        <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+          <Sparkles size={18} className="text-violet-400" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-text">Weekly Recap</p>
+          <p className="text-xs text-text-muted">Review last week's highlights</p>
         </div>
         <ChevronRight size={16} className="text-text-muted flex-shrink-0" />
       </button>
@@ -155,6 +173,7 @@ export function MorePage() {
           </button>
         </div>
       </section>
+      {recapOpen && <WeeklyRecapModal forceOpen onClose={() => setRecapOpen(false)} />}
     </div>
   )
 }

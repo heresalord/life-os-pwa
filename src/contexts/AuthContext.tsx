@@ -145,10 +145,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const listenerPromise = CapacitorApp.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
       if (isActive) {
         supabase.auth.startAutoRefresh()
-        // Force a session check now — if the access token expired while
-        // backgrounded, this refreshes it (or surfaces a real SIGNED_OUT
-        // via onAuthStateChange if the refresh token is genuinely invalid).
-        supabase.auth.getSession()
+        // Force a token refresh immediately on resume rather than just
+        // returning the cached (possibly expired) session. refreshSession()
+        // uses the refresh token to get a new access token. If the refresh
+        // token is also invalid (e.g. user was signed out server-side) this
+        // triggers a SIGNED_OUT event via onAuthStateChange — which is
+        // the correct behaviour.
+        supabase.auth.refreshSession().catch(() => {
+          // Ignore — onAuthStateChange will fire SIGNED_OUT if genuinely invalid
+        })
       } else {
         supabase.auth.stopAutoRefresh()
       }

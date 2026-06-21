@@ -76,10 +76,17 @@ export function useWidgetSync() {
       })
 
       // ── Inbox ─────────────────────────────────────────────────────────────
+      // processed is a JS boolean — Dexie IndexableType doesn't support boolean,
+      // so fetch all and filter in memory instead of using the index
       const unprocessed = await db.inbox_items
-        .where('processed').equals(0)
-        .reverse()
-        .sortBy('captured_at')
+        .toArray()
+        .then(items =>
+          items
+            .filter(item => !item.processed)
+            .sort((a, b) =>
+              new Date(b.captured_at ?? 0).getTime() - new Date(a.captured_at ?? 0).getTime()
+            )
+        )
 
       await WidgetData.updateInboxWidget({
         count:     unprocessed.length,

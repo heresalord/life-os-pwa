@@ -820,7 +820,10 @@ export function DailyLogPage() {
         const dash = circ - (circ * pct) / 100
 
         return (
-          <div className={`fixed inset-0 z-50 bg-gradient-to-br ${gradientFrom} ${gradientTo} flex flex-col overflow-hidden`}>
+          <div
+            className={`fixed inset-0 z-50 bg-gradient-to-br ${gradientFrom} ${gradientTo} flex flex-col overflow-hidden`}
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          >
             {/* Decorative blobs */}
             <div className="absolute top-0 right-0 w-80 h-80 rounded-full opacity-10 blur-3xl"
               style={{ backgroundColor: accentColor, transform: 'translate(30%, -30%)' }} />

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useGoalsQuery } from '../../hooks/useGoalsQuery'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
-import { supabase, db as supabaseDb } from '../../lib/supabase'
+import { db as supabaseDb } from '../../lib/supabase'
 import { db } from '../../db'
 import { getUserLocalDate } from '../../lib/dateUtils'
 import { useAppStore } from '../../store/useAppStore'
@@ -13,6 +13,28 @@ import {
 } from 'lucide-react'
 import { redeemShareCode, fetchMySharedItems, type SharedItem } from '../../lib/share'
 import clsx from 'clsx'
+
+// ── Image resize helper ─────────────────────────────────────────────────────
+
+async function resizeToDataUrl(file: File, maxPx = 256): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas')
+      canvas.width  = Math.round(img.width  * scale)
+      canvas.height = Math.round(img.height * scale)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('Canvas unavailable')); return }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL('image/jpeg', 0.82))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')) }
+    img.src = url
+  })
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -199,29 +221,16 @@ export function ProfilePage() {
     }
   }
 
-  // Upload avatar to Supabase Storage
+  // Upload avatar — resize to 256×256 max via canvas, store as base64 data URL
+  // directly in user_profiles.avatar_url (no Supabase Storage bucket needed)
   const handleAvatarUpload = async (file: File) => {
     if (!user) return
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
-      const path = `${user.id}/avatar.${ext}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type })
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(path)
-
-      const avatarUrl = publicUrl + `?t=${Date.now()}`
-
-      await supabaseDb.from('user_profiles').update({ avatar_url: avatarUrl }).eq('id', user.id)
-      await db.user_profiles.update(user.id, { avatar_url: avatarUrl })
-      setLocalAvatarUrl(avatarUrl)
+      const dataUrl = await resizeToDataUrl(file, 256)
+      await supabaseDb.from('user_profiles').update({ avatar_url: dataUrl }).eq('id', user.id)
+      await db.user_profiles.update(user.id, { avatar_url: dataUrl })
+      setLocalAvatarUrl(dataUrl)
       await refreshProfile()
     } catch (err) {
       console.error('[ProfilePage] avatar upload error:', err)
