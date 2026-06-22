@@ -17,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Node 22 (Capacitor 8 requires >=22) ────────────────────────
+      # ── 2. Node 22 ────────────────────────────────────────────────────
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -45,7 +45,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # ── 6. Android SDK 36 ─────────────────────────────────────────────
+      # ── 6. Android SDK ─────────────────────────────────────────────────
       - name: Install Android SDK 36 + build-tools
         run: |
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
@@ -54,16 +54,33 @@ jobs:
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      # ── 7. Capacitor sync ─────────────────────────────────────────────
+      # ── 7. Decode keystore ─────────────────────────────────────────────
+      # Decodes the committed base64 keystore and writes keystore.properties.
+      # The same keystore is used on every build → consistent APK signature
+      # → installs over older versions without uninstalling.
+      - name: Set up signing keystore
+        run: |
+          base64 -d android/lifeos.keystore.b64 > android/lifeos.jks
+          cat > android/keystore.properties << 'EOF'
+          storeFile=../lifeos.jks
+          storePassword=lifeos2026
+          keyAlias=lifeos
+          keyPassword=lifeos2026
+          EOF
+
+      # ── 8. Capacitor sync ─────────────────────────────────────────────
       - name: Sync Capacitor → Android
         run: npx cap sync android
 
-      # ── 8. Build APK ──────────────────────────────────────────────────
+      # ── 9. Build APK ──────────────────────────────────────────────────
       - name: Build debug APK
         working-directory: android
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          VERSION_NAME: "1.0.${{ github.run_number }}"
         run: ./gradlew assembleDebug --no-daemon
 
-      # ── 9. Upload artifact ────────────────────────────────────────────
+      # ── 10. Upload artifact ───────────────────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

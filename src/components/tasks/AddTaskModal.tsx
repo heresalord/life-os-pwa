@@ -4,6 +4,7 @@ import { Plus, X, CalendarDays, AlignLeft, Clock } from 'lucide-react'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import type { AddTaskPayload } from '../../hooks/useTaskMutations'
 import { useProjectsQuery } from '../../hooks/useProjectsQuery'
+import { useTranslation } from '../../i18n'
 
 type KanbanStatus = 'backlog' | 'todo' | 'in_progress' | 'done'
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
+  const { t } = useTranslation()
   const [open, setOpen]           = useState(false)
   const [title, setTitle]         = useState('')
   const [priority, setPriority]   = useState<number | null>(null)
@@ -72,7 +74,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
     <Dialog.Root open={open} onOpenChange={v => { setOpen(v); if (!v) reset() }}>
       <Dialog.Trigger asChild>
         <button className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-xl text-text-secondary hover:text-text hover:border-text-muted transition-colors text-sm font-medium">
-          <Plus size={18} /> Add Task
+          <Plus size={18} /> {t('tasks.add_task', 'Add Task')}
         </button>
       </Dialog.Trigger>
 
@@ -82,7 +84,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
           style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
           <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
           <div className="flex items-center justify-between mb-4">
-            <Dialog.Title className="text-base font-semibold text-text">New Task</Dialog.Title>
+            <Dialog.Title className="text-base font-semibold text-text">{t('tasks.new_task', 'New Task')}</Dialog.Title>
             <Dialog.Close className="text-text-muted hover:text-text transition-colors"><X size={18} /></Dialog.Close>
           </div>
 
@@ -91,7 +93,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
             <input
               autoFocus
               type="text"
-              placeholder="What needs to be done?"
+              placeholder={t('tasks.placeholder', 'What needs to be done?')}
               value={title}
               onChange={e => setTitle(e.target.value)}
               className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none"
@@ -99,7 +101,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
 
             {/* Priority */}
             <div>
-              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Priority</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">{t('tasks.priority', 'Priority')}</label>
               <div className="flex gap-2">
                 {PRIORITIES.map(p => (
                   <button key={p.value} type="button" title={p.title}
@@ -115,7 +117,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
             {/* Due date row */}
             <div>
               <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider flex items-center gap-1">
-                <CalendarDays size={12} /> Due Date (optional)
+                <CalendarDays size={12} /> {t('tasks.due_date', 'Due Date (optional)')}
               </label>
               <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
                 className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
@@ -125,37 +127,37 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <Clock size={12} /> Start Time (opt)
+                  <Clock size={12} /> {t('tasks.start_time', 'Start Time (opt.)')}
                 </label>
                 <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
               <div>
                 <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <Clock size={12} /> End Time (opt)
+                  <Clock size={12} /> {t('tasks.end_time', 'End Time (opt.)')}
                 </label>
                 <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
             </div>
             {startTime && endTime && startTime >= endTime && (
-              <p className="text-xs text-danger">End time must be after start time.</p>
+              <p className="text-xs text-danger">{t('tasks.time_error_end', 'End time must be after start time.')}</p>
             )}
             {!startTime && endTime && (
-              <p className="text-xs text-danger">Start time is required if end time is specified.</p>
+              <p className="text-xs text-danger">{t('tasks.time_error_start', 'Start time is required if end time is specified.')}</p>
             )}
 
             {/* Project Selection */}
             <div>
               <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">
-                Project (optional)
+                {t('tasks.project', 'Project (optional)')}
               </label>
               <select
                 value={projectId}
                 onChange={e => setProjectId(e.target.value)}
                 className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none"
               >
-                <option value="">No Project</option>
+                <option value="">{t('tasks.no_project', 'No Project')}</option>
                 {projects?.filter(p => !p.archived).map(p => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -168,11 +170,11 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
             {showExtra ? (
               <div>
                 <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <AlignLeft size={12} /> Description
+                  <AlignLeft size={12} /> {t('tasks.description', 'Description')}
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Add details…"
+                  placeholder={t('tasks.description_placeholder', 'Add details…')}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none resize-none text-sm"
@@ -181,13 +183,13 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
             ) : (
               <button type="button" onClick={() => setShowExtra(true)}
                 className="text-xs text-text-muted hover:text-text flex items-center gap-1.5 transition-colors">
-                <AlignLeft size={12} /> Add description
+                <AlignLeft size={12} /> {t('tasks.add_description', 'Add description')}
               </button>
             )}
 
             <button type="submit" disabled={!title.trim() || addTask.isPending || isTimeInvalid}
               className="w-full bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
-              {addTask.isPending ? 'Adding…' : 'Add Task'}
+              {addTask.isPending ? t('tasks.adding', 'Adding…') : t('tasks.add_task', 'Add Task')}
             </button>
           </form>
         </Dialog.Content>

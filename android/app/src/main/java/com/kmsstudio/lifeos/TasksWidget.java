@@ -1,60 +1,34 @@
 package com.kmsstudio.lifeos;
 
-import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.widget.RemoteViews;
 
 /**
- * TasksWidget
- *
- * "Tasks Today" homescreen widget.
- * Reads pending/completed counts and top priority task from SharedPreferences
- * (written by WidgetDataPlugin whenever the app is open and data changes).
- * Tapping anywhere on the widget opens the app on the Tasks screen.
+ * TasksWidget — "Tasks Today" homescreen widget.
+ * onUpdate() is called by Android on cold boot / widget placement.
+ * It reads the last-written SharedPreferences data and calls the shared
+ * RemoteViews builder from WidgetDataPlugin so the layout logic lives in
+ * exactly one place.
  */
 public class TasksWidget extends AppWidgetProvider {
 
     @Override
-    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        SharedPreferences prefs = context.getSharedPreferences(
+    public void onUpdate(Context context, AppWidgetManager mgr, int[] ids) {
+        SharedPreferences p = context.getSharedPreferences(
                 WidgetDataPlugin.PREFS_NAME, Context.MODE_PRIVATE);
 
-        String pending   = prefs.getString("tasks_pending",   "—");
-        String completed = prefs.getString("tasks_completed", "0");
-        String topTask   = prefs.getString("tasks_top",       "No priority task");
+        int    pending   = parseInt(p.getString("tasks_pending",   "0"), 0);
+        int    completed = parseInt(p.getString("tasks_completed", "0"), 0);
+        String topTask   = p.getString("tasks_top", "");
 
-        for (int widgetId : appWidgetIds) {
-            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_tasks);
-
-            views.setTextViewText(R.id.widget_tasks_pending,   pending);
-            views.setTextViewText(R.id.widget_tasks_completed, completed + " done");
-            views.setTextViewText(R.id.widget_tasks_top,       topTask);
-
-            // Tap → open app on /tasks
-            views.setOnClickPendingIntent(R.id.widget_tasks_root, buildOpenIntent(context, "/tasks"));
-
-            appWidgetManager.updateAppWidget(widgetId, views);
-        }
+        RemoteViews views = WidgetDataPlugin.buildTasksViews(context, pending, completed, topTask);
+        for (int id : ids) mgr.updateAppWidget(id, views);
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
-
-    private PendingIntent buildOpenIntent(Context context, String path) {
-        Intent intent = context.getPackageManager()
-                .getLaunchIntentForPackage(context.getPackageName());
-        if (intent == null) intent = new Intent(context, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        intent.putExtra("widgetDeepLink", path);
-
-        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_UPDATE_CURRENT;
-
-        return PendingIntent.getActivity(context, 0, intent, flags);
+    private static int parseInt(String s, int def) {
+        try { return Integer.parseInt(s); } catch (Exception e) { return def; }
     }
 }

@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// ── Signing config from keystore.properties (written by CI or local dev) ──────
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.kmsstudio.lifeos"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,18 +14,36 @@ android {
         applicationId "com.kmsstudio.lifeos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode = (System.getenv("BUILD_NUMBER") ?: "1").toInteger()
+        versionName = System.getenv("VERSION_NAME") ?: "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    signingConfigs {
+        release {
+            keyAlias     keystoreProperties['keyAlias']     ?: 'lifeos'
+            keyPassword  keystoreProperties['keyPassword']  ?: ''
+            storeFile    keystoreProperties['storeFile']
+                ? file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword'] ?: ''
+        }
+    }
+
     buildTypes {
+        debug {
+            // Debug builds use the same release keystore so the package
+            // signature is consistent across builds — allows over-the-air
+            // updates without uninstalling.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
