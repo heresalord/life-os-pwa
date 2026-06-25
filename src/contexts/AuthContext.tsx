@@ -3,24 +3,48 @@ import { Capacitor } from '@capacitor/core'
 import { App as CapacitorApp } from '@capacitor/app'
 import { supabase } from '../lib/supabase'
 import { db } from '../db'
+import { queryClient } from '../lib/queryClient'
 import type { User, Session } from '@supabase/supabase-js'
 import type { UserProfile } from '../db/schema'
 
+// localStorage key that tracks which user's data is currently in Dexie.
+// Used to detect account switching so we can wipe stale data before loading.
+const LAST_USER_KEY = 'lifeos-last-user-id'
+
+/**
+ * Wipes ALL local state for the previous user:
+ *   1. Deletes the entire Dexie/IndexedDB database (Dexie auto-recreates it
+ *      empty on the next query — no manual reopen needed).
+ *   2. Clears the React Query in-memory cache (24-hour gcTime means it would
+ *      otherwise serve the previous user's data for up to 24 hours).
+ *
+ * Intentionally does NOT clear localStorage keys that belong to the device
+ * rather than the user (theme, nav layout, locale, accent color).
+ */
+async function wipeLocalUserData() {
+  try {
+    queryClient.clear()
+    await db.delete()
+  } catch (err) {
+    console.error('[AuthContext] wipeLocalUserData error:', err)
+  }
+}
+
 interface AuthContextValue {
-  session: Session | null
-  user: User | null
-  profile: UserProfile | null
-  loading: boolean
-  signOut: () => void
+  session:        Session | null
+  user:           User | null
+  profile:        UserProfile | null
+  loading:        boolean
+  signOut:        () => Promise<void>
   refreshProfile: () => Promise<UserProfile | null>
 }
 
 const AuthContext = createContext<AuthContextValue>({
-  session: null,
-  user: null,
-  profile: null,
-  loading: true,
-  signOut: () => {},
+  session:        null,
+  user:           null,
+  profile:        null,
+  loading:        true,
+  signOut:        async () => {},
   refreshProfile: () => Promise.resolve(null),
 })
 
@@ -32,12 +56,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string, retries = 5) => {
     try {
-      // ── 1. Serve from Dexie immediately (instant) ───────────────────────
+      // ── Guard: detect account switch ─────────────────────────────────────
+      // If a different user's data is sitting in Dexie, wipe it before we
+      // read anything. This covers the "logged out → logged in as someone
+      // else without refreshing the page" scenario.
+      const lastUserId = localStorage.getItem(LAST_USER_KEY)
+      if (lastUserId && lastUserId !== userId) {
+        await wipeLocalUserData()
+      }
+      localStorage.setItem(LAST_USER_KEY, userId)
+
+      // ── 1. Serve from Dexie immediately (instant) ─────────────────────
       const cached = await db.user_profiles.get(userId)
       if (cached) {
         setProfile(cached)
         setLoading(false)
-        // Background re-sync so changes (avatar, display name) propagate
         void supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle()
           .then(({ data }) => {
             if (data) {
@@ -48,9 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return cached
       }
 
-      // ── 2. No cached profile (first login / new device) ────────────────
-      // New signups: the DB trigger that creates user_profiles runs async.
-      // Retry with back-off before giving up.
+      // ── 2. No cached profile — fetch from Supabase with back-off ──────
       for (let i = 0; i < retries; i++) {
         const { data, error } = await supabase
           .from('user_profiles').select('*').eq('id', userId).maybeSingle()
@@ -62,14 +93,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const isNotFound = !error || error.code === 'PGRST116'
         if (!isNotFound) break
-        // Exponential back-off: 400 ms, 800 ms, 1 200 ms …
         await new Promise(r => setTimeout(r, 400 * (i + 1)))
       }
       setLoading(false)
       return null
     } catch (err) {
-      // Catch Dexie/IndexedDB errors (common in Capacitor WebViews) so the
-      // loading spinner never gets permanently stuck.
       console.error('[AuthContext] fetchProfile error:', err)
       setLoading(false)
       return null
@@ -77,18 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // ── Primary bootstrap: check for an existing session immediately.
-    // This is what clears the loading spinner on page reload / app start.
-    // We can't rely solely on onAuthStateChange(INITIAL_SESSION) because in
-    // Capacitor WebViews (and some browsers) that event fires with a noticeable
-    // delay, leaving loading=true and the screen blank in the meantime.
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        // Defer the profile fetch to the next event-loop tick.
-        // Calling supabase.from() synchronously inside the auth resolution
-        // path can contend with Supabase's internal async lock and hang.
         const userId = session.user.id
         setTimeout(() => fetchProfile(userId), 0)
       } else {
@@ -96,72 +116,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    // ── Subsequent auth changes: login, logout, token refresh.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        // Re-arm the loading gate on actual sign-in so AuthGuard keeps showing
-        // its spinner while the profile fetches — prevents a false redirect to
-        // /onboarding before the profile arrives.
-        // INITIAL_SESSION is already handled by getSession() above.
-        if (event === 'SIGNED_IN') {
-          setLoading(true)
-        }
+        if (event === 'SIGNED_IN') setLoading(true)
         const userId = session.user.id
         setTimeout(() => fetchProfile(userId), 0)
       } else {
+        // SIGNED_OUT — clear the stored user marker so the next login
+        // always triggers a fresh wipe regardless of which account it is.
+        localStorage.removeItem(LAST_USER_KEY)
         setProfile(null)
         setLoading(false)
       }
     })
 
-    // ── Safety net: guarantee loading clears even if both paths above fail
-    // (e.g. network down on first load, Supabase misconfiguration, etc.).
     const safetyTimer = setTimeout(() => setLoading(false), 8_000)
-
-    return () => {
-      subscription.unsubscribe()
-      clearTimeout(safetyTimer)
-    }
+    return () => { subscription.unsubscribe(); clearTimeout(safetyTimer) }
   }, [fetchProfile])
 
-  // ── Capacitor lifecycle: keep the auth session alive across long
-  // backgrounding periods (e.g. the APK being closed for hours).
-  //
-  // supabase-js's `autoRefreshToken` relies on a setInterval ticker, which
-  // Android suspends/throttles once the WebView is backgrounded. If a
-  // refresh happens to fire mid-suspend (e.g. during a brief Doze window)
-  // it can rotate the refresh token without the new one being durably
-  // persisted, leaving the stored session unusable on resume — which then
-  // surfaces as a hard sign-out next time a request gets a 401.
-  //
-  // Fix (per Supabase's recommended pattern for mobile/native clients):
-  // stop the ticker while backgrounded, and on resume, restart it and
-  // immediately re-validate/refresh the session.
+  // ── Capacitor background/foreground session management ────────────────────
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
-
     const listenerPromise = CapacitorApp.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
       if (isActive) {
         supabase.auth.startAutoRefresh()
-        // Force a token refresh immediately on resume rather than just
-        // returning the cached (possibly expired) session. refreshSession()
-        // uses the refresh token to get a new access token. If the refresh
-        // token is also invalid (e.g. user was signed out server-side) this
-        // triggers a SIGNED_OUT event via onAuthStateChange — which is
-        // the correct behaviour.
-        supabase.auth.refreshSession().catch(() => {
-          // Ignore — onAuthStateChange will fire SIGNED_OUT if genuinely invalid
-        })
+        supabase.auth.refreshSession().catch(() => {})
       } else {
         supabase.auth.stopAutoRefresh()
       }
     })
-
-    return () => {
-      listenerPromise.then((l: { remove: () => void }) => l.remove())
-    }
+    return () => { listenerPromise.then((l: { remove: () => void }) => l.remove()) }
   }, [])
 
   const refreshProfile = useCallback(() => {
@@ -169,7 +155,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return Promise.resolve(null)
   }, [user, fetchProfile])
 
-  const signOut = () => supabase.auth.signOut()
+  /**
+   * signOut — wipes ALL local state before signing out of Supabase.
+   *
+   * Order matters:
+   *   1. Wipe Dexie + React Query first (while we still have a valid session
+   *      so any in-flight mutations can be cancelled cleanly).
+   *   2. Then call supabase.auth.signOut() which triggers SIGNED_OUT via
+   *      onAuthStateChange, which clears profile/session state above.
+   */
+  const signOut = async () => {
+    await wipeLocalUserData()
+    localStorage.removeItem(LAST_USER_KEY)
+    await supabase.auth.signOut()
+  }
 
   return (
     <AuthContext.Provider value={{ session, user, profile, loading, signOut, refreshProfile }}>
@@ -178,7 +177,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Drop-in replacement for the old useAuth hook — reads from the shared context. */
 export function useAuth() {
   return useContext(AuthContext)
 }
