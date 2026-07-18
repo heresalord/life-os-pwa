@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type BookRow    = Database['public']['Tables']['books']['Row']
@@ -12,17 +12,17 @@ export const booksApi = {
     return data ?? []
   },
   async fetchByStatus(userId: string, status: string): Promise<BookRow[]> {
-    const { data, error } = await supabase.from('books').select('*').eq('user_id', userId).eq('status', status)
+    const { data, error } = await supabase.from('books').select('*').eq('user_id', userId).eq('status', status as 'to-read' | 'reading' | 'finished' | 'abandoned')
     if (error) throw error
     return data ?? []
   },
   async create(payload: BookInsert): Promise<BookRow> {
-    const { data, error } = await db.from('books').insert([payload]).select().single()
+    const { data, error } = await supabase.from('books').insert([payload]).select().single()
     if (error) throw error
     return data
   },
   async update(id: string, payload: BookUpdate): Promise<BookRow> {
-    const { data, error } = await db.from('books').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('books').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   },

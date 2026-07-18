@@ -1,9 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useGoalsQuery } from '../../hooks/useGoalsQuery'
+import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { GoalItem } from '../../components/goals/GoalItem'
 import { AddGoalModal } from '../../components/goals/AddGoalModal'
 import { EmptyState } from '../../components/EmptyState'
+import { GoalGridSkeleton } from '../../components/Skeleton'
 import { useTranslation } from '../../i18n'
+import { haptic } from '../../lib/haptic'
+import { format } from 'date-fns'
 import {
   Target,
   Grid,
@@ -21,7 +25,8 @@ import {
   Map,
   Calendar,
   Layers,
-  ChevronDown
+  CheckCircle2,
+  Archive,
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -35,6 +40,12 @@ const TYPE_FILTERS = [
   { value: 'average', labelKey: 'goals.averages', defaultLabel: 'Averages', icon: TrendingUp },
   { value: 'project', labelKey: 'goals.projects', defaultLabel: 'Projects', icon: MilestoneIcon },
 ] as const
+
+const STATE_FILTERS: { value: StateFilter; label: string; icon: React.ComponentType<any> }[] = [
+  { value: 'active',    label: 'Active',    icon: Target },
+  { value: 'completed', label: 'Done',      icon: CheckCircle2 },
+  { value: 'abandoned', label: 'Archived',  icon: Archive },
+]
 
 const CATEGORY_CHIPS = [
   { name: 'All', icon: Grid },
@@ -57,6 +68,7 @@ export function GoalsPage() {
   const [stateFilter, setStateFilter] = useState<StateFilter>('active')
 
   const { data: goals = [], isLoading } = useGoalsQuery(stateFilter)
+  const { addGoal } = useGoalMutations()
 
   // Filter goals locally
   const filteredGoals = useMemo(() => {
@@ -74,19 +86,23 @@ export function GoalsPage() {
           <h1 className="text-2xl font-display text-text">{t('goals.title', 'Goals')}</h1>
           <p className="text-xs text-text-muted mt-0.5">{t('goals.track_build_habits', 'Track, build habits, and complete milestones')}</p>
         </div>
-
-        {/* State Filter dropdown */}
-        <div className="relative group">
-          <select
-            value={stateFilter}
-            onChange={e => setStateFilter(e.target.value as StateFilter)}
-            className="appearance-none bg-surface border border-border rounded-xl pl-3.5 pr-8 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer transition-colors shadow-sm"
-          >
-            <option value="active">{t('goals.active_goals', 'Active Goals')}</option>
-            <option value="completed">{t('goals.completed_goals', 'Completed')}</option>
-            <option value="abandoned">{t('goals.archived_goals', 'Archived')}</option>
-          </select>
-          <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted" />
+        {/* State filter chips — inline, replaces the dropdown */}
+        <div className="flex items-center gap-1 p-1 bg-surface-2 border border-border rounded-xl">
+          {STATE_FILTERS.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              onClick={() => setStateFilter(value)}
+              className={clsx(
+                'flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all',
+                stateFilter === value
+                  ? 'bg-surface text-text shadow-sm'
+                  : 'text-text-muted hover:text-text'
+              )}
+            >
+              <Icon size={11} />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
         </div>
       </header>
 
@@ -101,7 +117,7 @@ export function GoalsPage() {
               key={filter.value}
               onClick={() => setSelectedType(filter.value)}
               className={clsx(
-                'flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl transition-all duration-200 font-semibold w-full text-xs',
+                'flex items-center justify-center gap-2 py-2 px-1 rounded-xl transition-all duration-200 font-semibold w-full text-xs',
                 isActive
                   ? 'bg-surface text-text shadow-sm'
                   : 'text-text-secondary hover:text-text'
@@ -120,7 +136,7 @@ export function GoalsPage() {
       </div>
 
       {/* ── Category Horizontal Scroller ── */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
         {CATEGORY_CHIPS.map(cat => {
           const Icon = cat.icon
           const isSelected = selectedCategory === cat.name
@@ -129,7 +145,7 @@ export function GoalsPage() {
               key={cat.name}
               onClick={() => setSelectedCategory(cat.name)}
               className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex-shrink-0 snap-start',
+                'flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium border transition-all flex-shrink-0 snap-start',
                 isSelected
                   ? 'border-accent text-accent bg-accent/10 shadow-sm'
                   : 'border-border text-text-secondary bg-surface hover:text-text hover:border-text-secondary'
@@ -145,18 +161,52 @@ export function GoalsPage() {
       <AddGoalModal />
 
       {isLoading ? (
-        <div className="flex justify-center p-12">
-          <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-        </div>
+        <GoalGridSkeleton count={4} />
       ) : filteredGoals.length === 0 ? (
-        <EmptyState
-          icon={<Target size={40} />}
-          title={t('goals.no_goals_found', 'No goals found')}
-          message={t('goals.try_changing_filters', 'Try changing filters or set a new goal to begin.')}
-        />
+        <div className="space-y-6">
+          <EmptyState
+            icon={<Target size={40} />}
+            title={t('goals.no_goals_found', 'No goals found')}
+            message={t('goals.try_changing_filters', 'Try changing filters or set a new goal to begin.')}
+          />
+          {selectedType === 'all' && selectedCategory === 'All' && stateFilter === 'active' && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider pl-1">Suggested Goals to Start</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { name: 'Read 15 mins daily', tracker_type: 'habit', category: 'Learning', target: 1 },
+                  { name: 'Drink 2L Water', tracker_type: 'habit', category: 'Health', target: 1 },
+                  { name: 'Save $1,000', tracker_type: 'target', category: 'Finance', target: 1000, measurement_type: 'currency' }
+                ].map(s => (
+                  <button
+                    key={s.name}
+                    onClick={() => {
+                      haptic('success')
+                      addGoal.mutate({
+                        name: s.name,
+                        tracker_type: s.tracker_type as any,
+                        category: s.category,
+                        target: s.target,
+                        measurement_type: (s as any).measurement_type || 'binary',
+                        start_date: format(new Date(), 'yyyy-MM-dd')
+                      })
+                    }}
+                    className="p-4 bg-surface border border-border rounded-2xl text-left hover:bg-surface-2 transition-all shadow-[var(--shadow-card)] hover:scale-[1.02]"
+                  >
+                    <p className="text-xs text-text-muted uppercase tracking-wider font-semibold">{s.category}</p>
+                    <p className="font-semibold text-sm text-text mt-1">{s.name}</p>
+                    <p className="text-[10px] text-accent font-medium mt-2 flex items-center gap-1">
+                      + Add this goal
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         // Desktop: 2-column grid; mobile: single column stack
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredGoals.map(g => (
             <GoalItem key={g.id} goal={g} />
           ))}

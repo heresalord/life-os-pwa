@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { Transaction } from '../db/schema'
 
 export function useTransactionsQuery(date: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['transactions', date, user?.id],
+    queryKey: QK.transactions(date, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -25,9 +27,9 @@ export function useTransactionsQuery(date: string) {
             .order('created_at', { ascending: false })
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('transactions', data as Transaction[])
+            const reconciled = await reconcilePendingSync(db, 'transactions', data as Transaction[])
             await db.transactions.bulkPut(reconciled)
-            queryClient.setQueryData(['transactions', date, user!.id], reconciled)
+            queryClient.setQueryData(QK.transactions(date, user!.id), reconciled)
           }
         })
       }

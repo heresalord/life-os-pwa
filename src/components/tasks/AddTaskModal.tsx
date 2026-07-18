@@ -19,9 +19,11 @@ interface Props {
   date: string
   defaultKanbanStatus?: KanbanStatus
   onAdded?: () => void
+  /** When true, renders as a round FAB button instead of the full-width dashed button */
+  asFab?: boolean
 }
 
-export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
+export function AddTaskModal({ date, defaultKanbanStatus, onAdded, asFab }: Props) {
   const { t } = useTranslation()
   const [open, setOpen]           = useState(false)
   const [title, setTitle]         = useState('')
@@ -73,9 +75,19 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
   return (
     <Dialog.Root open={open} onOpenChange={v => { setOpen(v); if (!v) reset() }}>
       <Dialog.Trigger asChild>
-        <button className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-xl text-text-secondary hover:text-text hover:border-text-muted transition-colors text-sm font-medium">
-          <Plus size={18} /> {t('tasks.add_task', 'Add Task')}
-        </button>
+        {asFab ? (
+          <button
+            className="w-14 h-14 bg-accent text-bg rounded-full flex items-center justify-center shadow-modal hover:scale-105 active:scale-95 transition-transform"
+            style={{ transition: 'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+            aria-label={t('tasks.add_task', 'Add Task')}
+          >
+            <Plus size={24} strokeWidth={2.5} />
+          </button>
+        ) : (
+          <button className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-xl text-text-secondary hover:text-text hover:border-text-muted transition-colors text-sm font-medium">
+            <Plus size={18} /> {t('tasks.add_task', 'Add Task')}
+          </button>
+        )}
       </Dialog.Trigger>
 
       <Dialog.Portal>
@@ -182,7 +194,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded }: Props) {
               </div>
             ) : (
               <button type="button" onClick={() => setShowExtra(true)}
-                className="text-xs text-text-muted hover:text-text flex items-center gap-1.5 transition-colors">
+                className="text-xs text-text-muted hover:text-text flex items-center gap-2 transition-colors">
                 <AlignLeft size={12} /> {t('tasks.add_description', 'Add description')}
               </button>
             )}

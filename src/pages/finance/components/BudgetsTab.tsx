@@ -9,6 +9,7 @@ import type { Budget, Transaction } from '../../../db/schema'
 import { Plus, Target, Trash2, Pencil, Check, X } from 'lucide-react'
 import { EmptyState } from '../../../components/EmptyState'
 import { useUserSettings } from '../../../hooks/useUserSettings'
+import { haptic } from '../../../lib/haptic'
 import clsx from 'clsx'
 
 const DEFAULT_EXPENSE_CATS = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'shopping', 'health', 'other']
@@ -63,6 +64,7 @@ export function BudgetsTab({ currency }: { currency: string }) {
       return
     }
     setEditError(null)
+    haptic('success')
     updateBudget.mutate({
       id,
       updates: { category: editCategory, period: editPeriod, limit_amount: Number(editAmount) },
@@ -98,6 +100,7 @@ export function BudgetsTab({ currency }: { currency: string }) {
       return
     }
     setAddError(null)
+    haptic('success')
     addBudget.mutate({ category: newCategory, period: newPeriod, limit_amount: Number(newAmount), currency })
     setIsAdding(false)
     setNewAmount('')
@@ -109,7 +112,7 @@ export function BudgetsTab({ currency }: { currency: string }) {
         <h2 className="text-lg font-medium text-text">Budgets</h2>
         <button
           onClick={() => { setIsAdding(true); setEditingId(null); setAddError(null); setEditError(null) }}
-          className="flex items-center gap-1.5 text-sm bg-accent/10 text-accent px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-colors"
+          className="flex items-center gap-2 text-sm bg-accent/10 text-accent px-3 py-2 rounded-lg hover:bg-accent/20 transition-colors"
         >
           <Plus size={16} /> New Budget
         </button>
@@ -197,13 +200,13 @@ export function BudgetsTab({ currency }: { currency: string }) {
                   {editError && <p className="text-xs text-danger font-medium">{editError}</p>}
                   <div className="flex gap-2 justify-end">
                     <button onClick={cancelEdit}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-muted hover:text-text rounded-lg hover:bg-surface-2 transition-colors">
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-text-muted hover:text-text rounded-lg hover:bg-surface-2 transition-colors">
                       <X size={14} /> Cancel
                     </button>
                     <button
                       onClick={() => handleSave(b.id)}
                       disabled={!editAmount || updateBudget.isPending}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-accent text-bg rounded-lg hover:bg-accent-dim transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-3 py-2 text-sm bg-accent text-bg rounded-lg hover:bg-accent-dim transition-colors disabled:opacity-50"
                     >
                       <Check size={14} /> Save
                     </button>
@@ -213,18 +216,22 @@ export function BudgetsTab({ currency }: { currency: string }) {
             }
 
             return (
-              <div key={b.id} className="bg-surface border border-border rounded-xl p-4 group relative">
+              <div
+                key={b.id}
+                className="bg-surface border border-border rounded-xl p-4 group relative"
+                style={over ? { background: 'linear-gradient(135deg, rgba(239,68,68,0.06), transparent)' } : undefined}
+              >
                 {/* Action buttons */}
                 <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                   <button
                     onClick={() => openEdit(b)}
-                    className="p-1.5 text-text-muted hover:text-accent rounded-lg hover:bg-accent/10 transition-colors"
+                    className="p-2 text-text-muted hover:text-accent rounded-lg hover:bg-accent/10 transition-colors"
                   >
                     <Pencil size={13} />
                   </button>
-                  <button
-                    onClick={() => deleteBudget.mutate(b.id)}
-                    className="p-1.5 text-text-muted hover:text-danger rounded-lg hover:bg-danger/10 transition-colors"
+                   <button
+                    onClick={() => { haptic('medium'); deleteBudget.mutate(b.id) }}
+                    className="p-2 text-text-muted hover:text-danger rounded-lg hover:bg-danger/10 transition-colors"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -245,7 +252,10 @@ export function BudgetsTab({ currency }: { currency: string }) {
 
                 <div className="h-2 bg-surface-2 rounded-full overflow-hidden mb-2">
                   <div
-                    className={clsx('h-full rounded-full transition-all duration-500', over ? 'bg-danger' : pct > 80 ? 'bg-warning' : 'bg-accent')}
+                    className={clsx(
+                      'h-full rounded-full transition-all duration-500',
+                      pct >= 90 ? 'bg-danger' : pct >= 70 ? 'bg-warning' : 'bg-success'
+                    )}
                     style={{ width: `${pct}%` }}
                   />
                 </div>

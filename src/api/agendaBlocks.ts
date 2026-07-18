@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type AgendaBlockRow    = Database['public']['Tables']['agenda_blocks']['Row']
@@ -12,12 +12,12 @@ export const agendaBlocksApi = {
     return data ?? []
   },
   async create(payload: AgendaBlockInsert): Promise<AgendaBlockRow> {
-    const { data, error } = await db.from('agenda_blocks').insert([payload]).select().single()
+    const { data, error } = await supabase.from('agenda_blocks').insert([payload]).select().single()
     if (error) throw error
     return data
   },
   async update(id: string, payload: AgendaBlockUpdate): Promise<AgendaBlockRow> {
-    const { data, error } = await db.from('agenda_blocks').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('agenda_blocks').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   },

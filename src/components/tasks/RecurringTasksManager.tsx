@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, Repeat, X, Check } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import type { RecurringTask } from '../../db'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -53,6 +53,7 @@ function repeatLabel(t: RecurringTask): string {
 }
 
 export function RecurringTasksManager() {
+  const db = useDb()
   const { user }  = useAuth()
   const qc        = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -150,7 +151,7 @@ export function RecurringTasksManager() {
               <div className="space-y-4">
                 {/* Title */}
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Task title</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Task title</label>
                   <input
                     autoFocus value={title} onChange={e => setTitle(e.target.value)}
                     placeholder="e.g. Morning run, Take vitamins…"
@@ -160,7 +161,7 @@ export function RecurringTasksManager() {
 
                 {/* Repeat type */}
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Repeat</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Repeat</label>
                   <div className="grid grid-cols-2 gap-2">
                     {REPEAT_OPTIONS.map(o => (
                       <button key={o.value} type="button"
@@ -180,7 +181,7 @@ export function RecurringTasksManager() {
                 {/* Weekly — multi-day picker */}
                 {repeat === 'weekly' && (
                   <div>
-                    <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Days of week</label>
+                    <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Days of week</label>
                     <div className="flex gap-1">
                       {DAYS_SHORT.map((d, i) => (
                         <button key={i} type="button"
@@ -195,7 +196,7 @@ export function RecurringTasksManager() {
                         </button>
                       ))}
                     </div>
-                    <p className="text-[11px] text-text-muted mt-1.5">
+                    <p className="text-[11px] text-text-muted mt-2">
                       {weeklyDays.map(d => DAYS_SHORT[d]).join(', ')}
                     </p>
                   </div>
@@ -204,7 +205,7 @@ export function RecurringTasksManager() {
                 {/* Monthly — pick a day number */}
                 {repeat === 'monthly' && (
                   <div>
-                    <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Day of month</label>
+                    <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Day of month</label>
                     <div className="flex items-center gap-3">
                       <input
                         type="number" min={1} max={31}
@@ -230,13 +231,13 @@ export function RecurringTasksManager() {
                 {repeat === 'monthly_ordinal' && (
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Which occurrence</label>
+                      <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Which occurrence</label>
                       <div className="flex flex-wrap gap-2">
                         {ORDINALS.map(o => (
                           <button key={o.value} type="button"
                             onClick={() => setOrdinal(o.value)}
                             className={clsx(
-                              'px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors',
+                              'px-3 py-2 text-xs font-medium rounded-lg border transition-colors',
                               ordinal === o.value
                                 ? 'bg-accent/15 border-accent/40 text-accent'
                                 : 'bg-surface-2 border-border text-text-muted hover:text-text'
@@ -247,7 +248,7 @@ export function RecurringTasksManager() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Day of week</label>
+                      <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Day of week</label>
                       <div className="flex gap-1">
                         {DAYS_SHORT.map((d, i) => (
                           <button key={i} type="button"
@@ -271,7 +272,7 @@ export function RecurringTasksManager() {
 
                 {/* Priority */}
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Priority (optional)</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Priority (optional)</label>
                   <div className="flex gap-2">
                     {[
                       { v: 1, l: 'P1', cls: 'border-danger text-danger' },

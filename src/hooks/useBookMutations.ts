@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
+
+import { QK } from '../lib/queryKeys'
 
 type AnyItem = { id: string; [key: string]: unknown }
 type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
@@ -11,10 +13,11 @@ async function writeBook(op: 'insert' | 'update' | 'delete', payload: Record<str
 }
 
 export function useBookMutations() {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
-  const queryKey = ['books', user?.id]
-  const invalidate = () => qc.invalidateQueries({ queryKey })
+  const queryKey = QK.books(user?.id ?? '')
+  const invalidate = () => qc.invalidateQueries({ queryKey: QK.books(user?.id ?? '') })
 
   const addBook = useMutation({
     mutationFn: async (payload: {
@@ -131,8 +134,8 @@ export function useBookMutations() {
             }
             await db.goal_events.add(event as any)
             await enqueueSync('goal_events', 'insert', event)
-            qc.invalidateQueries({ queryKey: ['goal_events'] })
-            qc.invalidateQueries({ queryKey: ['goals'] })
+            qc.invalidateQueries({ queryKey: QK.goalEventsAll() })
+            qc.invalidateQueries({ queryKey: QK.goalsAll() })
           }
         }
       }
@@ -151,7 +154,7 @@ export function useBookMutations() {
     onSettled: (_data, _error, variables) => {
       invalidate()
       if (variables?.id) {
-        qc.invalidateQueries({ queryKey: ['book', variables.id] })
+        qc.invalidateQueries({ queryKey: QK.book(variables.id, user?.id ?? '') })
       }
     },
   })

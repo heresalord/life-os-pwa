@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import { syncDayScore } from '../lib/scoreUtils'
+import { QK } from '../lib/queryKeys'
+import { hapticMedium, hapticSuccess } from '../lib/haptics'
 
 type Task = { id: string; [key: string]: unknown }
 type KanbanStatus = 'backlog' | 'todo' | 'in_progress' | 'done'
@@ -26,10 +28,12 @@ export interface AddTaskPayload {
 }
 
 export function useTaskMutations(date: string) {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
-  const queryKey = ['tasks', date, user?.id]
-  const invalidateAll = () => qc.invalidateQueries({ queryKey: ['tasks'] })
+
+  const queryKey  = QK.tasks(date, user?.id ?? '')
+  const invalidate = () => qc.invalidateQueries({ queryKey: QK.tasksAll() })
 
   const addTask = useMutation({
     mutationFn: async (payload: AddTaskPayload) => {
@@ -58,7 +62,8 @@ export function useTaskMutations(date: string) {
       }
       await db.tasks.add(task as Parameters<typeof db.tasks.add>[0])
       await writeTask('insert', task)
-      await syncDayScore(user.id, task.date)
+      await syncDayScore(db, user.id, task.date)
+      void hapticMedium()
       return task
     },
     onMutate: async (payload) => {
@@ -92,24 +97,26 @@ export function useTaskMutations(date: string) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
     },
-    onSettled: () => invalidateAll(),
+    onSettled: () => invalidate(),
   })
 
   const updateTask = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
-      await db.tasks.update(id, updates)
+      await db.tasks.update(id, updates as Partial<Parameters<typeof db.tasks.put>[0]>)
       const updated = await db.tasks.get(id)
       if (updated && user) {
         await writeTask('update', updated as Record<string, unknown>)
-        await syncDayScore(user.id, updated.date)
+        await syncDayScore(db, user.id, updated.date)
+        // Fire stronger haptic when the task is being completed
+        if (updates.completed === true) void hapticSuccess()
+        else void hapticMedium()
       }
     },
     onMutate: async ({ id, updates }) => {
-      await qc.cancelQueries({ queryKey: ['tasks'] })
+      await qc.cancelQueries({ queryKey: QK.tasksAll() })
       const previous = qc.getQueryData<Task[]>(queryKey)
-      // Update in all cached task queries (kanban reads from a broader query)
       qc.setQueriesData<Task[]>(
-        { queryKey: ['tasks'] },
+        { queryKey: QK.tasksAll() },
         old => (old ?? []).map(t => t.id === id ? { ...t, ...updates } : t)
       )
       return { previous }
@@ -117,7 +124,7 @@ export function useTaskMutations(date: string) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
     },
-    onSettled: () => invalidateAll(),
+    onSettled: () => invalidate(),
   })
 
   const deleteTask = useMutation({
@@ -125,15 +132,16 @@ export function useTaskMutations(date: string) {
       const task = await db.tasks.get(id)
       await db.tasks.delete(id)
       await writeTask('delete', { id })
+      void hapticMedium()
       if (task && user) {
-        await syncDayScore(user.id, task.date)
+        await syncDayScore(db, user.id, task.date)
       }
     },
     onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: ['tasks'] })
+      await qc.cancelQueries({ queryKey: QK.tasksAll() })
       const previous = qc.getQueryData<Task[]>(queryKey)
       qc.setQueriesData<Task[]>(
-        { queryKey: ['tasks'] },
+        { queryKey: QK.tasksAll() },
         old => (old ?? []).filter(t => t.id !== id)
       )
       return { previous }
@@ -141,7 +149,7 @@ export function useTaskMutations(date: string) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
     },
-    onSettled: () => invalidateAll(),
+    onSettled: () => invalidate(),
   })
 
   return { addTask, updateTask, deleteTask }

@@ -4,6 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { X, CheckCircle2, CalendarPlus, Archive } from 'lucide-react'
 import { useInboxMutations } from '../../hooks/useInboxMutations'
 import { useAppStore } from '../../store/useAppStore'
+import { haptic } from '../../lib/haptic'
 import type { InboxItem } from '../../db/schema'
 
 export function ProcessItemModal({ item, children }: { item: InboxItem, children: React.ReactNode }) {
@@ -18,6 +19,7 @@ export function ProcessItemModal({ item, children }: { item: InboxItem, children
   const { selectedDate } = useAppStore()
 
   const handleDoNow = () => {
+    haptic('success')
     processItem.mutate({
       id: item.id,
       updates: { processed: true, processed_at: new Date().toISOString(), processed_to: 'done' }
@@ -26,6 +28,7 @@ export function ProcessItemModal({ item, children }: { item: InboxItem, children
   }
 
   const handleArchive = () => {
+    haptic('success')
     processItem.mutate({
       id: item.id,
       updates: { processed: true, processed_at: new Date().toISOString(), archived_at: new Date().toISOString(), processed_to: 'archived' }
@@ -37,6 +40,7 @@ export function ProcessItemModal({ item, children }: { item: InboxItem, children
     e.preventDefault()
     if (!taskTitle.trim()) return
 
+    haptic('success')
     processItem.mutate({
       id: item.id,
       updates: { processed: true, processed_at: new Date().toISOString(), processed_to: 'task' },
@@ -108,16 +112,16 @@ export function ProcessItemModal({ item, children }: { item: InboxItem, children
           ) : (
             <form onSubmit={handleCreateTask} className="space-y-4 animate-in fade-in slide-in-from-right-4">
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Task Title</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Task Title</label>
                 <input autoFocus required value={taskTitle} onChange={e => setTaskTitle(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
 
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Priority (Optional)</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Priority (Optional)</label>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map(p => (
-                    <button key={p} type="button" onClick={() => setPriority(priority === p ? null : p)}
+                    <button key={p} type="button" onClick={() => { haptic('light'); setPriority(priority === p ? null : p) }}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${priority === p ? 'bg-accent/20 border-accent text-accent' : 'bg-surface-2 border-border text-text-secondary hover:border-text-muted'}`}>
                       P{p}
                     </button>

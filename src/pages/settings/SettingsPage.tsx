@@ -3,10 +3,11 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import { exportAllDataToJson, exportTransactionsCSV } from '../../lib/exportUtils'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import { useAppStore } from '../../store/useAppStore'
-import { ALL_NAV_OPTIONS } from '../../components/layout/AppShell'
+import { ALL_NAV_OPTIONS } from '../../lib/constants'
 import { useTranslation } from '../../i18n'
+import { haptic } from '../../lib/haptic'
 import {
   User, Palette, Bell, DollarSign, Database,
   LogOut, Download, Upload, AlertTriangle,
@@ -20,6 +21,30 @@ import {
   pushSupported, isPushSubscribed, subscribeToPush, unsubscribeFromPush
 } from '../../lib/pushNotifications'
 import clsx from 'clsx'
+
+const Toggle = ({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) => {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        haptic('light')
+        onChange(!checked)
+      }}
+      className={clsx(
+        'w-11 h-6 rounded-full p-0.5 transition-colors focus:outline-none relative inline-flex items-center flex-shrink-0 disabled:opacity-50',
+        checked ? 'bg-success' : 'bg-surface-2 border border-border'
+      )}
+    >
+      <span
+        className={clsx(
+          'w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-250 ease-out transform',
+          checked ? 'translate-x-5' : 'translate-x-0'
+        )}
+      />
+    </button>
+  )
+}
 
 const supabaseAny = supabase as any
 type AnyRow = Record<string, unknown>
@@ -150,6 +175,7 @@ const TABS: { id: Tab; label: string; icon: React.FC<any> }[] = [
 
 // ─── SettingsPage ─────────────────────────────────────────────────────────────
 export function SettingsPage() {
+  const db = useDb()
   const { user, refreshProfile } = useAuth()
   const { data: settings, upsert } = useUserSettings()
   const { theme, setTheme, accentColor, setAccentColor, navItems, setNavItems, quoteIntervalHours, setQuoteIntervalHours, autoTheme, setAutoTheme } = useAppStore()
@@ -340,13 +366,13 @@ export function SettingsPage() {
         <SettingRow label="Display Name">
           <input
             type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-            className="w-44 bg-surface-2 border border-border rounded-xl px-3 py-1.5 text-sm text-text focus:border-accent focus:outline-none text-right"
+            className="w-44 bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none text-right"
           />
         </SettingRow>
         <SettingRow label="Email" sub={user?.email}>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-danger/10 text-danger text-xs font-medium rounded-lg hover:bg-danger/20 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-danger/10 text-danger text-xs font-medium rounded-lg hover:bg-danger/20 transition-colors"
           >
             <LogOut size={13} /> Sign Out
           </button>
@@ -360,7 +386,7 @@ export function SettingsPage() {
       <SectionCard title="Theme" icon={Palette}>
         <div className="pt-3 grid grid-cols-2 gap-2">
           <button
-            onClick={() => setTheme('dark')}
+            onClick={() => { haptic('light'); setTheme('dark') }}
             className={clsx(
               'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all',
               theme === 'dark' ? 'bg-surface-2 border-accent text-accent' : 'border-border text-text-muted hover:text-text hover:border-text-muted'
@@ -369,7 +395,7 @@ export function SettingsPage() {
             <Moon size={15} /> Dark
           </button>
           <button
-            onClick={() => setTheme('light')}
+            onClick={() => { haptic('light'); setTheme('light') }}
             className={clsx(
               'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all',
               theme === 'light' ? 'bg-surface-2 border-accent text-accent' : 'border-border text-text-muted hover:text-text hover:border-text-muted'
@@ -401,7 +427,7 @@ export function SettingsPage() {
               <input type="radio" name="auto_theme"
                 value={opt.value}
                 checked={autoTheme === opt.value}
-                onChange={() => setAutoTheme(opt.value)}
+                onChange={() => { haptic('light'); setAutoTheme(opt.value) }}
                 className="sr-only"
               />
               <div className="flex-1">
@@ -427,10 +453,10 @@ export function SettingsPage() {
             return (
               <button
                 key={preset.value}
-                onClick={() => setAccentColor(preset.value)}
+                onClick={() => { haptic('light'); setAccentColor(preset.value) }}
                 title={preset.name}
                 className={clsx(
-                  'flex flex-col items-center gap-1.5 py-2.5 rounded-xl border transition-all',
+                  'flex flex-col items-center gap-2 py-2.5 rounded-xl border transition-all',
                   selected ? 'border-accent bg-surface-2' : 'border-border hover:border-text-muted/40'
                 )}
               >
@@ -450,7 +476,7 @@ export function SettingsPage() {
             <input
               type="color"
               value={accentColor ?? ACCENT_PRESETS[0].value}
-              onChange={e => setAccentColor(e.target.value)}
+              onChange={e => { haptic('light'); setAccentColor(e.target.value) }}
               className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
             />
             <span className="absolute inset-0" style={{ backgroundColor: accentColor ?? ACCENT_PRESETS[0].value }} />
@@ -493,7 +519,7 @@ export function SettingsPage() {
                   }
                 }}
                 className={clsx(
-                  'flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all',
                   selected
                     ? 'bg-accent/10 border-accent text-accent'
                     : 'bg-surface-2 border-border text-text-muted hover:text-text hover:border-text-muted'
@@ -562,41 +588,34 @@ export function SettingsPage() {
   )
 
   const renderNotifications = () => (
-    <div className="space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Master toggle */}
-      <SectionCard title="Push Alerts" icon={Bell}>
-        <SettingRow
-          label="Enable Notifications"
-          sub="Reminders, milestones & alerts"
-        >
-          <button
-            onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-            className={clsx(
-              'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-              notificationsEnabled
-                ? 'bg-danger/10 text-danger hover:bg-danger/20'
-                : 'bg-accent/10 text-accent hover:bg-accent/20'
-            )}
+      <div>
+        <h3 className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-2 px-1">Push Alerts</h3>
+        <div className="bg-surface border border-border rounded-2xl overflow-hidden divide-y divide-border/40">
+          <SettingRow
+            label="Enable Notifications"
+            sub="Reminders, milestones & alerts"
           >
-            {notificationsEnabled ? 'Disable' : 'Enable'}
-          </button>
-        </SettingRow>
-
-        {pushSupported && (
-          <SettingRow label="Web Push (Browser)" sub={pushEnabled ? 'This browser is registered' : 'Register to receive push alerts'}>
-            <button
-              onClick={handleTogglePush}
-              disabled={pushLoading}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50',
-                pushEnabled ? 'bg-danger/10 text-danger hover:bg-danger/20' : 'bg-accent/10 text-accent hover:bg-accent/20'
-              )}
-            >
-              {pushLoading && <Loader size={11} className="animate-spin" />}
-              {pushEnabled ? 'Unregister' : 'Register'}
-            </button>
+            <Toggle checked={notificationsEnabled} onChange={setNotificationsEnabled} />
           </SettingRow>
-        )}
+
+          {pushSupported && (
+            <SettingRow label="Web Push (Browser)" sub={pushEnabled ? 'This browser is registered' : 'Register to receive push alerts'}>
+              <button
+                onClick={handleTogglePush}
+                disabled={pushLoading}
+                className={clsx(
+                  'flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 bg-surface border border-border hover:bg-surface-2',
+                  pushEnabled ? 'text-danger border-danger/25' : 'text-accent border-accent/25'
+                )}
+              >
+                {pushLoading && <Loader size={11} className="animate-spin" />}
+                {pushEnabled ? 'Unregister' : 'Register'}
+              </button>
+            </SettingRow>
+          )}
+        </div>
 
         {pushError && (
           <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/20 rounded-xl text-xs text-warning mt-2">
@@ -604,37 +623,41 @@ export function SettingsPage() {
             {pushError}
           </div>
         )}
-      </SectionCard>
+      </div>
 
       {/* Schedule times */}
       {notificationsEnabled && (
         <>
-          <SectionCard title="Reminder Times" icon={Bell}>
-            <div className="grid grid-cols-2 gap-3 pt-3">
-              <div>
-                <label className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider mb-1.5">
-                  <Sun size={11} /> Morning
-                </label>
-                <input
-                  type="time" value={morningTime} onChange={e => setMorningTime(e.target.value)}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider mb-1.5">
-                  <Moon size={11} /> Evening
-                </label>
-                <input
-                  type="time" value={nightTime} onChange={e => setNightTime(e.target.value)}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none"
-                />
+          <div>
+            <h3 className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-2 px-1">Reminder Times</h3>
+            <div className="bg-surface border border-border rounded-2xl overflow-hidden p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-wider mb-2 font-bold">
+                    <Sun size={11} /> Morning
+                  </label>
+                  <input
+                    type="time" value={morningTime} onChange={e => setMorningTime(e.target.value)}
+                    className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-[10px] text-text-muted uppercase tracking-wider mb-2 font-bold">
+                    <Moon size={11} /> Evening
+                  </label>
+                  <input
+                    type="time" value={nightTime} onChange={e => setNightTime(e.target.value)}
+                    className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
-          </SectionCard>
+          </div>
 
           {/* Preferences grid */}
-          <SectionCard title="Reminder Types" icon={Bell}>
-            <div className="pt-3 space-y-2">
+          <div>
+            <h3 className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-2 px-1">Reminder Types</h3>
+            <div className="bg-surface border border-border rounded-2xl overflow-hidden divide-y divide-border/40">
               {[
                 { key: 'morning_reminder',    icon: Sun,          label: 'Morning Check-in',      sub: 'Daily intention & mood' },
                 { key: 'evening_reminder',    icon: Moon,         label: 'Evening Review',         sub: 'Reflection & wins' },
@@ -646,36 +669,22 @@ export function SettingsPage() {
                 { key: 'savings_goal_reached',icon: PiggyBank,    label: 'Savings Goal Reached',   sub: 'Real-time' },
                 { key: 'weekly_review',       icon: BarChart3,    label: 'Weekly Review',          sub: 'Sundays at 7 PM' },
               ].map(item => (
-                <label
-                  key={item.key}
-                  className={clsx(
-                    'flex items-center gap-3 px-3.5 py-3 rounded-xl border cursor-pointer transition-all',
-                    prefs[item.key] !== false
-                      ? 'bg-accent/5 border-accent/25'
-                      : 'bg-surface-2 border-border hover:border-text-muted/40'
-                  )}
-                >
-                  <input
-                    type="checkbox"
+                <div key={item.key} className="flex items-center justify-between gap-4 px-4 py-3 bg-surface hover:bg-surface-2/40 transition-colors">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <item.icon size={16} className="text-text-muted flex-shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-text truncate">{item.label}</p>
+                      <p className="text-[11px] text-text-muted mt-0.5">{item.sub}</p>
+                    </div>
+                  </div>
+                  <Toggle
                     checked={prefs[item.key] !== false}
-                    onChange={e => setPrefs({ ...prefs, [item.key]: e.target.checked })}
-                    className="sr-only"
+                    onChange={v => setPrefs({ ...prefs, [item.key]: v })}
                   />
-                  <item.icon size={16} className="text-text-muted flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text">{item.label}</p>
-                    <p className="text-[11px] text-text-muted">{item.sub}</p>
-                  </div>
-                  <div className={clsx(
-                    'w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-all',
-                    prefs[item.key] !== false ? 'bg-accent border-accent' : 'border-border'
-                  )}>
-                    {prefs[item.key] !== false && <Check size={12} className="text-bg" strokeWidth={3} />}
-                  </div>
-                </label>
+                </div>
               ))}
             </div>
-          </SectionCard>
+          </div>
         </>
       )}
     </div>
@@ -712,13 +721,13 @@ export function SettingsPage() {
       <SectionCard title="Export" icon={Download}>
         <div className="pt-3 grid grid-cols-2 gap-3">
           <button
-            onClick={exportAllDataToJson}
+            onClick={() => exportAllDataToJson(db)}
             className="flex items-center justify-center gap-2 py-3 bg-surface-2 text-text text-sm font-medium rounded-xl hover:bg-muted border border-border transition-colors"
           >
             <Download size={14} /> JSON Backup
           </button>
           <button
-            onClick={exportTransactionsCSV}
+            onClick={() => exportTransactionsCSV(db)}
             className="flex items-center justify-center gap-2 py-3 bg-surface-2 text-text text-sm font-medium rounded-xl hover:bg-muted border border-border transition-colors"
           >
             <Download size={14} /> Finance CSV

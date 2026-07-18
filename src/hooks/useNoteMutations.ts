@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import { stripTags } from '../lib/noteTagUtils'
+
+import { QK } from '../lib/queryKeys'
 
 type AnyItem = { id: string; [key: string]: unknown }
 
@@ -17,10 +19,11 @@ async function write(op: 'insert' | 'update' | 'delete', payload: Record<string,
 }
 
 export function useNoteMutations() {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
-  const queryKey = ['notes', undefined, user?.id]
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['notes'] })
+  const queryKey = QK.notes(undefined, user?.id ?? '')
+  const invalidate = () => qc.invalidateQueries({ queryKey: QK.notesAll() })
 
   const addNote = useMutation({
     mutationFn: async (payload: {

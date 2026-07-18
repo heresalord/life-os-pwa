@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
+
+import { QK } from '../lib/queryKeys'
 
 type AnyItem = { id: string; [key: string]: unknown }
 
@@ -10,10 +12,11 @@ async function writeProject(op: 'insert' | 'update' | 'delete', payload: Record<
 }
 
 export function useProjectMutations() {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
-  const queryKey = ['projects', user?.id]
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['projects'] })
+  const queryKey = QK.projects(user?.id ?? '')
+  const invalidate = () => qc.invalidateQueries({ queryKey: QK.projects(user?.id ?? '') })
 
   const addProject = useMutation({
     mutationFn: async (payload: { name: string; color?: string | null; description?: string | null }) => {
@@ -108,8 +111,8 @@ export function useProjectMutations() {
     },
     onSettled: () => {
       invalidate()
-      qc.invalidateQueries({ queryKey: ['tasks'] })
-      qc.invalidateQueries({ queryKey: ['goals'] })
+      qc.invalidateQueries({ queryKey: QK.tasksAll() })
+      qc.invalidateQueries({ queryKey: QK.goalsAll() })
     },
   })
 

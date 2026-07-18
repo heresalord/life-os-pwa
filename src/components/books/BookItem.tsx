@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   Trash2, Pencil, CheckCheck, BookX, ChevronDown, ChevronUp,
   X, BookOpen, Star, Quote,
@@ -19,7 +19,7 @@ function StarRating({
   const [hovered, setHovered] = useState<number | null>(null)
   const display = hovered ?? value ?? 0
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map(n => (
         <button
           key={n}
@@ -86,7 +86,7 @@ function FinishBookFlow({ book, open, onClose }: { book: Book; open: boolean; on
             <Dialog.Title className="text-base font-display text-text">Finishing "{book.title}"</Dialog.Title>
             <button onClick={onClose} className="text-text-muted hover:text-text"><X size={18} /></button>
           </div>
-          <div className="flex gap-1.5 mb-6">
+          <div className="flex gap-2 mb-6">
             {Array.from({ length: STEPS }, (_, i) => (
               <div key={i} className={`flex-1 h-1 rounded-full transition-all duration-300 ${i + 1 <= step ? 'bg-success' : 'bg-surface-2'}`} />
             ))}
@@ -297,23 +297,23 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Title</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Title</label>
               <input value={title} onChange={e => setTitle(e.target.value)}
                 className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
             </div>
             <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Author</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Author</label>
               <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Optional"
                 className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
             </div>
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Total Pages</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Total Pages</label>
                 <input type="number" min="1" value={pages} onChange={e => setPages(e.target.value)} placeholder="Optional"
                   className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
               <div className="flex-[2]">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Status</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Status</label>
                 <select value={status} onChange={e => setStatus(e.target.value as Book['status'])}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
                   <option value="to-read">To Read</option>
@@ -326,12 +326,12 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
 
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Genre</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Genre</label>
                 <input value={genre} onChange={e => setGenre(e.target.value)} placeholder="e.g. Non-fiction"
                   className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Source</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Source</label>
                 <select value={source} onChange={e => setSource(e.target.value as any)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
                   <option value="">Select source</option>
@@ -345,19 +345,19 @@ function EditBookModal({ book, open, onClose }: { book: Book; open: boolean; onC
 
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">ISBN</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">ISBN</label>
                 <input value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="Optional"
                   className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Language</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Language</label>
                 <input value={language} onChange={e => setLanguage(e.target.value)} placeholder="e.g. English"
                   className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Shelves / Collections</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Shelves / Collections</label>
               <input value={shelves} onChange={e => setShelves(e.target.value)} placeholder="e.g. Sci-Fi, Classics, Favorites"
                 className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               <p className="text-[10px] text-text-muted mt-1">Separate shelf names with commas</p>
@@ -452,14 +452,14 @@ function ProgressModal({ book, open, onClose }: { book: Book; open: boolean; onC
           <div className="space-y-4">
             <div className="flex gap-3 items-end">
               <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Current Page</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Current Page</label>
                 <input autoFocus type="number" min="0" max={book.total_pages || undefined}
                   value={page} onChange={e => setPage(e.target.value)}
                   className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
               {!book.total_pages && (
                 <div className="flex-1">
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Total Pages</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Total Pages</label>
                   <input type="number" min="1" value={extraPages} onChange={e => setExtraPages(e.target.value)}
                     placeholder="Add now"
                     className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none placeholder-text-muted" />
@@ -489,10 +489,17 @@ function ProgressModal({ book, open, onClose }: { book: Book; open: boolean; onC
 }
 
 // ── Main BookItem ─────────────────────────────────────────────────────────
-export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string) => void }) {
+export function BookItem({
+  book,
+  onDelete,
+  layoutMode = 'grid',
+}: {
+  book: Book
+  onDelete: (id: string) => void
+  layoutMode?: 'grid' | 'hero'
+}) {
   const navigate = useNavigate()
   const { updateBook } = useBookMutations()
-  const [swiped, setSwiped] = useState(false)
   const [showReflection, setShowReflection] = useState(false)
   const [showFinish, setShowFinish] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -500,16 +507,6 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
   const [showProgress, setShowProgress] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showQuotes, setShowQuotes] = useState(false)
-  const touchStartX = useRef<number | null>(null)
-
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
-  const handleTouchMove  = (e: React.TouchEvent) => {
-    if (!touchStartX.current) return
-    const diff = touchStartX.current - e.touches[0].clientX
-    if (diff > 50)  setSwiped(true)
-    if (diff < -50) setSwiped(false)
-  }
-  const handleTouchEnd = () => { touchStartX.current = null }
 
   const pct = book.total_pages && book.current_page
     ? Math.min(Math.round((book.current_page / book.total_pages) * 100), 100) : 0
@@ -534,167 +531,284 @@ export function BookItem({ book, onDelete }: { book: Book; onDelete: (id: string
 
   const confirmDelete = () => {
     haptic('medium')
-    setSwiped(false)
     setShowDeleteConfirm(true)
+  }
+
+  if (layoutMode === 'hero') {
+    return (
+      <>
+        <div className="bg-surface border border-border rounded-3xl overflow-hidden shadow-[var(--shadow-card)] transition-all flex flex-col sm:flex-row group w-full mb-6">
+          {/* Cover image on left / top */}
+          <div className="relative w-full sm:w-48 aspect-[3/4] bg-surface-2 flex-shrink-0 flex items-center justify-center overflow-hidden border-b sm:border-b-0 sm:border-r border-border">
+            {book.cover_url ? (
+              <img src={book.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
+            ) : (
+              <span className="text-6xl opacity-20">📘</span>
+            )}
+            <button
+              onClick={confirmDelete}
+              className="absolute top-3 right-3 p-2 bg-surface/90 hover:bg-danger/20 hover:text-danger border border-border rounded-xl opacity-0 group-hover:opacity-100 transition-all text-text-muted"
+            >
+              <Trash2 size={14} />
+            </button>
+            <span className={clsx('absolute bottom-3 left-3 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full backdrop-blur-md bg-surface/90 border border-border/50', statusColor)}>
+              {statusLabel}
+            </span>
+          </div>
+
+          {/* Details on right */}
+          <div className="p-6 flex-1 flex flex-col justify-between gap-4">
+            <div className="space-y-2">
+              <span className="text-[10px] bg-accent/10 text-accent border border-accent/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                Hero Reading
+              </span>
+              <button
+                onClick={() => navigate(`/books/${book.id}`)}
+                className="text-xl font-display font-bold text-text leading-snug hover:text-accent transition-colors text-left block w-full"
+              >
+                {book.title}
+              </button>
+              {book.author && <p className="text-sm text-text-secondary">by <span className="font-medium text-text">{book.author}</span></p>}
+              {book.genre && (
+                <span className="inline-block text-[10px] bg-surface-2 border border-border text-text-muted px-2 py-0.5 rounded-md font-medium">
+                  {book.genre}
+                </span>
+              )}
+            </div>
+
+            {/* Reading progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-baseline text-xs text-text-muted">
+                <span className="font-semibold text-text-secondary">Progress</span>
+                <span className="font-bold text-accent text-sm">{pct}%</span>
+              </div>
+              <div className="h-2.5 bg-surface-2 rounded-full overflow-hidden border border-border">
+                <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="flex justify-between items-center text-xs text-text-muted">
+                {book.total_pages ? (
+                  <span>Page <strong>{book.current_page || 0}</strong> of <strong>{book.total_pages}</strong></span>
+                ) : (
+                  <span>No pages set</span>
+                )}
+                <button
+                  onClick={() => setShowProgress(true)}
+                  className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
+                >
+                  Update page
+                </button>
+              </div>
+            </div>
+
+            {/* Actions row */}
+            <div className="flex items-center gap-2 pt-3 border-t border-border/40">
+              <button
+                onClick={() => setShowFinish(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-success/15 hover:bg-success/25 text-success text-xs font-bold rounded-xl transition-all"
+              >
+                <CheckCheck size={14} /> Mark Finished
+              </button>
+              <button
+                onClick={() => setShowAbandon(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-warning/15 hover:bg-warning/25 text-warning text-xs font-bold rounded-xl transition-all"
+              >
+                <BookX size={14} /> Abandon
+              </button>
+              <button
+                onClick={() => setShowQuotes(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all ml-auto"
+              >
+                <Quote size={13} /> Quotes
+              </button>
+              <button
+                onClick={() => setShowEdit(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
+              >
+                <Pencil size={13} /> Edit
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <FinishBookFlow book={book} open={showFinish}   onClose={() => setShowFinish(false)} />
+        <EditBookModal  book={book} open={showEdit}     onClose={() => setShowEdit(false)} />
+        <AbandonModal   book={book} open={showAbandon}  onClose={() => setShowAbandon(false)} />
+        <ProgressModal  book={book} open={showProgress} onClose={() => setShowProgress(false)} />
+        <QuotesPanel    book={book} open={showQuotes}   onClose={() => setShowQuotes(false)} />
+
+        {/* ── Delete confirmation ── */}
+        <Dialog.Root open={showDeleteConfirm} onOpenChange={v => { if (!v) setShowDeleteConfirm(false) }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
+            <Dialog.Content
+              className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm sm:rounded-2xl sm:border"
+              style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+            >
+              <div className="w-10 h-1 rounded-full bg-border mx-auto mb-5 sm:hidden" />
+              <div className="flex items-start gap-4 mb-5">
+                {book.cover_url && (
+                  <img src={book.cover_url} alt="" className="w-10 h-14 object-cover rounded flex-shrink-0 opacity-70" />
+                )}
+                <div>
+                  <Dialog.Title className="text-base font-medium text-text mb-0.5">Remove this book?</Dialog.Title>
+                  <p className="text-sm text-text-secondary">
+                    <span className="font-medium text-text">{book.title}</span> will be permanently deleted.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-3 bg-surface-2 text-text font-medium rounded-xl hover:bg-muted transition-colors">
+                  Cancel
+                </button>
+                <button onClick={() => { setShowDeleteConfirm(false); onDelete(book.id) }}
+                  className="flex-[2] py-3 bg-danger/15 text-danger font-medium rounded-xl hover:bg-danger/25 transition-colors">
+                  Delete
+                </button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </>
+    )
   }
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-xl bg-surface border border-border">
-        {/* Swipe-reveal delete */}
-        <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
-          <button onClick={confirmDelete} className="p-2 text-danger rounded-full transition-colors">
-            <Trash2 size={18} />
+      <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:scale-[1.01] transition-all flex flex-col justify-between group h-full">
+        {/* Top Image area / cover */}
+        <div className="relative aspect-[3/4] bg-surface-2 border-b border-border flex items-center justify-center overflow-hidden">
+          {book.cover_url ? (
+            <img src={book.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          ) : (
+            <span className="text-5xl opacity-20">📘</span>
+          )}
+          {/* Float delete button */}
+          <button
+            onClick={confirmDelete}
+            className="absolute top-2.5 right-2.5 p-2 bg-surface/90 hover:bg-danger/20 hover:text-danger border border-border rounded-xl opacity-0 group-hover:opacity-100 transition-all text-text-muted"
+          >
+            <Trash2 size={14} />
           </button>
+          {/* Float Status badge */}
+          <span className={clsx('absolute bottom-2.5 left-2.5 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full backdrop-blur-md bg-surface/90 border border-border/50', statusColor)}>
+            {statusLabel}
+          </span>
         </div>
 
-        <div
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          className={clsx(
-            'relative flex items-start gap-4 p-4 bg-surface transition-transform duration-200 ease-out',
-            swiped ? '-translate-x-16' : 'translate-x-0'
-          )}
-        >
-          {/* Book cover */}
-          <div
-            onClick={() => navigate(`/books/${book.id}`)}
-            className="w-11 h-16 rounded flex-shrink-0 overflow-hidden bg-surface-2 border border-border flex items-center justify-center cursor-pointer hover:border-accent transition-colors"
-          >
-            {book.cover_url
-              ? <img src={book.cover_url} alt="" className="w-full h-full object-cover"
-                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-              : <span className="text-xl opacity-25">📘</span>
-            }
-          </div>
-
-          <div className="flex flex-col min-w-0 flex-1 gap-1">
-            {/* Title + status */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <button
-                  onClick={() => navigate(`/books/${book.id}`)}
-                  className="text-sm font-medium text-text leading-snug hover:text-accent transition-colors text-left block"
-                >
-                  {book.title}
-                </button>
-                {book.author && <p className="text-xs text-text-secondary mt-0.5">{book.author}</p>}
-              </div>
-              <span className={clsx('text-[10px] font-medium uppercase tracking-wider flex-shrink-0 mt-0.5 px-2 py-0.5 rounded-full', statusColor)}>
-                {statusLabel}
-              </span>
-            </div>
-
+        {/* Body details */}
+        <div className="p-4 flex-1 flex flex-col justify-between gap-3">
+          <div className="space-y-1">
+            <button
+              onClick={() => navigate(`/books/${book.id}`)}
+              className="text-sm font-semibold text-text leading-snug hover:text-accent transition-colors text-left block truncate w-full"
+            >
+              {book.title}
+            </button>
+            {book.author && <p className="text-xs text-text-secondary truncate">{book.author}</p>}
+            
             {/* Star rating (finished books) */}
             {book.status === 'finished' && book.rating && (
-              <StarRating value={book.rating} size={13} readOnly />
-            )}
-
-            {/* Shelves list */}
-            {book.shelves && Array.isArray(book.shelves) && book.shelves.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-0.5">
-                {(book.shelves as any[]).map((shelf: string) => (
-                  <span key={shelf} className="text-[9px] bg-surface-2 border border-border/80 text-text-muted px-1.5 py-0.5 rounded-md font-medium">
-                    {shelf}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Reading progress */}
-            {book.status === 'reading' && (
-              <button onClick={() => setShowProgress(true)} className="text-left group/prog mt-1">
-                <div className="flex justify-between text-[10px] text-text-muted mb-1">
-                  <span className="group-hover/prog:text-accent transition-colors">
-                    {book.total_pages ? 'Update progress' : 'Tap to add page count'}
-                  </span>
-                  <span>{book.current_page || 0}{book.total_pages ? ` / ${book.total_pages}` : ' pages'}</span>
-                </div>
-                <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden border border-dashed border-border/50">
-                  {book.total_pages
-                    ? <div className="h-full bg-info/60 group-hover/prog:bg-accent/60 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                    : null}
-                </div>
-              </button>
-            )}
-
-            {/* Finished: reflection snippet */}
-            {book.status === 'finished' && book.reflection && (
-              <p className="text-xs text-text-muted mt-1 italic line-clamp-2 leading-relaxed">
-                {book.reflection.split('\n').find(l => l && !l.startsWith('**')) || ''}
-              </p>
-            )}
-
-            {/* Abandoned: reason */}
-            {book.status === 'abandoned' && book.abandon_reason && (
-              <p className="text-xs text-text-muted mt-1 italic">"{book.abandon_reason}"</p>
-            )}
-
-            {/* Actions row */}
-            <div className="flex items-center gap-1 mt-2">
-              <button onClick={() => setShowEdit(true)} title="Edit"
-                className="p-1.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
-                <Pencil size={14} />
-              </button>
-
-              {/* Quotes (all statuses) */}
-              <button onClick={() => setShowQuotes(true)} title="Quotes"
-                className="p-1.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
-                <Quote size={14} />
-              </button>
-
-              {book.status === 'to-read' && (
-                <button onClick={handleStartReading} title="Start reading"
-                  className="p-1.5 text-text-muted hover:text-info hover:bg-info/10 rounded-lg transition-colors">
-                  <BookOpen size={14} />
-                </button>
-              )}
-
-              {book.status === 'reading' && (
-                <>
-                  <button onClick={() => setShowFinish(true)} title="Mark finished"
-                    className="p-1.5 text-text-muted hover:text-success hover:bg-success/10 rounded-lg transition-colors">
-                    <CheckCheck size={14} />
-                  </button>
-                  <button onClick={() => setShowAbandon(true)} title="Abandon"
-                    className="p-1.5 text-text-muted hover:text-warning hover:bg-warning/10 rounded-lg transition-colors">
-                    <BookX size={14} />
-                  </button>
-                </>
-              )}
-
-              {book.status === 'finished' && book.reflection && (
-                <button onClick={() => setShowReflection(v => !v)}
-                  title={showReflection ? 'Hide reflection' : 'Show reflection'}
-                  className="p-1.5 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
-                  {showReflection ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
-              )}
-
-              <button onClick={confirmDelete} title="Delete"
-                className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors ml-auto">
-                <Trash2 size={14} />
-              </button>
-            </div>
-
-            {/* Expandable reflection */}
-            {showReflection && book.reflection && (
-              <div className="mt-3 pt-3 border-t border-border space-y-3">
-                {book.reflection.split('\n\n').map((section, i) => (
-                  <div key={i}>
-                    {section.split('\n').map((line, j) => (
-                      <p key={j} className={clsx('text-xs leading-relaxed',
-                        line.startsWith('**') ? 'font-medium text-text-secondary mb-1' : 'text-text-muted'
-                      )}>
-                        {line.replace(/\*\*/g, '')}
-                      </p>
-                    ))}
-                  </div>
-                ))}
+              <div className="pt-1">
+                <StarRating value={book.rating} size={11} readOnly />
               </div>
             )}
           </div>
+
+          {/* Reading progress */}
+          {book.status === 'reading' && (
+            <button onClick={() => setShowProgress(true)} className="text-left group/prog mt-1">
+              <div className="flex justify-between text-[9px] text-text-muted mb-1">
+                <span className="group-hover/prog:text-accent font-medium">Update progress</span>
+                <span>{pct}%</span>
+              </div>
+              <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden border border-border/50">
+                <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
+              </div>
+            </button>
+          )}
+
+          {/* Shelves list */}
+          {book.shelves && Array.isArray(book.shelves) && book.shelves.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {(book.shelves as any[]).map((shelf: string) => (
+                <span key={shelf} className="text-[9px] bg-surface-2 border border-border/80 text-text-muted px-2 py-0.5 rounded-md font-medium">
+                  {shelf}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Finished: reflection snippet */}
+          {book.status === 'finished' && book.reflection && (
+            <p className="text-xs text-text-muted italic line-clamp-2 leading-relaxed">
+              {book.reflection.split('\n').find(l => l && !l.startsWith('**')) || ''}
+            </p>
+          )}
+
+          {/* Abandoned: reason */}
+          {book.status === 'abandoned' && book.abandon_reason && (
+            <p className="text-xs text-text-muted italic">"{book.abandon_reason}"</p>
+          )}
+
+          {/* Actions row */}
+          <div className="flex items-center gap-1 mt-2 border-t border-border/40 pt-2.5">
+            <button onClick={() => setShowEdit(true)} title="Edit"
+              className="p-2 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
+              <Pencil size={13} />
+            </button>
+
+            {/* Quotes (all statuses) */}
+            <button onClick={() => setShowQuotes(true)} title="Quotes"
+              className="p-2 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
+              <Quote size={13} />
+            </button>
+
+            {book.status === 'to-read' && (
+              <button onClick={handleStartReading} title="Start reading"
+                className="p-2 text-text-muted hover:text-info hover:bg-info/10 rounded-lg transition-colors">
+                <BookOpen size={13} />
+              </button>
+            )}
+
+            {book.status === 'reading' && (
+              <>
+                <button onClick={() => setShowFinish(true)} title="Mark finished"
+                  className="p-2 text-text-muted hover:text-success hover:bg-success/10 rounded-lg transition-colors">
+                  <CheckCheck size={13} />
+                </button>
+                <button onClick={() => setShowAbandon(true)} title="Abandon"
+                  className="p-2 text-text-muted hover:text-warning hover:bg-warning/10 rounded-lg transition-colors">
+                  <BookX size={13} />
+                </button>
+              </>
+            )}
+
+            {book.status === 'finished' && book.reflection && (
+              <button onClick={() => setShowReflection(v => !v)}
+                title={showReflection ? 'Hide reflection' : 'Show reflection'}
+                className="p-2 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
+                {showReflection ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              </button>
+            )}
+          </div>
+
+          {/* Expandable reflection */}
+          {showReflection && book.reflection && (
+            <div className="mt-3 pt-3 border-t border-border space-y-3">
+              {book.reflection.split('\n\n').map((section, i) => (
+                <div key={i}>
+                  {section.split('\n').map((line, j) => (
+                    <p key={j} className={clsx('text-xs leading-relaxed',
+                      line.startsWith('**') ? 'font-medium text-text-secondary mb-1' : 'text-text-muted'
+                    )}>
+                      {line.replace(/\*\*/g, '')}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

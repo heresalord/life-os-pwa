@@ -12,7 +12,9 @@ function loadNavItems(): string[] {
     const stored = JSON.parse(localStorage.getItem('lifeos-nav') || 'null')
     // Accept any non-empty array (was wrongly requiring exactly 4)
     if (Array.isArray(stored) && stored.length >= 1) return stored
-  } catch {}
+  } catch {
+    // Falls back to DEFAULT_NAV_ITEMS if parsing fails
+  }
   return DEFAULT_NAV_ITEMS
 }
 

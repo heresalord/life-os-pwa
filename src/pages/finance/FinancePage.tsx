@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BarChart3, Landmark, List, Target, ChevronLeft, ChevronRight } from 'lucide-react'
+import { BarChart3, Landmark, List, Target, ChevronLeft, ChevronRight, Wallet as WalletIcon } from 'lucide-react'
 import { useUserSettings } from '../../hooks/useUserSettings'
+import { useWallets } from '../../hooks/useFinanceQueries'
+import type { Wallet } from '../../db/schema'
 import { OverviewTab }     from './components/OverviewTab'
 import { AccountsTab }     from './components/AccountsTab'
 import { TransactionsTab } from './components/TransactionsTab'
@@ -41,6 +43,19 @@ export function FinancePage() {
 
   const [searchParams] = useSearchParams()
   const highlightId = searchParams.get('highlight')
+
+  // Live balance data
+  const { data: wallets = [] } = useWallets()
+  const activeWallets = wallets.filter(w => !w.archived)
+  const liquidAccounts  = activeWallets.filter(w => w.type === 'bank' || w.type === 'cash')
+  const savingsAccounts = activeWallets.filter(w => w.type === 'savings')
+  const debtAccounts    = activeWallets.filter(w => w.type === 'credit')
+
+  const liquidBalance  = liquidAccounts.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
+  const savingsBalance = savingsAccounts.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
+  const debtBalance    = debtAccounts.reduce((s: number, w: Wallet) => s + Number(w.balance), 0)
+  const netWorth = liquidBalance + savingsBalance - debtBalance
+  const primaryCurrency = activeWallets[0]?.currency || currency
 
   // Deep link from search: jump to the right tab + date so the
   // highlighted transaction is in range.
@@ -110,9 +125,25 @@ export function FinancePage() {
 
   return (
     <div className="space-y-4 lg:max-w-5xl">
-      <header>
-        <h1 className="text-2xl font-display text-text">{t('finance.title', 'Finance')}</h1>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display text-text">{t('finance.title', 'Finance')}</h1>
+        </div>
       </header>
+
+      {/* Hero net worth balance card */}
+      <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex items-center justify-between">
+        <div>
+          <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Total Net Balance</p>
+          <p className={clsx('text-2xl font-display font-bold mt-0.5', netWorth >= 0 ? 'text-text' : 'text-danger')}>
+            {netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="text-xs text-text-muted font-body font-normal ml-1">{primaryCurrency}</span>
+          </p>
+        </div>
+        <div className="w-10 h-10 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+          <WalletIcon size={18} />
+        </div>
+      </div>
 
       {/* ── Tab bar ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-1 p-1 bg-surface-2 border border-border rounded-2xl">
@@ -137,18 +168,18 @@ export function FinancePage() {
         })}
       </div>
 
-      {/* ── Timeframe selector ──────────────────────────────────────────── */}
+      {/* ── Timeframe selector ────────────────────────────────────── */}
       {(active === 'overview' || active === 'transactions') && (
-        <div className="flex flex-col gap-3 bg-surface border border-border p-3.5 rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-1">
           {/* Period pills */}
-          <div className="flex p-1 bg-surface-2 border border-border rounded-xl">
+          <div className="flex gap-1 bg-surface-2 rounded-xl p-1">
             {(['day', 'week', 'month', 'year'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => { setPeriod(p); setReferenceDate(today) }}
                 className={clsx(
-                  'flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors capitalize',
-                  period === p ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors capitalize',
+                  period === p ? 'bg-bg text-text shadow-sm' : 'text-text-muted hover:text-text'
                 )}
               >
                 {t(`finance.period_${p}`, p)}
@@ -157,20 +188,20 @@ export function FinancePage() {
           </div>
 
           {/* Prev / label / next */}
-          <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => adjustPeriod('prev')}
-              className="p-1.5 text-text-secondary hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-colors"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} />
             </button>
-            <span className="text-sm font-medium text-text">{getPeriodLabel()}</span>
+            <span className="text-sm font-medium text-text min-w-[90px] text-center">{getPeriodLabel()}</span>
             <button
               onClick={() => adjustPeriod('next')}
               disabled={isAtCurrentOrFuturePeriod}
-              className="p-1.5 text-text-secondary hover:text-text hover:bg-surface-2 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
           </div>
         </div>

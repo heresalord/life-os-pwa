@@ -1,29 +1,75 @@
-
 import React, { useRef, useState } from 'react'
-import { Trash2, Share2 } from 'lucide-react'
+import { Trash2, Share2, CalendarPlus } from 'lucide-react'
 import { ProcessItemModal } from './ProcessItemModal'
 import type { InboxItem } from '../../db/schema'
 import { ShareModal } from '../dashboard/ShareModal'
+import { haptic } from '../../lib/haptic'
+import { useInboxMutations } from '../../hooks/useInboxMutations'
+import { useAppStore } from '../../store/useAppStore'
 import clsx from 'clsx'
 
 export function InboxItemCard({ item, onDelete }: { item: InboxItem, onDelete: (id: string) => void }) {
-  const [swiped, setSwiped] = useState(false)
+  const [dragX, setDragX] = useState(0)
+  const [swipedLeft, setSwipedLeft] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  
+  const { processItem } = useInboxMutations()
+  const { selectedDate } = useAppStore()
 
-  const handleTouchStart = (e: React.TouchEvent) => touchStartX.current = e.touches[0].clientX
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    setDragging(true)
+  }
+
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchStartX.current) return
-    const diff = touchStartX.current - e.touches[0].clientX
-    if (diff > 50) setSwiped(true)
-    if (diff < -50) setSwiped(false)
+    const diff = e.touches[0].clientX - touchStartX.current
+    // Allow dragging but resist after thresholds
+    if (diff > 120) {
+      setDragX(120 + (diff - 120) * 0.2)
+    } else if (diff < -120) {
+      setDragX(-120 + (diff + 120) * 0.2)
+    } else {
+      setDragX(diff)
+    }
   }
-  const handleTouchEnd = () => touchStartX.current = null
+
+  const handleTouchEnd = () => {
+    setDragging(false)
+    touchStartX.current = null
+
+    if (dragX < -60) {
+      setSwipedLeft(true)
+      setDragX(-64)
+    } else if (dragX > 80) {
+      haptic('success')
+      processItem.mutate({
+        id: item.id,
+        updates: { processed: true, processed_at: new Date().toISOString(), processed_to: 'task' },
+        target: { type: 'task', title: item.text.trim(), priority: null, date: selectedDate }
+      })
+      setDragX(0)
+    } else {
+      setSwipedLeft(false)
+      setDragX(0)
+    }
+  }
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-surface border border-border group animate-in fade-in duration-200">
+      {/* Background slide right action: Convert to Task */}
+      <div className="absolute inset-y-0 left-0 flex items-center justify-start bg-success/15 px-4 w-full">
+        <div className="flex items-center gap-2 text-success font-semibold text-xs">
+          <CalendarPlus size={16} />
+          <span>Convert to Task</span>
+        </div>
+      </div>
+
+      {/* Background slide left action: Delete */}
       <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
-        <button onClick={() => onDelete(item.id)} className="p-2 text-danger hover:bg-danger/10 rounded-full transition-colors">
+        <button onClick={() => { haptic('medium'); onDelete(item.id) }} className="p-2 text-danger hover:bg-danger/10 rounded-full transition-colors">
           <Trash2 size={18} />
         </button>
       </div>
@@ -33,9 +79,12 @@ export function InboxItemCard({ item, onDelete }: { item: InboxItem, onDelete: (
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          style={{
+            transform: `translateX(${dragging ? dragX : (swipedLeft ? -64 : 0)}px)`
+          }}
           className={clsx(
-            "w-full relative flex flex-col p-4 bg-surface text-left transition-transform duration-200 ease-out hover:bg-surface-2",
-            swiped ? "-translate-x-16" : "translate-x-0"
+            "w-full relative flex flex-col p-4 bg-surface text-left hover:bg-surface-2",
+            !dragging && "transition-transform duration-200 ease-out"
           )}
         >
           <div className="flex items-center justify-between mb-1.5 w-full">

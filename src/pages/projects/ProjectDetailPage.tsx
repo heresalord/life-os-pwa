@@ -18,7 +18,7 @@ import { useProjectMutations } from '../../hooks/useProjectMutations'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { useAuth } from '../../hooks/useAuth'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import { GoalItem } from '../../components/goals/GoalItem'
 import { ShareModal } from '../../components/dashboard/ShareModal'
 import clsx from 'clsx'
@@ -35,6 +35,7 @@ const PRESET_COLORS = [
 ]
 
 export function ProjectDetailPage() {
+  const db = useDb()
   const { id = '' } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -221,7 +222,7 @@ export function ProjectDetailPage() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/projects')}
-          className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text font-medium py-1.5 px-3 bg-surface border border-border rounded-xl transition-colors shadow-sm animate-in fade-in duration-200"
+          className="flex items-center gap-2 text-xs text-text-secondary hover:text-text font-medium py-2 px-3 bg-surface border border-border rounded-xl transition-colors shadow-sm animate-in fade-in duration-200"
         >
           <ChevronLeft size={14} /> Back to Projects
         </button>
@@ -231,19 +232,19 @@ export function ProjectDetailPage() {
             <>
               <button
                 onClick={() => setShareModalOpen(true)}
-                className="flex items-center gap-1 text-xs text-text-secondary hover:text-text bg-surface border border-border px-3 py-1.5 rounded-xl transition-colors shadow-sm"
+                className="flex items-center gap-1 text-xs text-text-secondary hover:text-text bg-surface border border-border px-3 py-2 rounded-xl transition-colors shadow-sm"
               >
                 <Share2 size={13} /> Share Project
               </button>
               <button
                 onClick={startEditing}
-                className="flex items-center gap-1 text-xs text-text-secondary hover:text-text bg-surface border border-border px-3 py-1.5 rounded-xl transition-colors shadow-sm"
+                className="flex items-center gap-1 text-xs text-text-secondary hover:text-text bg-surface border border-border px-3 py-2 rounded-xl transition-colors shadow-sm"
               >
                 <Edit2 size={13} /> Edit Project
               </button>
               <button
                 onClick={handleDeleteProject}
-                className="flex items-center gap-1 text-xs text-danger bg-danger/10 hover:bg-danger/20 border border-danger/20 px-3 py-1.5 rounded-xl transition-colors shadow-sm"
+                className="flex items-center gap-1 text-xs text-danger bg-danger/10 hover:bg-danger/20 border border-danger/20 px-3 py-2 rounded-xl transition-colors shadow-sm"
               >
                 <Trash2 size={13} /> Delete
               </button>
@@ -254,7 +255,7 @@ export function ProjectDetailPage() {
 
       {/* Project Banner Card */}
       {!isEditing ? (
-        <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4 relative overflow-hidden">
+        <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4 relative overflow-hidden">
           <div
             className="absolute left-0 top-0 bottom-0 w-1.5"
             style={{ backgroundColor: project.color || '#3b82f6' }}
@@ -325,7 +326,7 @@ export function ProjectDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Preset Colors */}
               <div>
-                <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Theme Color</label>
+                <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">Theme Color</label>
                 <div className="flex flex-wrap gap-2">
                   {PRESET_COLORS.map(c => (
                     <button
@@ -360,7 +361,7 @@ export function ProjectDetailPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2.5 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleSaveProject}
@@ -384,7 +385,7 @@ export function ProjectDetailPage() {
       {/* Linked Goals Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between border-b border-border/40 pb-2">
-          <h3 className="text-sm font-bold text-text uppercase tracking-wider flex items-center gap-1.5">
+          <h3 className="text-sm font-bold text-text uppercase tracking-wider flex items-center gap-2">
             <Target size={14} className={colorDef.text} /> Linked Goals ({linkedGoals.length})
           </h3>
 
@@ -394,7 +395,7 @@ export function ProjectDetailPage() {
               <select
                 value={selectedGoalToLink}
                 onChange={e => setSelectedGoalToLink(e.target.value)}
-                className="bg-surface border border-border rounded-xl px-2.5 py-1.5 text-xs text-text focus:outline-none focus:border-accent cursor-pointer"
+                className="bg-surface border border-border rounded-xl px-2.5 py-2 text-xs text-text focus:outline-none focus:border-accent cursor-pointer"
               >
                 <option value="">Choose Goal to Link...</option>
                 {unlinkedGoals.map(g => (
@@ -406,7 +407,7 @@ export function ProjectDetailPage() {
               <button
                 onClick={handleLinkGoal}
                 disabled={!selectedGoalToLink}
-                className="p-1.5 bg-accent hover:bg-accent-dim disabled:opacity-50 text-bg rounded-xl transition-all shadow-sm"
+                className="p-2 bg-accent hover:bg-accent-dim disabled:opacity-50 text-bg rounded-xl transition-all shadow-sm"
                 title="Link Goal"
               >
                 <Plus size={14} />
@@ -424,7 +425,7 @@ export function ProjectDetailPage() {
             No goals linked yet. Link an existing active goal above, or add a project ID when creating a goal.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {linkedGoals.map(g => (
               <div key={g.id} className="relative group">
                 <GoalItem goal={g} />
@@ -444,7 +445,7 @@ export function ProjectDetailPage() {
       {/* Linked Tasks Section */}
       <div className="space-y-4">
         <div className="border-b border-border/40 pb-2">
-          <h3 className="text-sm font-bold text-text uppercase tracking-wider flex items-center gap-1.5">
+          <h3 className="text-sm font-bold text-text uppercase tracking-wider flex items-center gap-2">
             <CheckCircle2 size={14} className={colorDef.text} /> Project Tasks ({linkedTasks.length})
           </h3>
         </div>
@@ -480,7 +481,7 @@ export function ProjectDetailPage() {
             {linkedTasks.map(task => (
               <div
                 key={task.id}
-                className="p-3.5 flex items-center justify-between gap-3 group hover:bg-surface-2/30 transition-colors"
+                className="p-4 flex items-center justify-between gap-3 group hover:bg-surface-2/30 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <input
@@ -510,7 +511,7 @@ export function ProjectDetailPage() {
                   {task.priority && (
                     <span
                       className={clsx(
-                        'text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider',
+                        'text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider',
                         task.priority === 1 ? 'border-danger/30 text-danger bg-danger/5'
                         : task.priority === 2 ? 'border-warning/30 text-warning bg-warning/5'
                         : 'border-border text-text-muted bg-surface-2'

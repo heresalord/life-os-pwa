@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { Goal, HabitLog, Milestone } from '../db/schema'
 
 export function useGoalsQuery(state = 'active') {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['goals', state, user?.id],
+    queryKey: QK.goals(state, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -18,13 +20,13 @@ export function useGoalsQuery(state = 'active') {
         bgSync(`goals-${state}-${user!.id}`, async () => {
           const { data, error } = await supabase
             .from('goals').select('*')
-            .eq('user_id', user!.id).eq('state', state)
+            .eq('user_id', user!.id).eq('state', state as 'active' | 'paused' | 'completed' | 'abandoned')
             .order('created_at', { ascending: false })
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('goals', data as Goal[])
+            const reconciled = await reconcilePendingSync(db, 'goals', data as Goal[])
             await db.goals.bulkPut(reconciled)
-            queryClient.setQueryData(['goals', state, user!.id], reconciled)
+            queryClient.setQueryData(QK.goals(state, user!.id), reconciled)
           }
         })
       }
@@ -34,15 +36,15 @@ export function useGoalsQuery(state = 'active') {
 }
 
 export function useGoalQuery(id: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['goal', id, user?.id],
+    queryKey: QK.goal(id, user?.id ?? ''),
     enabled: !!user && !!id,
     staleTime: 30_000,
     queryFn: async () => {
       const local = await db.goals.get(id)
       if (!local && navigator.onLine) {
-        // Not cached yet — must block on Supabase
         const { data, error } = await supabase
           .from('goals').select('*').eq('id', id).eq('user_id', user!.id).single()
         if (error) throw error
@@ -56,7 +58,7 @@ export function useGoalQuery(id: string) {
           if (error) throw error
           if (data) {
             await db.goals.put(data as Goal)
-            queryClient.setQueryData(['goal', id, user!.id], data)
+            queryClient.setQueryData(QK.goal(id, user!.id), data)
           }
         })
       }
@@ -67,9 +69,10 @@ export function useGoalQuery(id: string) {
 }
 
 export function useHabitLogsQuery(goalId?: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['habit_logs', goalId, user?.id],
+    queryKey: QK.habitLogs(goalId, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -84,9 +87,9 @@ export function useHabitLogsQuery(goalId?: string) {
           const { data, error } = await query.order('date', { ascending: false })
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('habit_logs', data as HabitLog[])
+            const reconciled = await reconcilePendingSync(db, 'habit_logs', data as HabitLog[])
             await db.habit_logs.bulkPut(reconciled)
-            queryClient.setQueryData(['habit_logs', goalId, user!.id], reconciled)
+            queryClient.setQueryData(QK.habitLogs(goalId, user!.id), reconciled)
           }
         })
       }
@@ -96,9 +99,10 @@ export function useHabitLogsQuery(goalId?: string) {
 }
 
 export function useMilestonesQuery(goalId?: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['milestones', goalId, user?.id],
+    queryKey: QK.milestones(goalId, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -113,9 +117,9 @@ export function useMilestonesQuery(goalId?: string) {
           const { data, error } = await query.order('created_at', { ascending: true })
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('milestones', data as Milestone[])
+            const reconciled = await reconcilePendingSync(db, 'milestones', data as Milestone[])
             await db.milestones.bulkPut(reconciled)
-            queryClient.setQueryData(['milestones', goalId, user!.id], reconciled)
+            queryClient.setQueryData(QK.milestones(goalId, user!.id), reconciled)
           }
         })
       }

@@ -1,7 +1,7 @@
-import { db } from '../db'
+import type { LifeOSDatabase } from '../db'
 import Papa from 'papaparse'
 
-export async function exportAllDataToJson() {
+export async function exportAllDataToJson(db: LifeOSDatabase) {
   const tables = ['tasks', 'transactions', 'notes', 'inbox_items', 'books', 'goals', 'goal_events', 'quotes', 'agenda_blocks', 'daily_records'] as const
 
   const data: Record<string, unknown[]> = {}
@@ -27,7 +27,7 @@ export async function exportAllDataToJson() {
   URL.revokeObjectURL(url)
 }
 
-export async function exportTransactionsCSV() {
+export async function exportTransactionsCSV(db: LifeOSDatabase) {
   const data = await db.transactions.toArray()
   if (!data.length) { alert('No transactions to export'); return }
 

@@ -60,8 +60,8 @@ export class LifeOSDatabase extends Dexie {
   reading_goals!:   Table<ReadingGoal,    string>
   notifications!:   Table<Notification,   string>
 
-  constructor() {
-    super('LifeOSDB')
+  constructor(userId: string) {
+    super(`LifeOSDB_${userId}`)
     this.version(1).stores({
       sync_queue:    'id, table, operation, created_at, synced',
       tasks:         'id, user_id, date, completed, skipped, priority, created_at',
@@ -324,7 +324,7 @@ export class LifeOSDatabase extends Dexie {
       reading_goals:   'id, user_id, year',
       notifications:   'id, user_id, read, created_at',
     })
-    this.version(13).stores({
+    this.version(14).stores({
       sync_queue:    'id, table, operation, created_at, synced',
       tasks:         'id, user_id, date, completed, skipped, priority, kanban_status, project_id, created_at',
       transactions:  'id, user_id, date, type, category, wallet_id',
@@ -343,13 +343,38 @@ export class LifeOSDatabase extends Dexie {
       budgets:       'id, user_id, category, period',
       savings_goals: 'id, user_id, deadline',
       debts:         'id, user_id, type, due_date',
-      projects:      'id, user_id, archived',
+      projects:      'id, user_id, archived, created_at',
       habit_logs:    'id, user_id, goal_id, date',
       milestones:    'id, user_id, goal_id, completed, due_date',
       reading_goals: 'id, user_id, year',
       notifications: 'id, user_id, read, created_at',
     })
+    this.version(15).stores({
+      // sync_queue intentionally omitted — retired in Phase 3.
+      // The table remains in IndexedDB but Dexie no longer exposes it.
+      // Writes now go directly to Supabase (online) or localStorage queue (offline).
+      tasks:           'id, user_id, date, completed, skipped, priority, kanban_status, project_id, created_at',
+      transactions:    'id, user_id, date, type, category, wallet_id',
+      goals:           'id, user_id, state, tracker_type, category, project_id',
+      goal_events:     'id, user_id, goal_id, date',
+      books:           'id, user_id, status',
+      quotes:          'id, user_id, book_id',
+      agenda_blocks:   'id, user_id, date, all_day',
+      inbox_items:     'id, user_id, processed',
+      notes:           'id, user_id, date, pinned, folder',
+      daily_records:   'id, user_id, date',
+      user_profiles:   'id',
+      user_settings:   'user_id',
+      recurring_tasks: 'id, user_id, active, repeat',
+      wallets:         'id, user_id, type, archived',
+      budgets:         'id, user_id, category, period',
+      savings_goals:   'id, user_id, deadline',
+      debts:           'id, user_id, type, due_date',
+      projects:        'id, user_id, archived, created_at',
+      habit_logs:      'id, user_id, goal_id, date',
+      milestones:      'id, user_id, goal_id, completed, due_date',
+      reading_goals:   'id, user_id, year',
+      notifications:   'id, user_id, read, created_at',
+    })
   }
 }
-
-export const db = new LifeOSDatabase()

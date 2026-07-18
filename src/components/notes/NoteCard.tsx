@@ -21,8 +21,27 @@ function exportAsMarkdown(note: Note) {
 }
 
 function copyAsPlainText(note: Note) {
-  const body = stripTags(note.content).replace(/[#*`_~\[\]]/g, '').trim()
+  const body = stripTags(note.content).replace(/[#*`_~[\]]/g, '').trim()
   navigator.clipboard.writeText(`${note.title}\n\n${body}`)
+}
+
+function highlightText(text: string, search: string) {
+  if (!search.trim()) return <span>{text}</span>
+  const regex = new RegExp(`(${search.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi')
+  const parts = text.split(regex)
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="bg-warning/20 text-warning px-0.5 rounded">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  )
 }
 
 export function NoteCard({
@@ -31,12 +50,14 @@ export function NoteCard({
   onDelete,
   folders = [],
   isActive = false,
+  searchTerm = '',
 }: {
   note: Note
   onClick: () => void
   onDelete: (id: string) => void
   folders?: string[]
   isActive?: boolean
+  searchTerm?: string
 }) {
   const [swiped, setSwiped] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -101,11 +122,13 @@ export function NoteCard({
         >
           {/* Header row */}
           <div className="flex items-start justify-between mb-2 gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               {(note as any).pinned && (
                 <Pin size={11} className="text-amber-400 flex-shrink-0 fill-amber-400" />
               )}
-              <span className="text-sm font-medium text-text truncate">{note.title}</span>
+              <span className="text-sm font-medium text-text truncate">
+                {highlightText(note.title, searchTerm)}
+              </span>
             </div>
 
             <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -197,13 +220,15 @@ export function NoteCard({
             </div>
           </div>
 
-          <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{snippet}</p>
+          <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
+            {highlightText(snippet, searchTerm)}
+          </p>
 
           {/* Tags */}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {tags.map(tag => (
-                <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent rounded-full font-medium">
+                <span key={tag} className="text-[10px] px-2 py-0.5 bg-accent/10 text-accent rounded-full font-medium">
                   #{tag}
                 </span>
               ))}

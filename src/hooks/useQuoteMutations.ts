@@ -1,17 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
+
+import { QK } from '../lib/queryKeys'
 
 /**
  * Mutations scoped to a specific book.
  * The bookId is baked into each mutated row automatically.
  */
 export function useQuoteMutations(bookId: string) {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['quotes'] })
+    qc.invalidateQueries({ queryKey: QK.quotes(user?.id ?? '', bookId) })
   }
 
   const addQuote = useMutation({

@@ -4,6 +4,7 @@ import { Plus, X } from 'lucide-react'
 import { useTransactionMutations } from '../../hooks/useTransactionMutations'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import { useWallets } from '../../hooks/useFinanceQueries'
+import { haptic } from '../../lib/haptic'
 import clsx from 'clsx'
 
 const DEFAULT_CATEGORIES = {
@@ -93,6 +94,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
       })
     }
 
+    haptic('success')
     setAmount(''); setFee(''); setDescription(''); setOpen(false)
   }
 
@@ -121,17 +123,17 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Type tabs (Expense / Income / Transfer) */}
-            <div className="flex p-1 bg-surface-2 rounded-lg gap-0.5">
+            <div className="flex p-1 bg-surface-2 rounded-lg gap-1">
               <button type="button" onClick={() => { setType('expense'); setCategory(expCats[0]) }}
-                className={clsx('flex-1 py-1.5 text-xs font-medium rounded-md transition-colors', type === 'expense' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
+                className={clsx('flex-1 py-2 text-xs font-medium rounded-md transition-colors', type === 'expense' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
                 Expense
               </button>
               <button type="button" onClick={() => { setType('income'); setCategory(incCats[0]) }}
-                className={clsx('flex-1 py-1.5 text-xs font-medium rounded-md transition-colors', type === 'income' ? 'bg-success/20 text-success shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
+                className={clsx('flex-1 py-2 text-xs font-medium rounded-md transition-colors', type === 'income' ? 'bg-success/20 text-success shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
                 Income
               </button>
               <button type="button" onClick={() => setType('transfer')}
-                className={clsx('flex-1 py-1.5 text-xs font-medium rounded-md transition-colors', type === 'transfer' ? 'bg-accent/20 text-accent shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
+                className={clsx('flex-1 py-2 text-xs font-medium rounded-md transition-colors', type === 'transfer' ? 'bg-accent/20 text-accent shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
                 Transfer
               </button>
             </div>
@@ -139,13 +141,13 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
             {/* Amount / fee */}
             <div className="grid grid-cols-2 gap-3">
               <div className={type === 'transfer' ? 'col-span-2' : ''}>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Amount</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Amount</label>
                 <input autoFocus type="number" step="0.01" min="0" required placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none" />
               </div>
               {type !== 'transfer' && (
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Fee / Tax</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Fee / Tax</label>
                   <input type="number" step="0.01" min="0" placeholder="0.00" value={fee} onChange={e => setFee(e.target.value)}
                     className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none" />
                 </div>
@@ -155,12 +157,12 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
             {/* Date + time */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Date</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Date</label>
                 <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Time</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Time</label>
                 <input type="time" value={txTime} onChange={e => setTxTime(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
@@ -169,7 +171,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
             {/* Category (hidden for transfers) */}
             {type !== 'transfer' && (
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Category</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Category</label>
                 <select value={category} onChange={e => setCategory(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text capitalize focus:border-accent focus:outline-none appearance-none">
                   {(type === 'expense' ? expCats : incCats).map(c => <option key={c} value={c}>{c}</option>)}
@@ -181,7 +183,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
             {type === 'transfer' ? (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">From Account</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">From Account</label>
                   <select value={walletId} onChange={e => {
                     const newFrom = e.target.value
                     setWalletId(newFrom)
@@ -196,7 +198,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">To Account</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">To Account</label>
                   <select value={transferToId} onChange={e => setTransferToId(e.target.value)}
                     className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-accent outline-none appearance-none">
                     {activeWallets.filter(w => w.id !== walletId).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -206,7 +208,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
             ) : (
               activeWallets.length > 0 && (
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Account</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Account</label>
                   <select value={walletId} onChange={e => setWalletId(e.target.value)}
                     className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
                     <option value="">No account</option>
@@ -218,7 +220,7 @@ export function AddTransactionModal({ date, isFAB = false }: { date: string; isF
 
             {/* Description */}
             <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Description (optional)</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Description (optional)</label>
               <input type="text" placeholder={type === 'transfer' ? 'e.g. Savings allocation' : 'What was this for?'} value={description} onChange={e => setDescription(e.target.value)}
                 className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none" />
             </div>

@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { Transaction } from '../db/schema'
 
 export function useTransactionsRange(from: string, to: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['transactions_range', from, to, user?.id],
+    queryKey: QK.transactionsRange(from, to, user?.id ?? ''),
     enabled: !!user && !!from && !!to,
     staleTime: 30_000,
     queryFn: async () => {
@@ -29,9 +31,9 @@ export function useTransactionsRange(from: string, to: string) {
             .order('created_at', { ascending: false })
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('transactions', data as Transaction[])
+            const reconciled = await reconcilePendingSync(db, 'transactions', data as Transaction[])
             await db.transactions.bulkPut(reconciled)
-            queryClient.setQueryData(['transactions_range', from, to, user!.id], reconciled)
+            queryClient.setQueryData(QK.transactionsRange(from, to, user!.id), reconciled)
           }
         })
       }
@@ -42,9 +44,10 @@ export function useTransactionsRange(from: string, to: string) {
 }
 
 export function useDailyRecordsRange(from: string, to: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['daily_records_range', from, to, user?.id],
+    queryKey: QK.dailyRecordsRange(from, to, user?.id ?? ''),
     enabled: !!user && !!from && !!to,
     staleTime: 30_000,
     queryFn: async () => {
@@ -62,7 +65,7 @@ export function useDailyRecordsRange(from: string, to: string) {
           if (error) throw error
           if (data) {
             await db.daily_records.bulkPut(data as Parameters<typeof db.daily_records.bulkPut>[0])
-            queryClient.setQueryData(['daily_records_range', from, to, user!.id], data)
+            queryClient.setQueryData(QK.dailyRecordsRange(from, to, user!.id), data)
           }
         })
       }

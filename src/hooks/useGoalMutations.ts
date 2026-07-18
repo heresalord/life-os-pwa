@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import { subDays, format } from 'date-fns'
+import { QK } from '../lib/queryKeys'
+import { hapticSuccess, hapticMedium } from '../lib/haptics'
 
 type AnyItem = { id: string; [key: string]: unknown }
 
@@ -100,14 +102,15 @@ function calculateStreak(
 }
 
 export function useGoalMutations() {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
 
-  const invalidateGoals  = () => qc.invalidateQueries({ queryKey: ['goals'] })
-  const invalidateEvents = () => qc.invalidateQueries({ queryKey: ['goal_events'] })
-  const invalidateHabitLogs = () => qc.invalidateQueries({ queryKey: ['habit_logs'] })
-  const invalidateMilestones = () => qc.invalidateQueries({ queryKey: ['milestones'] })
-  const activeKey = ['goals', 'active', user?.id]
+  const invalidateGoals     = () => qc.invalidateQueries({ queryKey: QK.goalsAll() })
+  const invalidateEvents    = () => qc.invalidateQueries({ queryKey: QK.goalEventsAll() })
+  const invalidateHabitLogs = () => qc.invalidateQueries({ queryKey: QK.habitLogsAll() })
+  const invalidateMilestones = () => qc.invalidateQueries({ queryKey: QK.milestonesAll() })
+  const activeKey = QK.goals('active', user?.id ?? '')
 
   const addGoal = useMutation({
     mutationFn: async (payload: {
@@ -258,7 +261,7 @@ export function useGoalMutations() {
     onSettled: () => {
       invalidateEvents()
       invalidateGoals()
-      qc.invalidateQueries({ queryKey: ['goal', activeKey[1]] })
+      qc.invalidateQueries({ queryKey: QK.goal(activeKey[1] as string, user?.id ?? '') })
     },
   })
 
@@ -281,6 +284,7 @@ export function useGoalMutations() {
       }
       await db.habit_logs.put(log)
       await write('habit_logs', 'insert', log)
+      void hapticSuccess() // habit checked off
 
       // Recalculate streak
       const logs = await db.habit_logs.where('goal_id').equals(payload.goal_id).toArray()
@@ -300,10 +304,10 @@ export function useGoalMutations() {
     },
     onMutate: async (payload) => {
       await qc.cancelQueries({ queryKey: activeKey })
-      await qc.cancelQueries({ queryKey: ['habit_logs'] })
+      await qc.cancelQueries({ queryKey: QK.habitLogsAll() })
 
       const prevGoals = qc.getQueryData<AnyItem[]>(activeKey)
-      const prevLogs = qc.getQueryData<AnyItem[]>(['habit_logs'])
+      const prevLogs = qc.getQueryData<AnyItem[]>(QK.habitLogsAll())
 
       // Optimistic Log
       const optLog = {
@@ -318,7 +322,7 @@ export function useGoalMutations() {
 
       // Optimistic Logs list
       const nextLogs = prevLogs ? [...prevLogs.filter(l => !(l.goal_id === payload.goal_id && l.date === payload.date)), optLog] : [optLog]
-      qc.setQueryData(['habit_logs'], nextLogs)
+      qc.setQueryData(QK.habitLogsAll(), nextLogs)
 
       // Optimistic Goals list (recalculate streak)
       if (prevGoals) {
@@ -342,12 +346,12 @@ export function useGoalMutations() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prevGoals !== undefined) qc.setQueryData(activeKey, ctx.prevGoals)
-      if (ctx?.prevLogs !== undefined) qc.setQueryData(['habit_logs'], ctx.prevLogs)
+      if (ctx?.prevLogs !== undefined) qc.setQueryData(QK.habitLogsAll(), ctx.prevLogs)
     },
     onSettled: () => {
       invalidateGoals()
       invalidateHabitLogs()
-      qc.invalidateQueries({ queryKey: ['goal'] })
+      qc.invalidateQueries({ queryKey: QK.goalsAll() })
     }
   })
 
@@ -361,6 +365,7 @@ export function useGoalMutations() {
       if (log) {
         await db.habit_logs.delete(log.id)
         await write('habit_logs', 'delete', log as Record<string, unknown>)
+        void hapticMedium() // habit unchecked
       }
 
       const logs = await db.habit_logs.where('goal_id').equals(payload.goal_id).toArray()
@@ -379,14 +384,14 @@ export function useGoalMutations() {
     },
     onMutate: async (payload) => {
       await qc.cancelQueries({ queryKey: activeKey })
-      await qc.cancelQueries({ queryKey: ['habit_logs'] })
+      await qc.cancelQueries({ queryKey: QK.habitLogsAll() })
 
       const prevGoals = qc.getQueryData<AnyItem[]>(activeKey)
-      const prevLogs = qc.getQueryData<AnyItem[]>(['habit_logs'])
+      const prevLogs = qc.getQueryData<AnyItem[]>(QK.habitLogsAll())
 
       // Optimistic Logs list
       const nextLogs = prevLogs ? prevLogs.filter(l => !(l.goal_id === payload.goal_id && l.date === payload.date)) : []
-      qc.setQueryData(['habit_logs'], nextLogs)
+      qc.setQueryData(QK.habitLogsAll(), nextLogs)
 
       // Optimistic Goals list (recalculate streak)
       if (prevGoals) {
@@ -410,12 +415,12 @@ export function useGoalMutations() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prevGoals !== undefined) qc.setQueryData(activeKey, ctx.prevGoals)
-      if (ctx?.prevLogs !== undefined) qc.setQueryData(['habit_logs'], ctx.prevLogs)
+      if (ctx?.prevLogs !== undefined) qc.setQueryData(QK.habitLogsAll(), ctx.prevLogs)
     },
     onSettled: () => {
       invalidateGoals()
       invalidateHabitLogs()
-      qc.invalidateQueries({ queryKey: ['goal'] })
+      qc.invalidateQueries({ queryKey: QK.goalsAll() })
     }
   })
 

@@ -46,6 +46,7 @@ export const isAndroid = () => Capacitor.getPlatform() === 'android'
  * Format a numeric amount for widget display.
  * e.g. 12345.6 → "12,345.60"
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function formatWidgetAmount(amount: number, _currency?: string): string {
   try {
     return new Intl.NumberFormat('en-US', {

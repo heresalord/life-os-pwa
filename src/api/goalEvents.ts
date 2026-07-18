@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type GoalEventRow    = Database['public']['Tables']['goal_events']['Row']
@@ -13,12 +13,12 @@ export const goalEventsApi = {
     return data ?? []
   },
   async create(payload: GoalEventInsert): Promise<GoalEventRow> {
-    const { data, error } = await db.from('goal_events').insert([payload]).select().single()
+    const { data, error } = await supabase.from('goal_events').insert([payload]).select().single()
     if (error) throw error
     return data
   },
   async update(id: string, payload: GoalEventUpdate): Promise<GoalEventRow> {
-    const { data, error } = await db.from('goal_events').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('goal_events').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   },

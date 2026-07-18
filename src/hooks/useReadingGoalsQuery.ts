@@ -1,16 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { ReadingGoal } from '../db/schema'
 import { enqueueSync } from '../db/syncQueue'
 
 export function useReadingGoalsQuery() {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['reading_goals', user?.id],
+    queryKey: QK.readingGoals(user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -22,9 +24,9 @@ export function useReadingGoalsQuery() {
             .from('reading_goals').select('*').eq('user_id', user!.id)
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('reading_goals', data as ReadingGoal[])
+            const reconciled = await reconcilePendingSync(db, 'reading_goals', data as ReadingGoal[])
             await db.reading_goals.bulkPut(reconciled)
-            queryClient.setQueryData(['reading_goals', user!.id], reconciled)
+            queryClient.setQueryData(QK.readingGoals(user!.id), reconciled)
           }
         })
       }
@@ -35,6 +37,7 @@ export function useReadingGoalsQuery() {
 }
 
 export function useSaveReadingGoalMutation() {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
   return useMutation({
@@ -64,7 +67,7 @@ export function useSaveReadingGoalMutation() {
       return goal
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['reading_goals', user?.id] })
+      qc.invalidateQueries({ queryKey: QK.readingGoals(user?.id ?? '') })
     }
   })
 }

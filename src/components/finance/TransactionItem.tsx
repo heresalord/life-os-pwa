@@ -70,7 +70,7 @@ export function TransactionItem({ transaction, onDelete, currency }: Transaction
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-text capitalize">{transaction.category}</span>
               <span className={clsx(
-                'text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded',
+                'text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded',
                 isAdjustment
                   ? 'bg-amber-400/15 text-amber-400'
                   : isIncome
@@ -107,13 +107,13 @@ export function TransactionItem({ transaction, onDelete, currency }: Transaction
         <div className="hidden group-hover:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-1 md:flex opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => setEditOpen(true)}
-            className="p-1.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
+            className="p-2 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
           >
             <Pencil size={14} />
           </button>
           <button
             onClick={() => setDeleteOpen(true)}
-            className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+            className="p-2 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
           >
             <Trash2 size={14} />
           </button>

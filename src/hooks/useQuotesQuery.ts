@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 
 export interface QuoteWithBook {
   id: string
@@ -21,9 +22,10 @@ export interface QuoteWithBook {
  * Fetch quotes. If bookId is provided, only quotes for that book are returned.
  */
 export function useQuotesQuery(bookId?: string | null) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery<QuoteWithBook[]>({
-    queryKey: ['quotes', user?.id, bookId ?? 'all'],
+    queryKey: QK.quotes(user?.id ?? '', bookId),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -68,9 +70,10 @@ export function useQuotesQuery(bookId?: string | null) {
           }))
 
           await db.quotes.bulkPut(
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             rows.map(({ book_title: _bt, book_author: _ba, ...rest }) => rest) as Parameters<typeof db.quotes.bulkPut>[0]
           )
-          queryClient.setQueryData(['quotes', user!.id, bookId ?? 'all'], rows)
+          queryClient.setQueryData(QK.quotes(user!.id, bookId), rows)
         })
       }
 

@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
+import { QK } from '../lib/queryKeys'
+import { hapticMedium } from '../lib/haptics'
 
 type AnyItem = { id: string; [key: string]: unknown }
 
@@ -10,13 +12,57 @@ async function write(table: string, op: 'insert' | 'update' | 'delete', payload:
 }
 
 export function useInboxMutations() {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
-  const queryKey = ['inbox_items', user?.id]
+
+  const queryKey = QK.inbox(false, user?.id ?? '')
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['inbox_items'] })
-    qc.invalidateQueries({ queryKey: ['tasks'] })
+    qc.invalidateQueries({ queryKey: QK.inboxAll() })
+    qc.invalidateQueries({ queryKey: QK.tasksAll() })
   }
+
+  const addItem = useMutation({
+    mutationFn: async (text: string) => {
+      if (!user) return
+      const item = {
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        text,
+        type: 'todo' as const,
+        processed: false,
+        processed_at: null,
+        processed_to: null,
+        archived_at: null,
+        captured_at: new Date().toISOString(),
+      }
+      await db.inbox_items.add(item as Parameters<typeof db.inbox_items.add>[0])
+      await write('inbox_items', 'insert', item)
+      void hapticMedium()
+      return item
+    },
+    onMutate: async (text) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      const optimistic: AnyItem = {
+        id: `opt-${Date.now()}`,
+        user_id: user?.id,
+        text,
+        type: 'todo',
+        processed: false,
+        processed_at: null,
+        processed_to: null,
+        archived_at: null,
+        captured_at: new Date().toISOString(),
+      }
+      qc.setQueryData<AnyItem[]>(queryKey, old => [optimistic, ...(old ?? [])])
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.inboxAll() }),
+  })
 
   const processItem = useMutation({
     mutationFn: async ({ id, updates, target }: {
@@ -28,6 +74,7 @@ export function useInboxMutations() {
       await db.inbox_items.update(id, updates)
       const updated = await db.inbox_items.get(id)
       if (updated) await write('inbox_items', 'update', updated as Record<string, unknown>)
+      void hapticMedium()
 
       if (target?.type === 'task') {
         const task = {
@@ -66,6 +113,7 @@ export function useInboxMutations() {
     mutationFn: async (id: string) => {
       await db.inbox_items.delete(id)
       await write('inbox_items', 'delete', { id })
+      void hapticMedium()
     },
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey })
@@ -76,8 +124,8 @@ export function useInboxMutations() {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['inbox_items'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.inboxAll() }),
   })
 
-  return { processItem, deleteItem }
+  return { addItem, processItem, deleteItem }
 }

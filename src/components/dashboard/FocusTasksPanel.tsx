@@ -38,7 +38,7 @@ export function FocusTasksPanel() {
       ) : (
         <ul className="space-y-2 mt-1">
           {pending.slice(0, 5).map(t => (
-            <li key={t.id} className="flex items-start gap-2.5">
+            <li key={t.id} className="flex items-start gap-3">
               <div className="mt-0.5 w-4 h-4 rounded border border-border flex-shrink-0" />
               <span className="text-sm text-text leading-snug">{t.title}</span>
               {t.carried_from && <span className="text-xs text-text-muted ml-auto flex-shrink-0">⟳</span>}

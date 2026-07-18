@@ -71,7 +71,7 @@ export function TaskHistory() {
       <div className="flex gap-2">
         {QUICK_JUMPS.map(({ label, days }) => (
           <button key={days} onClick={() => setOffset(days)}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+            className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${
               offset === days
                 ? 'bg-accent/15 border-accent/40 text-accent'
                 : 'bg-surface-2 border-border text-text-muted hover:text-text'

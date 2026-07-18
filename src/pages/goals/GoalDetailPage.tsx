@@ -28,6 +28,7 @@ import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays, parseISO } from 'date-fns'
 import clsx from 'clsx'
+import { haptic } from '../../lib/haptic'
 
 const CATEGORY_ICONS: Record<string, any> = {
   Health: Activity,
@@ -172,6 +173,7 @@ export function GoalDetailPage() {
   const handleQuickLog = (direction: 'add' | 'subtract') => {
     const val = parseFloat(logVal) || 1
     if (val <= 0) return
+    haptic('success')
     addEvent.mutate({
       goal_id: id,
       date: format(new Date(), 'yyyy-MM-dd'),
@@ -187,6 +189,7 @@ export function GoalDetailPage() {
   const handleAddMilestone = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMilestoneTitle.trim()) return
+    haptic('success')
     addMilestone.mutate({
       goal_id: id,
       title: newMilestoneTitle.trim(),
@@ -421,16 +424,16 @@ export function GoalDetailPage() {
       return (
         <div className="bg-surface border border-border rounded-2xl p-4.5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
               <Flame size={12} className="text-warning fill-warning" /> Consistency Heatmap (20 Weeks)
             </h3>
             <span className="text-[10px] font-semibold text-text-muted">Streak: {goal.habit_streak} 🔥</span>
           </div>
 
           <div className="overflow-x-auto pb-1 scrollbar-none flex justify-start">
-            <div className="flex gap-1.5 flex-row">
+            <div className="flex gap-2 flex-row">
               {/* Day Labels on left side */}
-              <div className="flex flex-col gap-1.5 text-[9px] text-text-secondary pr-1.5 justify-between py-1">
+              <div className="flex flex-col gap-2 text-[9px] text-text-secondary pr-1.5 justify-between py-1">
                 <span>Mon</span>
                 <span>Wed</span>
                 <span>Fri</span>
@@ -438,9 +441,9 @@ export function GoalDetailPage() {
               </div>
 
               {/* Grid Columns (Weeks) */}
-              <div className="flex gap-1.5">
+              <div className="flex gap-2">
                 {weeks.map((week, wIdx) => (
-                  <div key={wIdx} className="flex flex-col gap-1.5">
+                  <div key={wIdx} className="flex flex-col gap-2">
                     {week.map((day, dIdx) => {
                       const dateStr = format(day, 'yyyy-MM-dd')
                       const value = logsMap.get(dateStr)
@@ -511,7 +514,7 @@ export function GoalDetailPage() {
             {milestones.map((m) => {
               const checked = m.completed
               return (
-                <div key={m.id} className="relative flex items-start gap-3.5 group">
+                <div key={m.id} className="relative flex items-start gap-4 group">
                   {/* Timeline bullet node */}
                   <div className={clsx(
                     'absolute left-[-22px] top-1.5 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all bg-bg z-10',
@@ -595,7 +598,7 @@ export function GoalDetailPage() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/goals')}
-          className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text font-medium py-1.5 px-3 bg-surface border border-border rounded-xl transition-colors shadow-sm"
+          className="flex items-center gap-2 text-xs text-text-secondary hover:text-text font-medium py-2 px-3 bg-surface border border-border rounded-xl transition-colors shadow-sm"
         >
           <ChevronLeft size={14} /> Back to Goals
         </button>
@@ -604,13 +607,13 @@ export function GoalDetailPage() {
             <>
               <button
                 onClick={startEditing}
-                className="flex items-center gap-1 text-xs text-text-secondary hover:text-text bg-surface border border-border px-3 py-1.5 rounded-xl transition-colors shadow-sm"
+                className="flex items-center gap-1 text-xs text-text-secondary hover:text-text bg-surface border border-border px-3 py-2 rounded-xl transition-colors shadow-sm"
               >
                 <Edit2 size={13} /> Edit
               </button>
               <button
                 onClick={handleDelete}
-                className="flex items-center gap-1 text-xs text-danger bg-danger/10 hover:bg-danger/20 border border-danger/20 px-3 py-1.5 rounded-xl transition-colors shadow-sm"
+                className="flex items-center gap-1 text-xs text-danger bg-danger/10 hover:bg-danger/20 border border-danger/20 px-3 py-2 rounded-xl transition-colors shadow-sm"
               >
                 <Trash2 size={13} /> Delete
               </button>
@@ -621,7 +624,7 @@ export function GoalDetailPage() {
 
       {/* Goal Header detail card */}
       {!isEditing ? (
-        <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-3 relative overflow-hidden">
+        <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-3 relative overflow-hidden">
           <div className="absolute right-0 top-0 w-24 h-24 bg-accent/5 rounded-full blur-xl pointer-events-none" />
 
           <div className="flex flex-wrap gap-2 items-center">
@@ -752,7 +755,7 @@ export function GoalDetailPage() {
                 </div>
 
                 <div>
-                  <span className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Scheduled Days</span>
+                  <span className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">Scheduled Days</span>
                   <div className="flex justify-between">
                     {DAYS_OF_WEEK.map(d => {
                       const active = editHabitDays.includes(d.value)
@@ -857,10 +860,10 @@ export function GoalDetailPage() {
               </select>
             </div>
 
-            <div className="flex gap-2.5 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
-                onClick={handleSave}
+                onClick={() => { haptic('light'); handleSave() }}
                 disabled={updateGoal.isPending}
                 className="flex-1 bg-accent text-bg font-semibold rounded-xl py-2 hover:bg-accent-dim text-xs transition-colors shadow-sm"
               >
@@ -883,7 +886,7 @@ export function GoalDetailPage() {
 
       {/* Interactive Logging Section (Target / Average) */}
       {(goal.tracker_type === 'target' || goal.tracker_type === 'average') && (
-        <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4">
           <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Log Progress Entry</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
@@ -936,7 +939,7 @@ export function GoalDetailPage() {
 
       {/* Interactive Milestone Config Section (Project only) */}
       {goal.tracker_type === 'project' && (
-        <form onSubmit={handleAddMilestone} className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+        <form onSubmit={handleAddMilestone} className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4">
           <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Add New Milestone</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -970,7 +973,7 @@ export function GoalDetailPage() {
       )}
 
       {/* History Log List */}
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4">
         <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Historical Logs</h3>
 
         {/* Target/Average Log list */}

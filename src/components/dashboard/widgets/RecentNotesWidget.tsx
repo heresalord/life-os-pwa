@@ -42,7 +42,7 @@ export function RecentNotesWidget() {
               let formattedDate = n.date
               try {
                 formattedDate = format(new Date(n.date + 'T12:00:00'), 'MMM d')
-              } catch {}
+              } catch { /* date formatting failed — formattedDate stays as raw date string */ }
 
               return (
                 <div

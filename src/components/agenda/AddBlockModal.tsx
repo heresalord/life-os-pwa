@@ -54,7 +54,7 @@ export function AddBlockModal({ date }: { date: string }) {
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Description</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Description</label>
               <input autoFocus required value={description} onChange={e => setDescription(e.target.value)}
                 placeholder="e.g. Deep Work, Lunch, Meeting…"
                 className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
@@ -77,7 +77,7 @@ export function AddBlockModal({ date }: { date: string }) {
                 <select
                   value={repeatOption}
                   onChange={(e) => setRepeatOption(e.target.value as any)}
-                  className="bg-surface border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer"
+                  className="bg-surface border border-border rounded-lg px-2.5 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer"
                 >
                   <option value="none">No repeat</option>
                   <option value="daily">Daily</option>
@@ -89,12 +89,12 @@ export function AddBlockModal({ date }: { date: string }) {
             {!allDay && (
               <div className="flex gap-3 animate-in fade-in duration-200">
                 <div className="flex-1">
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Start</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Start</label>
                   <input type="time" required={!allDay} value={startTime} onChange={e => setStartTime(e.target.value)}
                     className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">End</label>
+                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">End</label>
                   <input type="time" required={!allDay} value={endTime} onChange={e => setEndTime(e.target.value)} min={startTime}
                     className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
                 </div>

@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type InboxItemRow    = Database['public']['Tables']['inbox_items']['Row']
@@ -17,12 +17,12 @@ export const inboxItemsApi = {
     return data ?? []
   },
   async create(payload: InboxItemInsert): Promise<InboxItemRow> {
-    const { data, error } = await db.from('inbox_items').insert([payload]).select().single()
+    const { data, error } = await supabase.from('inbox_items').insert([payload]).select().single()
     if (error) throw error
     return data
   },
   async update(id: string, payload: InboxItemUpdate): Promise<InboxItemRow> {
-    const { data, error } = await db.from('inbox_items').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('inbox_items').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   },

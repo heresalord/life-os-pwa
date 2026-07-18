@@ -64,7 +64,7 @@ export function SignInPage() {
         <Tabs.Content value="password">
           <form onSubmit={handleEmailSignIn} className="space-y-4">
             <div>
-              <label className="block text-sm text-text-secondary mb-1.5">Email</label>
+              <label className="block text-sm text-text-secondary mb-2">Email</label>
               <input
                 id="signin-email"
                 type="email"
@@ -76,7 +76,7 @@ export function SignInPage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-text-secondary mb-1.5">Password</label>
+              <label className="block text-sm text-text-secondary mb-2">Password</label>
               <div className="relative">
                 <input
                   id="signin-password"
@@ -111,7 +111,7 @@ export function SignInPage() {
         <Tabs.Content value="magic">
           <form onSubmit={handleMagicLink} className="space-y-4">
             <div>
-              <label className="block text-sm text-text-secondary mb-1.5">Email</label>
+              <label className="block text-sm text-text-secondary mb-2">Email</label>
               <input
                 id="magic-email"
                 type="email"

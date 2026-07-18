@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import { Bold, Italic, Heading1, Heading2, Link, List, Code, ListTodo } from 'lucide-react'
 
 interface RichTextToolbarProps {
@@ -49,77 +49,87 @@ function prefixLines(
   return newText
 }
 
-export function RichTextToolbar({ textareaRef, onBodyChange, body, onCreateTask }: RichTextToolbarProps) {
-  // Keep a stable ref to latest body so callbacks don't close over stale value
-  const bodyRef = useRef(body)
-  bodyRef.current = body
+const TOOLS = [
+  {
+    label: 'Bold',
+    icon: <Bold size={13} strokeWidth={2.5} />,
+  },
+  {
+    label: 'Italic',
+    icon: <Italic size={13} strokeWidth={2.5} />,
+  },
+  {
+    label: 'H1',
+    icon: <Heading1 size={13} strokeWidth={2.5} />,
+  },
+  {
+    label: 'H2',
+    icon: <Heading2 size={13} strokeWidth={2.5} />,
+  },
+  {
+    label: 'Link',
+    icon: <Link size={13} strokeWidth={2.5} />,
+  },
+  {
+    label: 'List',
+    icon: <List size={13} strokeWidth={2.5} />,
+  },
+  {
+    label: 'Code',
+    icon: <Code size={13} strokeWidth={2.5} />,
+  },
+]
 
+export function RichTextToolbar({ textareaRef, onBodyChange, onCreateTask }: RichTextToolbarProps) {
   const apply = (fn: (ta: HTMLTextAreaElement) => string) => {
     const ta = textareaRef.current
     if (!ta) return
     onBodyChange(fn(ta))
   }
 
-  const tools = [
-    {
-      label: 'Bold',
-      icon: <Bold size={13} strokeWidth={2.5} />,
-      action: () => apply(ta => wrapSelection(ta, '**', '**', 'bold text')),
-    },
-    {
-      label: 'Italic',
-      icon: <Italic size={13} strokeWidth={2.5} />,
-      action: () => apply(ta => wrapSelection(ta, '*', '*', 'italic text')),
-    },
-    {
-      label: 'H1',
-      icon: <Heading1 size={13} strokeWidth={2.5} />,
-      action: () => apply(ta => prefixLines(ta, '# ')),
-    },
-    {
-      label: 'H2',
-      icon: <Heading2 size={13} strokeWidth={2.5} />,
-      action: () => apply(ta => prefixLines(ta, '## ')),
-    },
-    {
-      label: 'Link',
-      icon: <Link size={13} strokeWidth={2.5} />,
-      action: () => apply(ta => {
-        const { selectionStart: s, selectionEnd: e, value } = ta
-        const selected = value.slice(s, e) || 'link text'
-        const newText = value.slice(0, s) + `[${selected}](url)` + value.slice(e)
-        requestAnimationFrame(() => {
-          ta.focus()
-          // Select the "url" part
-          const urlStart = s + selected.length + 3
-          ta.setSelectionRange(urlStart, urlStart + 3)
-        })
-        return newText
-      }),
-    },
-    {
-      label: 'List',
-      icon: <List size={13} strokeWidth={2.5} />,
-      action: () => apply(ta => prefixLines(ta, '- ')),
-    },
-    {
-      label: 'Code',
-      icon: <Code size={13} strokeWidth={2.5} />,
-      action: () => apply(ta => {
-        const { selectionStart: s, selectionEnd: e, value } = ta
-        const selected = value.slice(s, e)
-        const isMultiLine = selected.includes('\n')
-        if (isMultiLine) {
-          return wrapSelection(ta, '```\n', '\n```', 'code')
+  const handleToolAction = (label: string) => {
+    apply(ta => {
+      switch (label) {
+        case 'Bold':
+          return wrapSelection(ta, '**', '**', 'bold text')
+        case 'Italic':
+          return wrapSelection(ta, '*', '*', 'italic text')
+        case 'H1':
+          return prefixLines(ta, '# ')
+        case 'H2':
+          return prefixLines(ta, '## ')
+        case 'Link': {
+          const { selectionStart: s, selectionEnd: e, value } = ta
+          const selected = value.slice(s, e) || 'link text'
+          const newText = value.slice(0, s) + `[${selected}](url)` + value.slice(e)
+          requestAnimationFrame(() => {
+            ta.focus()
+            // Select the "url" part
+            const urlStart = s + selected.length + 3
+            ta.setSelectionRange(urlStart, urlStart + 3)
+          })
+          return newText
         }
-        return wrapSelection(ta, '`', '`', 'code')
-      }),
-    },
-  ]
+        case 'List':
+          return prefixLines(ta, '- ')
+        case 'Code': {
+          const { selectionStart: s, selectionEnd: e, value } = ta
+          const selected = value.slice(s, e)
+          const isMultiLine = selected.includes('\n')
+          if (isMultiLine) {
+            return wrapSelection(ta, '```\n', '\n```', 'code')
+          }
+          return wrapSelection(ta, '`', '`', 'code')
+        }
+        default:
+          return ta.value
+      }
+    })
+  }
 
   return (
-    <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border bg-surface flex-shrink-0">
-      {tools.map((tool, i) => (
+    <div className="flex items-center gap-1 px-3 py-2 border-b border-border bg-surface flex-shrink-0">
+      {TOOLS.map((tool, i) => (
         <React.Fragment key={tool.label}>
           {i === 4 && <div className="w-px h-4 bg-border mx-1" />}
           <button
@@ -127,7 +137,7 @@ export function RichTextToolbar({ textareaRef, onBodyChange, body, onCreateTask 
             title={tool.label}
             onMouseDown={e => {
               e.preventDefault() // don't steal textarea focus
-              tool.action()
+              handleToolAction(tool.label)
             }}
             className="flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:text-text hover:bg-surface-2 transition-colors text-xs font-medium"
           >

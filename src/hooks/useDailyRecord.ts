@@ -1,18 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import { bgSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import { calculateDayScore } from '../lib/scoreUtils'
 
 export function useDailyRecord(date: string) {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
 
   const query = useQuery({
-    queryKey: ['daily_records', date, user?.id],
+    queryKey: QK.dailyRecord(date, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -27,7 +29,7 @@ export function useDailyRecord(date: string) {
           if (error) throw error
           if (data) {
             await db.daily_records.put(data as Parameters<typeof db.daily_records.put>[0])
-            queryClient.setQueryData(['daily_records', date, user!.id], data)
+            queryClient.setQueryData(QK.dailyRecord(date, user!.id), data)
           }
         })
       }
@@ -61,7 +63,7 @@ export function useDailyRecord(date: string) {
       await enqueueSync('daily_records', existing ? 'update' : 'insert', record)
       return record
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['daily_records', date, user?.id] })
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.dailyRecord(date, user?.id ?? '') })
   })
 
   return { ...query, upsert }

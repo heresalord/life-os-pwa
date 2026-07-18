@@ -54,7 +54,7 @@ function App() {
         <BrowserRouter>
           {/* Global offline banner */}
           {!isOnline && (
-            <div className="fixed top-0 left-0 right-0 z-[100] bg-warning/20 border-b border-warning/40 text-warning text-xs text-center py-1.5 font-medium flex items-center justify-center gap-1.5">
+            <div className="fixed top-0 left-0 right-0 z-[100] bg-warning/20 border-b border-warning/40 text-warning text-xs text-center py-2 font-medium flex items-center justify-center gap-2">
               <WifiOff size={12} /> Offline — changes will sync when you reconnect
             </div>
           )}

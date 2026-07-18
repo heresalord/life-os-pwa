@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays } from 'date-fns'
 import { Flame, Calendar, ChevronRight, TrendingUp, Trophy, Target, CalendarDays, Frown, Annoyed, Meh, Smile, Laugh } from 'lucide-react'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import { useAppStore } from '../../store/useAppStore'
 import { displayDate, getUserLocalDate } from '../../lib/dateUtils'
 import clsx from 'clsx'
@@ -12,6 +12,7 @@ const MOOD_ICONS = [Frown, Annoyed, Meh, Smile, Laugh]
 const MOOD_LABELS = ['Low', 'Difficult', 'Okay', 'Good', 'Great']
 
 export function DailyLogHistoryPage() {
+  const db = useDb()
   const navigate = useNavigate()
   const { timezone } = useAppStore()
 
@@ -131,7 +132,7 @@ export function DailyLogHistoryPage() {
         <div>
           <button
             onClick={() => navigate('/day')}
-            className="text-xs text-accent font-semibold hover:underline mb-1.5 inline-block"
+            className="text-xs text-accent font-semibold hover:underline mb-2 inline-block"
           >
             ← Back to Daily Log
           </button>
@@ -143,7 +144,7 @@ export function DailyLogHistoryPage() {
       </header>
 
       {/* Stats Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
           <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning flex-shrink-0">
             <Flame size={16} className="fill-warning" />
@@ -179,9 +180,9 @@ export function DailyLogHistoryPage() {
       </div>
 
       {/* 20-Week Score Heatmap Card */}
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
             <Flame size={12} className="text-warning fill-warning" />
             20-Week Wellbeing Score Heatmap
           </h3>
@@ -191,7 +192,7 @@ export function DailyLogHistoryPage() {
         <div className="overflow-x-auto pb-2 scrollbar-none flex justify-start">
           <div className="flex gap-2 flex-row">
             {/* Day Labels on left side */}
-            <div className="flex flex-col gap-1.5 text-[9px] text-text-secondary pr-2 justify-between py-1 font-semibold">
+            <div className="flex flex-col gap-2 text-[9px] text-text-secondary pr-2 justify-between py-1 font-semibold">
               <span>Mon</span>
               <span>Wed</span>
               <span>Fri</span>
@@ -199,9 +200,9 @@ export function DailyLogHistoryPage() {
             </div>
 
             {/* Grid Columns (Weeks) */}
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {heatmapData.map((week, wIdx) => (
-                <div key={wIdx} className="flex flex-col gap-1.5">
+                <div key={wIdx} className="flex flex-col gap-2">
                   {week.map((day, dIdx) => {
                     const dateStr = format(day, 'yyyy-MM-dd')
                     const rec = recordsMap.get(dateStr)
@@ -249,7 +250,7 @@ export function DailyLogHistoryPage() {
       </div>
 
       {/* Archive Chronological Feed Card */}
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4">
         <div className="pb-2 border-b border-border/50">
           <h3 className="text-sm font-semibold text-text flex items-center gap-2">
             <TrendingUp size={16} className="text-accent" />
@@ -267,7 +268,7 @@ export function DailyLogHistoryPage() {
               <div
                 key={rec.id}
                 onClick={() => navigate(`/day/${rec.date}`)}
-                className="flex items-center justify-between py-3 px-1.5 hover:bg-surface-2/60 rounded-xl transition-all cursor-pointer group"
+                className="flex items-center justify-between py-3 px-2 hover:bg-surface-2/60 rounded-xl transition-all cursor-pointer group"
               >
                 <div className="space-y-1.5 min-w-0 pr-4">
                   <div className="flex items-center gap-2">

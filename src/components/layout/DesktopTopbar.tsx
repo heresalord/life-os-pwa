@@ -53,7 +53,7 @@ export function DesktopTopbar() {
       <div className="flex items-center gap-3 min-w-0">
         <h1 className="text-xl font-display text-text font-semibold tracking-tight truncate">{title}</h1>
         <div className="hidden lg:block h-4 w-px bg-border flex-shrink-0" />
-        <span className="hidden lg:flex items-center gap-1.5 text-xs text-text-secondary font-medium whitespace-nowrap">
+        <span className="hidden lg:flex items-center gap-2 text-xs text-text-secondary font-medium whitespace-nowrap">
           <span className="text-accent">✦</span>
           Make today count · {greeting}
         </span>
@@ -66,14 +66,14 @@ export function DesktopTopbar() {
         <div className="hidden lg:flex gap-2">
           <button
             onClick={() => navigate('/day?guided=morning')}
-            className="text-xs px-3 py-1.5 bg-warning/10 text-warning border border-warning/20 rounded-full hover:bg-warning/20 transition-all font-medium flex items-center gap-1"
+            className="text-xs px-3 py-2 bg-warning/10 text-warning border border-warning/20 rounded-full hover:bg-warning/20 transition-all font-medium flex items-center gap-1"
           >
             <Sun size={12} />
             Morning
           </button>
           <button
             onClick={() => navigate('/day?guided=evening')}
-            className="text-xs px-3 py-1.5 bg-info/10 text-info border border-info/20 rounded-full hover:bg-info/20 transition-all font-medium flex items-center gap-1"
+            className="text-xs px-3 py-2 bg-info/10 text-info border border-info/20 rounded-full hover:bg-info/20 transition-all font-medium flex items-center gap-1"
           >
             <Moon size={12} />
             Review
@@ -81,7 +81,7 @@ export function DesktopTopbar() {
         </div>
 
         {/* Selected date chip */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-text-muted font-medium bg-surface px-3 py-1.5 rounded-lg border border-border whitespace-nowrap">
+        <div className="hidden lg:flex items-center gap-2 text-xs text-text-muted font-medium bg-surface px-3 py-2 rounded-lg border border-border whitespace-nowrap">
           <CalendarDays size={14} /> <span className="text-text">{displayDate(selectedDate, 'EEE, MMM d')}</span>
         </div>
 
@@ -123,20 +123,20 @@ export function DesktopTopbar() {
                 <nav className="py-1">
                   {secondaryNav.map(({ to, icon: Icon, label }) => (
                     <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
                       <Icon size={15} />
                       {label}
                     </NavLink>
                   ))}
                   <div className="border-t border-border my-1" />
                   <NavLink to="/settings" onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
                     <Settings size={15} />
                     Settings
                   </NavLink>
                   <button
                     onClick={() => { signOut(); setMenuOpen(false) }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
                   >
                     <LogOut size={15} />
                     Sign Out

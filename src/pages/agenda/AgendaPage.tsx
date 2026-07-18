@@ -11,6 +11,7 @@ import { AddBlockModal } from '../../components/agenda/AddBlockModal'
 import { EmptyState } from '../../components/EmptyState'
 import { CalendarDays, Clock, Play } from 'lucide-react'
 import type { AgendaBlock as AgendaBlockType, Task } from '../../db/schema'
+import { PageSkeleton } from '../../components/Skeleton'
 import clsx from 'clsx'
 
 
@@ -95,9 +96,7 @@ export function AgendaPage() {
       <AddBlockModal date={selectedDate} />
 
       {isLoading ? (
-        <div className="flex justify-center p-12">
-          <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-        </div>
+        <PageSkeleton />
       ) : totalItemsCount === 0 ? (
         <EmptyState
           icon={<CalendarDays size={40} />}
@@ -109,7 +108,7 @@ export function AgendaPage() {
           {/* All Day Section */}
           {(allDayBlocks.length > 0 || allDayTasks.length > 0) && (
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5 border-b border-border/40 pb-1.5">
+              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2 border-b border-border/40 pb-2">
                 <Clock size={13} className="text-accent" /> All-Day Schedule
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -134,7 +133,7 @@ export function AgendaPage() {
           {/* Timeline Section */}
           {scheduledItems.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5 border-b border-border/40 pb-1.5">
+              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2 border-b border-border/40 pb-2">
                 <Play size={12} className="text-accent fill-accent/20" /> Daily Timeline
               </h3>
 

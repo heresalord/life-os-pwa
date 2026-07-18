@@ -2,12 +2,13 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sun, Moon, Flame, Calendar, CheckCircle2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import { useAppStore } from '../../store/useAppStore'
 import { getUserLocalDate } from '../../lib/dateUtils'
 import { subDays, format } from 'date-fns'
 
 export function DailyLogWidget() {
+  const db = useDb()
   const navigate = useNavigate()
   const { selectedDate, timezone } = useAppStore()
 
@@ -50,7 +51,7 @@ export function DailyLogWidget() {
   }, [records, timezone])
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-4.5 space-y-4 shadow-sm relative overflow-hidden">
+    <div className="bg-surface border border-border rounded-2xl p-4.5 space-y-4 shadow-[var(--shadow-card)] relative overflow-hidden">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -70,7 +71,7 @@ export function DailyLogWidget() {
         {/* Morning Button */}
         <button
           onClick={() => navigate(`/day?guided=morning`)}
-          className={`flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
             morningComplete
               ? 'bg-warning/5 border-warning/20 text-warning'
               : 'bg-surface-2 border-border hover:border-warning/40 text-text-secondary hover:text-text'
@@ -90,7 +91,7 @@ export function DailyLogWidget() {
         {/* Evening Button */}
         <button
           onClick={() => navigate(`/day?guided=evening`)}
-          className={`flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
             eveningComplete
               ? 'bg-info/5 border-info/20 text-info'
               : 'bg-surface-2 border-border hover:border-info/40 text-text-secondary hover:text-text'

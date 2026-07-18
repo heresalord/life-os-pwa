@@ -4,13 +4,14 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { userSettingsApi } from '../../api/userSettings'
 import { userProfilesApi } from '../../api/userProfiles'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import type { UserProfile } from '../../db/schema'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { supabase as supa } from '../../lib/supabase'
 const sbAny = supa as any
 
 export function OnboardingFlow() {
+  const db = useDb()
   const { user, profile, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const { setTimezone: setStoreTimezone, setTheme } = useAppStore()
@@ -135,7 +136,7 @@ export function OnboardingFlow() {
               <p className="text-text-secondary text-sm mb-4">Used for daily task carry-overs and reminders.</p>
               <input type="text" value={timezone} onChange={e => setTimezone(e.target.value)}
                 className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
-              <p className="text-text-muted text-xs mt-1.5">Auto-detected — edit if incorrect.</p>
+              <p className="text-text-muted text-xs mt-2">Auto-detected — edit if incorrect.</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setStep(1)} className="flex-1 bg-surface-2 text-text font-medium rounded-xl py-3 hover:bg-muted transition-colors">Back</button>

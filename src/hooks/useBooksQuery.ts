@@ -1,16 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { Book } from '../db/schema'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useBooksQuery() {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['books', user?.id],
+    queryKey: QK.books(user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -32,9 +33,9 @@ export function useBooksQuery() {
               const loc = localBooks[i]
               return (!remote.cover_url && loc?.cover_url) ? { ...remote, cover_url: loc.cover_url } : remote
             })
-            const reconciled = await reconcilePendingSync('books', merged as Book[])
+            const reconciled = await reconcilePendingSync(db, 'books', merged as Book[])
             await db.books.bulkPut(reconciled)
-            queryClient.setQueryData(['books', user!.id], reconciled)
+            queryClient.setQueryData(QK.books(user!.id), reconciled)
           }
         })
       }
@@ -45,9 +46,10 @@ export function useBooksQuery() {
 }
 
 export function useBookQuery(id: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['book', id, user?.id],
+    queryKey: QK.book(id, user?.id ?? ''),
     enabled: !!user && !!id,
     staleTime: 30_000,
     queryFn: async () => {
@@ -70,7 +72,7 @@ export function useBookQuery(id: string) {
           if (data) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await db.books.put(data as any)
-            queryClient.setQueryData(['book', id, user!.id], data)
+            queryClient.setQueryData(QK.book(id, user!.id), data)
           }
         })
       }

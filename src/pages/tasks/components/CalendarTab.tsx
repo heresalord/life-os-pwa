@@ -6,7 +6,7 @@ import { useAppStore } from '../../../store/useAppStore'
 import { useTaskMutations } from '../../../hooks/useTaskMutations'
 import { AddTaskModal } from '../../../components/tasks/AddTaskModal'
 import { supabase } from '../../../lib/supabase'
-import { db } from '../../../db'
+import { useDb } from '../../../db/DbContext'
 import { getUserLocalDate } from '../../../lib/dateUtils'
 import { ChevronLeft, ChevronRight, Check, X, Trash2 } from 'lucide-react'
 import type { Task } from '../../../db/schema'
@@ -18,6 +18,7 @@ const PRIORITY_COLOR: Record<number, string> = {
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function useMonthTasks(year: number, month: number) {
+  const db = useDb()
   const { user } = useAuth()
   const from = format(new Date(year, month, 1), 'yyyy-MM-dd')
   const to   = format(new Date(year, month + 1, 0), 'yyyy-MM-dd')
@@ -74,7 +75,7 @@ export function CalendarTab() {
           <h2 className="text-base font-semibold text-text">{format(cursor, 'MMMM yyyy')}</h2>
           <div className="flex gap-1">
             <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
-              className="p-1.5 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
+              className="p-2 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
               <ChevronLeft size={18} />
             </button>
             <button
@@ -83,7 +84,7 @@ export function CalendarTab() {
               Today
             </button>
             <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
-              className="p-1.5 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
+              className="p-2 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
               <ChevronRight size={18} />
             </button>
           </div>
@@ -108,7 +109,7 @@ export function CalendarTab() {
             return (
               <button key={ds} onClick={() => setSelected(day)}
                 className={clsx(
-                  'relative flex flex-col items-center py-1.5 rounded-xl transition-all min-h-[52px]',
+                  'relative flex flex-col items-center py-2 rounded-xl transition-all min-h-[52px]',
                   isSelected ? 'bg-accent text-bg' : isTodayDay ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2',
                   !isCurrent && 'opacity-30'
                 )}>
@@ -116,7 +117,7 @@ export function CalendarTab() {
                   {format(day, 'd')}
                 </span>
                 {dayTasks.length > 0 && (
-                  <div className="flex gap-0.5 mt-1 flex-wrap justify-center max-w-[32px]">
+                  <div className="flex gap-1 mt-1 flex-wrap justify-center max-w-[32px]">
                     {dayTasks.slice(0, 4).map(t => (
                       <div key={t.id}
                         className={clsx('w-1.5 h-1.5 rounded-full',

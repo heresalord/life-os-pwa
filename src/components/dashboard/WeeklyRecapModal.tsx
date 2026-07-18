@@ -4,7 +4,7 @@ import { useGoalsQuery } from '../../hooks/useGoalsQuery'
 import { useAppStore } from '../../store/useAppStore'
 import { format, startOfWeek, endOfWeek, subWeeks } from 'date-fns'
 import { Star, X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import clsx from 'clsx'
 
 // ── Show-window helpers ────────────────────────────────────────────────────────
@@ -107,6 +107,7 @@ interface WeeklyRecapModalProps {
 }
 
 export function WeeklyRecapModal({ forceOpen = false, onClose }: WeeklyRecapModalProps = {}) {
+  const db = useDb()
   const { timezone } = useAppStore()
   const [visible, setVisible]           = useState(false)
   const [dismissed, setDismissed]       = useState(false)
@@ -126,7 +127,7 @@ export function WeeklyRecapModal({ forceOpen = false, onClose }: WeeklyRecapModa
         total:     tasks.length,
       }))
       .catch(console.error)
-  }, [timezone])
+  }, [timezone, db])
 
   useEffect(() => {
     if (forceOpen) { setVisible(true); return }
@@ -236,7 +237,7 @@ export function WeeklyRecapModal({ forceOpen = false, onClose }: WeeklyRecapModa
           </button>
 
           {/* Pill label */}
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1">
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-white/20 rounded-full px-3 py-1">
             <Sparkles size={11} className="text-white" />
             <span className="text-white text-[10px] font-bold uppercase tracking-wider">
               Weekly Recap
@@ -253,7 +254,7 @@ export function WeeklyRecapModal({ forceOpen = false, onClose }: WeeklyRecapModa
 
           {/* Dots + navigation */}
           <div className="relative z-20 px-6 pb-7 space-y-4">
-            <div className="flex justify-center gap-1.5">
+            <div className="flex justify-center gap-2">
               {slides.map((_, i) => (
                 <button
                   key={i}

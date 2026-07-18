@@ -56,7 +56,7 @@ export function WellbeingHeatmapWidget() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-10 gap-1.5 justify-center max-w-sm mx-auto">
+            <div className="grid grid-cols-10 gap-2 justify-center max-w-sm mx-auto">
               {days.map(d => {
                 const dateStr = format(d, 'yyyy-MM-dd')
                 const rec     = records.find(r => r.date === dateStr)

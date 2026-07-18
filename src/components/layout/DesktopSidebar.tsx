@@ -143,13 +143,13 @@ export function DesktopSidebar() {
 
       {/* Footer Profile Area */}
       <div className="p-4 border-t border-border bg-surface-2/30 flex items-center justify-between gap-3 lg:flex-row flex-col">
-        <NavLink to="/profile" className="flex items-center gap-2.5 group/profile-footer flex-1 min-w-0">
+        <NavLink to="/profile" className="flex items-center gap-3 group/profile-footer flex-1 min-w-0">
           <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold flex-shrink-0 group-hover/profile-footer:bg-accent/30 group-hover/profile-footer:border-accent/60 transition-colors">
             {initials}
           </div>
           <div className="hidden lg:flex flex-col min-w-0">
             <span className="text-xs text-text font-medium truncate w-28 group-hover/profile-footer:text-accent transition-colors">{displayName}</span>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5">
               <SyncStatusDot />
               <span className="text-[10px] text-text-muted truncate">Synced</span>
             </div>
@@ -157,7 +157,7 @@ export function DesktopSidebar() {
         </NavLink>
         <button
           onClick={() => signOut()}
-          className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+          className="p-2 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
           title="Sign Out"
         >
           <LogOut size={16} />

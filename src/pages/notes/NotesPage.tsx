@@ -12,6 +12,7 @@ import { RichTextToolbar } from '../../components/notes/RichTextToolbar'
 import { NoteLinkAutocomplete } from '../../components/notes/NoteLinkAutocomplete'
 import { TemplatePicker } from '../../components/notes/TemplatePicker'
 import { EmptyState } from '../../components/EmptyState'
+import { NoteCardSkeleton } from '../../components/Skeleton'
 import { extractTags, stripTags, applyTags, collectAllTags, cleanTaskTitle } from '../../lib/noteTagUtils'
 import {
   FileText, Plus, Search, X, Eye, Edit3,
@@ -136,10 +137,10 @@ function DesktopNoteEditor({
           placeholder="Note title"
         />
         <div className="flex bg-surface-2 rounded-lg p-0.5 flex-shrink-0">
-          <button onClick={() => setMode('write')} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${mode === 'write' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
+          <button onClick={() => setMode('write')} className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'write' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
             <Edit3 size={12} /> Write
           </button>
-          <button onClick={() => setMode('preview')} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${mode === 'preview' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
+          <button onClick={() => setMode('preview')} className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'preview' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
             <Eye size={12} /> Preview
           </button>
         </div>
@@ -155,7 +156,7 @@ function DesktopNoteEditor({
             onCreateTask={handleCreateTask}
           />
           {taskFeedback && (
-            <div className="absolute top-full right-3 mt-1.5 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="absolute top-full right-3 mt-2 z-10 flex items-center gap-2 px-2.5 py-2 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
               <ListTodo size={12} className="text-accent flex-shrink-0" />
               <span className="truncate max-w-[220px]">Added “{taskFeedback}” to Tasks</span>
             </div>
@@ -203,7 +204,7 @@ function DesktopNoteEditor({
             {wordCount} {wordCount === 1 ? 'word' : 'words'} · {readTime} min read
           </span>
           <div className="w-px h-3 bg-border flex-shrink-0" />
-          <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
             {tags.map(tag => (
               <span key={tag} className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-full font-medium">
                 #{tag}
@@ -355,12 +356,23 @@ export function NotesPage() {
     setActiveFolder(name)
   }
 
+  const folderColor = (f: string) => {
+    if (f === 'All') return 'text-accent'
+    if (f === 'Pinned') return 'text-amber-400'
+    if (f === 'Journal') return 'text-success'
+    if (f === 'Templates') return 'text-info'
+    const hash = f.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    const colors = ['text-red-400', 'text-orange-400', 'text-yellow-400', 'text-green-400', 'text-blue-400', 'text-indigo-400', 'text-purple-400', 'text-pink-400']
+    return colors[hash % colors.length]
+  }
+
   const folderIcon = (f: string) => {
-    if (f === 'All')       return <Folder size={14} />
-    if (f === 'Pinned')    return <Pin size={14} />
-    if (f === 'Journal')   return <BookText size={14} />
-    if (f === 'Templates') return <LayoutTemplate size={14} />
-    return <FolderTree size={14} />
+    const colorCls = folderColor(f)
+    if (f === 'All')       return <Folder size={14} className={colorCls} />
+    if (f === 'Pinned')    return <Pin size={14} className={colorCls} />
+    if (f === 'Journal')   return <BookText size={14} className={colorCls} />
+    if (f === 'Templates') return <LayoutTemplate size={14} className={colorCls} />
+    return <FolderTree size={14} className={colorCls} />
   }
 
   const folderCount = (f: string) => {
@@ -394,7 +406,7 @@ export function NotesPage() {
                 key={f}
                 onClick={() => setActiveFolder(f)}
                 className={clsx(
-                  'flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-left text-sm transition-all w-full',
+                  'flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-sm transition-all w-full',
                   activeFolder === f
                     ? 'bg-accent/15 text-accent font-medium'
                     : 'text-text-secondary hover:bg-surface-2 hover:text-text'
@@ -425,7 +437,7 @@ export function NotesPage() {
             ) : (
               <button
                 onClick={() => setShowNewFolder(true)}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors text-xs w-full mt-1"
+                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors text-xs w-full mt-1"
               >
                 <FolderPlus size={13} /> New folder
               </button>
@@ -507,7 +519,7 @@ export function NotesPage() {
 
         {/* Tag filter bar */}
         {allTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {allTags.map(tag => (
               <button
                 key={tag}
@@ -534,7 +546,7 @@ export function NotesPage() {
           <div className="relative">
             <button
               onClick={() => setShowSortMenu(v => !v)}
-              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text transition-colors"
+              className="flex items-center gap-2 text-xs text-text-muted hover:text-text transition-colors"
             >
               <ArrowUpDown size={12} />
               {SORT_LABELS[sortBy]}
@@ -561,8 +573,10 @@ export function NotesPage() {
 
         {/* Note list */}
         {isLoading ? (
-          <div className="flex justify-center p-8">
-            <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <NoteCardSkeleton key={i} />
+            ))}
           </div>
         ) : (notes as Note[]).length === 0 ? (
           <EmptyState icon={<FileText size={40} />} title="No notes yet" message="Tap + to start your first note." />
@@ -571,7 +585,7 @@ export function NotesPage() {
             {activeTag ? `No notes tagged #${activeTag}` : search ? `No notes match "${search}"` : `No notes in ${activeFolder}`}
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
             {filtered.map(note => (
               <div key={note.id} data-item-id={note.id} className="rounded-2xl">
                 <NoteCard
@@ -583,6 +597,7 @@ export function NotesPage() {
                     deleteNote.mutate(id)
                     if (activeNoteId === id) setActiveNoteId(null)
                   }}
+                  searchTerm={search}
                 />
               </div>
             ))}

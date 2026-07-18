@@ -1,8 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
+import type { LifeOSDatabase } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import type { Wallet } from '../db/schema'
+
+import { QK } from '../lib/queryKeys'
 
 type AnyItem = { id: string; [key: string]: unknown }
 
@@ -11,6 +14,7 @@ async function writeTx(op: 'insert' | 'update' | 'delete', payload: Record<strin
 }
 
 async function adjustWalletBalance(
+  db: LifeOSDatabase,
   walletId: string,
   amount: number,
   type: 'income' | 'expense' | 'adjustment',
@@ -36,15 +40,17 @@ async function adjustWalletBalance(
 }
 
 export function useTransactionMutations(date: string) {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
-  const queryKey = ['transactions', date, user?.id]
+  const queryKey = QK.transactions(date, user?.id ?? '')
+
 
   // Invalidate both the date-specific query AND all range queries
   const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ['transactions'] })
+    qc.invalidateQueries({ queryKey: QK.transactionsAll() })
     qc.invalidateQueries({ queryKey: ['transactions_range'] })
-    qc.invalidateQueries({ queryKey: ['wallets'] })
+    qc.invalidateQueries({ queryKey: QK.wallets(user?.id ?? '') })
   }
 
   const addTransaction = useMutation({
@@ -98,7 +104,7 @@ export function useTransactionMutations(date: string) {
       await writeTx('insert', tx)
 
       if (tx.wallet_id) {
-        await adjustWalletBalance(tx.wallet_id, tx.amount, tx.type as 'income' | 'expense' | 'adjustment', 'add')
+        await adjustWalletBalance(db, tx.wallet_id, tx.amount, tx.type as 'income' | 'expense' | 'adjustment', 'add')
       }
       return tx
     },
@@ -115,7 +121,7 @@ export function useTransactionMutations(date: string) {
 
       let resolvedMethod = 'card'
       if (walletId) {
-        const cachedWallets = qc.getQueryData<Wallet[]>(['wallets']) || []
+        const cachedWallets = qc.getQueryData<Wallet[]>(QK.wallets(user?.id ?? '')) || []
         const wallet = cachedWallets.find(w => w.id === walletId)
         if (wallet) {
           if (wallet.type === 'cash') resolvedMethod = 'cash'
@@ -211,15 +217,15 @@ export function useTransactionMutations(date: string) {
         await writeTx('update', updated as Record<string, unknown>)
 
         if (existing.wallet_id) {
-          await adjustWalletBalance(existing.wallet_id, Number(existing.amount), existing.type as 'income' | 'expense' | 'adjustment', 'remove')
+          await adjustWalletBalance(db, existing.wallet_id, Number(existing.amount), existing.type as 'income' | 'expense' | 'adjustment', 'remove')
         }
         if (updated.wallet_id) {
-          await adjustWalletBalance(updated.wallet_id, Number(updated.amount), updated.type as 'income' | 'expense' | 'adjustment', 'add')
+          await adjustWalletBalance(db, updated.wallet_id, Number(updated.amount), updated.type as 'income' | 'expense' | 'adjustment', 'add')
         }
       }
     },
     onMutate: async ({ id, updates }) => {
-      await qc.cancelQueries({ queryKey: ['transactions'] })
+      await qc.cancelQueries({ queryKey: QK.transactionsAll() })
       await qc.cancelQueries({ queryKey: ['transactions_range'] })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
 
@@ -228,7 +234,7 @@ export function useTransactionMutations(date: string) {
         const newWalletId = refinedUpdates.wallet_id as string | null
         let resolvedMethod = 'card'
         if (newWalletId) {
-          const cachedWallets = qc.getQueryData<Wallet[]>(['wallets']) || []
+          const cachedWallets = qc.getQueryData<Wallet[]>(QK.wallets(user?.id ?? '')) || []
           const wallet = cachedWallets.find(w => w.id === newWalletId)
           if (wallet) {
             if (wallet.type === 'cash') resolvedMethod = 'cash'
@@ -240,7 +246,7 @@ export function useTransactionMutations(date: string) {
       }
 
       qc.setQueriesData<AnyItem[]>(
-        { queryKey: ['transactions'] },
+        { queryKey: QK.transactionsAll() },
         old => (old ?? []).map(t => t.id === id ? { ...t, ...refinedUpdates } : t)
       )
       qc.setQueriesData<AnyItem[]>(
@@ -262,11 +268,11 @@ export function useTransactionMutations(date: string) {
       await writeTx('delete', { id })
 
       if (tx && tx.wallet_id) {
-        await adjustWalletBalance(tx.wallet_id, Number(tx.amount), tx.type as 'income' | 'expense' | 'adjustment', 'remove')
+        await adjustWalletBalance(db, tx.wallet_id, Number(tx.amount), tx.type as 'income' | 'expense' | 'adjustment', 'remove')
       }
     },
     onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: ['transactions'] })
+      await qc.cancelQueries({ queryKey: QK.transactionsAll() })
       await qc.cancelQueries({ queryKey: ['transactions_range'] })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
 
@@ -277,7 +283,7 @@ export function useTransactionMutations(date: string) {
       })
 
       qc.setQueriesData<AnyItem[]>(
-        { queryKey: ['transactions'] },
+        { queryKey: QK.transactionsAll() },
         old => (old ?? []).filter(t => t.id !== id)
       )
       qc.setQueriesData<AnyItem[]>(

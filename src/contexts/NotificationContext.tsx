@@ -2,7 +2,7 @@ import React, { createContext, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './AuthContext'
 import { bgSync } from '../lib/localFirst'
 import type { Notification } from '../db/schema'
@@ -20,6 +20,7 @@ interface NotificationContextValue {
 export const NotificationContext = createContext<NotificationContextValue | null>(null)
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
+  const db = useDb()
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
@@ -94,7 +95,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user, queryClient])
+  }, [user, queryClient, db])
 
   const markAsRead = useMutation({
     mutationFn: async (id: string) => {

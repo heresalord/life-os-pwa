@@ -57,7 +57,7 @@ export function ShareModal({ isOpen, onClose, itemType, itemId, itemName }: Shar
           </h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
+            className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
           >
             <X size={16} />
           </button>
@@ -121,7 +121,7 @@ export function ShareModal({ isOpen, onClose, itemType, itemId, itemName }: Shar
               <div className="flex gap-2">
                 <button
                   onClick={handleCopy}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-border hover:border-text-secondary rounded-xl text-xs text-text transition-colors font-medium"
+                  className="flex-1 flex items-center justify-center gap-2 py-2 border border-border hover:border-text-secondary rounded-xl text-xs text-text transition-colors font-medium"
                 >
                   {copied ? (
                     <>

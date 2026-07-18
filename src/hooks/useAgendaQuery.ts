@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { AgendaBlock } from '../db/schema'
 
 export function useAgendaQuery(date: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['agenda_blocks', date, user?.id],
+    queryKey: QK.agenda(date, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -48,7 +50,7 @@ export function useAgendaQuery(date: string) {
             .eq('user_id', user!.id)
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('agenda_blocks', data as AgendaBlock[])
+            const reconciled = await reconcilePendingSync(db, 'agenda_blocks', data as AgendaBlock[])
             await db.agenda_blocks.bulkPut(reconciled)
 
             const localReconciled = reconciled.filter(b => b.date === date)
@@ -76,7 +78,7 @@ export function useAgendaQuery(date: string) {
               return a.start_time.localeCompare(b.start_time)
             })
 
-            queryClient.setQueryData(['agenda_blocks', date, user!.id], finalMerged)
+            queryClient.setQueryData(QK.agenda(date, user!.id), finalMerged)
           }
         })
       }

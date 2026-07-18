@@ -12,6 +12,7 @@ import { RichTextToolbar } from './RichTextToolbar'
 import { NoteLinkAutocomplete } from './NoteLinkAutocomplete'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { haptic } from '../../lib/haptic'
 
 function computeWordCount(text: string) {
   const t = text.trim()
@@ -81,6 +82,12 @@ export function NoteEditorModal({
   const [taskTitleVal, setTaskTitleVal] = useState('')
   const [taskDateOption, setTaskDateOption] = useState<'today' | 'note' | 'custom'>('today')
   const [customDateVal, setCustomDateVal] = useState(today)
+  const [hasSelection, setHasSelection] = useState(false)
+
+  const checkSelection = () => {
+    const ta = textareaRef.current
+    setHasSelection(!!ta && ta.selectionStart !== ta.selectionEnd)
+  }
 
   useEffect(() => {
     if (note && open) {
@@ -97,6 +104,7 @@ export function NoteEditorModal({
     if (!note) return
     const content = buildContent(b, t)
     if (title !== note.title || content !== note.content) {
+      haptic('success')
       updateNote.mutate({ id: note.id, updates: { title, content } })
     }
   }
@@ -109,6 +117,7 @@ export function NoteEditorModal({
   const addTag = () => {
     const val = tagInput.trim().toLowerCase().replace(/^#/, '')
     if (!val || tags.includes(val)) { setTagInput(''); return }
+    haptic('light')
     const next = [...tags, val]
     setTags(next)
     setTagInput('')
@@ -174,8 +183,8 @@ export function NoteEditorModal({
             />
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="flex bg-surface-2 rounded-lg p-0.5">
-                <button onClick={() => setMode('write')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${mode === 'write' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>Write</button>
-                <button onClick={() => setMode('preview')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${mode === 'preview' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>Preview</button>
+                <button onClick={() => setMode('write')} className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'write' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>Write</button>
+                <button onClick={() => setMode('preview')} className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'preview' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>Preview</button>
               </div>
               <button onClick={() => setFullscreen(!fullscreen)} className="text-text-muted hover:text-text hidden sm:block">
                 {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -196,7 +205,7 @@ export function NoteEditorModal({
                 onCreateTask={handleCreateTask}
               />
               {taskFeedback && (
-                <div className="absolute top-full right-3 mt-1.5 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="absolute top-full right-3 mt-2 z-10 flex items-center gap-2 px-2.5 py-2 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
                   <ListTodo size={12} className="text-accent flex-shrink-0" />
                   <span className="truncate max-w-[200px]">Added “{taskFeedback}” to Tasks</span>
                 </div>
@@ -214,6 +223,9 @@ export function NoteEditorModal({
                   value={body}
                   onChange={e => setBody(e.target.value)}
                   onBlur={e => handleSave(e.target.value)}
+                  onSelect={checkSelection}
+                  onMouseUp={checkSelection}
+                  onKeyUp={checkSelection}
                   placeholder="Start writing… Markdown supported. Type [[ to link a note."
                   className="flex-1 w-full bg-transparent p-6 text-text resize-none focus:outline-none font-body leading-relaxed"
                 />
@@ -250,7 +262,7 @@ export function NoteEditorModal({
               </span>
               <div className="w-px h-3 bg-border flex-shrink-0" />
               {/* Tags */}
-              <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
                 {tags.map(tag => (
                   <span key={tag} className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-full font-medium">
                     #{tag}
@@ -296,14 +308,14 @@ export function NoteEditorModal({
 
           <div className="space-y-4">
             {/* No selection info tip */}
-            {!textareaRef.current?.value.slice(textareaRef.current.selectionStart, textareaRef.current.selectionEnd) && (
+            {!hasSelection && (
               <div className="text-xs bg-accent/5 border border-accent/10 rounded-xl p-3 text-text-secondary leading-relaxed">
                 💡 <strong>Tip:</strong> Select any text in the editor before clicking the task icon to automatically use that text as the task title.
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-text-muted mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-text-muted mb-2 uppercase tracking-wider">
                 Task Title
               </label>
               <input
@@ -316,11 +328,11 @@ export function NoteEditorModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-text-muted mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-text-muted mb-2 uppercase tracking-wider">
                 Task Date
               </label>
               <div className="space-y-2">
-                <label className="flex items-center gap-2.5 p-2.5 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl cursor-pointer transition-colors text-xs font-medium text-text">
+                <label className="flex items-center gap-3 p-2.5 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl cursor-pointer transition-colors text-xs font-medium text-text">
                   <input
                     type="radio"
                     name="taskDateOption"
@@ -335,7 +347,7 @@ export function NoteEditorModal({
                 </label>
 
                 {note.date && note.date !== today && (
-                  <label className="flex items-center gap-2.5 p-2.5 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl cursor-pointer transition-colors text-xs font-medium text-text">
+                  <label className="flex items-center gap-3 p-2.5 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl cursor-pointer transition-colors text-xs font-medium text-text">
                     <input
                       type="radio"
                       name="taskDateOption"
@@ -351,7 +363,7 @@ export function NoteEditorModal({
                 )}
 
                 <div className="flex flex-col gap-2 p-2.5 bg-surface-2 border border-border rounded-xl">
-                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium text-text">
+                  <label className="flex items-center gap-3 cursor-pointer text-xs font-medium text-text">
                     <input
                       type="radio"
                       name="taskDateOption"
@@ -366,7 +378,7 @@ export function NoteEditorModal({
                       type="date"
                       value={customDateVal}
                       onChange={e => setCustomDateVal(e.target.value)}
-                      className="selectable mt-1 w-full bg-surface border border-border rounded-lg px-2.5 py-1.5 text-xs text-text focus:border-accent focus:outline-none"
+                      className="selectable mt-1 w-full bg-surface border border-border rounded-lg px-2.5 py-2 text-xs text-text focus:border-accent focus:outline-none"
                     />
                   )}
                 </div>

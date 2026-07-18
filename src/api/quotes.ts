@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type QuoteRow    = Database['public']['Tables']['quotes']['Row']
@@ -17,12 +17,12 @@ export const quotesApi = {
     return data ?? []
   },
   async create(payload: QuoteInsert): Promise<QuoteRow> {
-    const { data, error } = await db.from('quotes').insert([payload]).select().single()
+    const { data, error } = await supabase.from('quotes').insert([payload]).select().single()
     if (error) throw error
     return data
   },
   async update(id: string, payload: QuoteUpdate): Promise<QuoteRow> {
-    const { data, error } = await db.from('quotes').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('quotes').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   },

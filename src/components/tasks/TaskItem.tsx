@@ -10,13 +10,6 @@ import clsx from 'clsx'
 
 interface Subtask { id: string; title: string; completed: boolean }
 
-const PRIORITY_STYLES: Record<number, string> = {
-  1: 'text-danger bg-danger/10 border-danger/30',
-  2: 'text-warning bg-warning/10 border-warning/30',
-  3: 'text-info bg-info/10 border-info/30',
-  4: 'text-text-muted bg-surface-2 border-border',
-}
-
 interface TaskItemProps {
   task: Task
   onToggleComplete: (id: string, current: boolean) => void
@@ -28,12 +21,14 @@ interface TaskItemProps {
 }
 
 export function TaskItem({
-  task, onToggleComplete, onToggleSkip, onDelete, onEdit: _onEdit, onUpdateSubtasks, dragHandleProps
+  task, onToggleComplete, onToggleSkip, onDelete, onUpdateSubtasks, dragHandleProps
 }: TaskItemProps) {
-  const [swiped, setSwiped]           = useState(false)
+  const [dragX, setDragX] = useState(0)
+  const [dragging, setDragging] = useState(false)
   const [editSheetOpen, setEditSheetOpen] = useState(false)
-  const [justCompleted, setJustCompleted] = useState(false)
   const [expanded, setExpanded]       = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [fillCheckbox, setFillCheckbox] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -49,6 +44,7 @@ export function TaskItem({
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
+    setDragging(true)
     longPressTimer.current = setTimeout(() => {
       haptic('heavy')
       setEditSheetOpen(true)
@@ -56,22 +52,55 @@ export function TaskItem({
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current)
     if (!touchStartX.current) return
-    const diff = touchStartX.current - e.touches[0].clientX
-    if (diff > 50)  setSwiped(true)
-    if (diff < -50) setSwiped(false)
+    const diff = e.touches[0].clientX - touchStartX.current
+    if (Math.abs(diff) > 10 && longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+    // Allow dragging but resist after thresholds
+    if (diff > 120) {
+      setDragX(120 + (diff - 120) * 0.2)
+    } else if (diff < -120) {
+      setDragX(-120 + (diff + 120) * 0.2)
+    } else {
+      setDragX(diff)
+    }
   }
 
   const handleTouchEnd = () => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current)
+    setDragging(false)
     touchStartX.current = null
+
+    if (dragX < -60) {
+      haptic('medium')
+      onDelete(task.id)
+      setDragX(0)
+    } else if (dragX > 80) {
+      handleCheckClick()
+      setDragX(0)
+    } else {
+      setDragX(0)
+    }
   }
 
   const handleCheckClick = () => {
-    if (!task.completed) { haptic('success'); setJustCompleted(true); setTimeout(() => setJustCompleted(false), 600) }
-    else haptic('light')
-    onToggleComplete(task.id, task.completed)
+    if (!task.completed) {
+      haptic('success')
+      setIsAnimating(true)
+      setTimeout(() => {
+        setFillCheckbox(true)
+      }, 100)
+      setTimeout(() => {
+        onToggleComplete(task.id, task.completed)
+        setIsAnimating(false)
+        setFillCheckbox(false)
+      }, 300)
+    } else {
+      haptic('light')
+      onToggleComplete(task.id, task.completed)
+    }
   }
 
   const isPending  = !task.completed && !task.skipped
@@ -92,8 +121,27 @@ export function TaskItem({
     onUpdateSubtasks?.(task.id, updated)
   }
 
+  // Priority-based left border colour
+  const priorityBorder = {
+    1: 'border-l-[3px] border-red-500',
+    2: 'border-l-[3px] border-orange-400',
+    3: 'border-l-[3px] border-blue-400',
+  }[task.priority ?? 0] ?? ''
+
   return (
-    <div className={clsx('relative overflow-hidden rounded-xl bg-surface border border-border group', isOverdue && !task.completed && 'border-danger/30')}>
+    <div className={clsx(
+      'relative overflow-hidden rounded-xl bg-surface border border-border group shadow-[var(--shadow-card)]',
+      task.completed || task.skipped ? 'border-l-[3px] border-l-border opacity-75' : (priorityBorder || 'border-l-[3px] border-l-border'),
+      isOverdue && !task.completed && 'border-danger/30'
+    )}>
+      {/* Background slide right action: Complete Task */}
+      <div className="absolute inset-y-0 left-0 flex items-center justify-start bg-success/15 px-4 w-full">
+        <div className="flex items-center gap-2 text-success font-semibold text-xs">
+          <Check size={16} />
+          <span>Complete Task</span>
+        </div>
+      </div>
+
       {/* Swipe delete zone */}
       <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
         <button onClick={() => onDelete(task.id)} className="p-2 text-danger hover:bg-danger/10 rounded-full">
@@ -106,9 +154,12 @@ export function TaskItem({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        style={{
+          transform: `translateX(${dragging ? dragX : 0}px)`
+        }}
         className={clsx(
-          'relative flex items-center gap-2 p-3 bg-surface transition-transform duration-200 ease-out',
-          swiped ? '-translate-x-16' : 'translate-x-0'
+          'relative flex items-center gap-2 p-3 bg-surface hover:bg-surface-2',
+          !dragging && 'transition-transform duration-200 ease-out'
         )}
       >
         {/* Drag handle */}
@@ -120,41 +171,51 @@ export function TaskItem({
 
         {/* Checkbox */}
         <button onClick={handleCheckClick}
+          style={{ transition: 'transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1)' }}
           className={clsx(
-            'w-5 h-5 rounded flex items-center justify-center border flex-shrink-0 transition-all duration-200',
-            task.completed ? 'bg-success border-success text-bg' : 'border-border hover:border-text-muted text-transparent hover:text-text-muted',
-            justCompleted && 'scale-125'
+            'w-5 h-5 rounded flex items-center justify-center border flex-shrink-0 transition-all',
+            (task.completed || fillCheckbox) ? 'bg-success border-success text-bg' : 'border-border hover:border-text-muted text-transparent hover:text-text-muted',
+            isAnimating && 'scale-125'
           )}>
-          <Check size={14} strokeWidth={3} />
+          {(task.completed || fillCheckbox) && (
+            <svg viewBox="0 0 12 12" className="w-3 h-3">
+              <path
+                d="M2 6l3 3 5-5"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"
+                className="animate-dash"
+                style={{ strokeDasharray: 20, strokeDashoffset: 20 }}
+              />
+            </svg>
+          )}
         </button>
 
         {/* Content */}
-        <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+        <div className="flex flex-col min-w-0 flex-1 gap-1">
           <span onDoubleClick={isPending ? () => setEditSheetOpen(true) : undefined}
-            className={clsx('text-sm truncate select-none', task.completed || task.skipped ? 'text-text-muted line-through' : 'text-text')}>
+            className={clsx('text-sm truncate select-none transition-all duration-200', (task.completed || fillCheckbox || task.skipped) ? 'text-text-muted line-through opacity-60' : 'text-text')}>
             {task.title}
           </span>
 
           {/* Metadata row */}
           <div className="flex items-center gap-2 flex-wrap">
             {task.carried_from && (
-              <span className="text-[10px] text-text-muted flex items-center gap-0.5 select-none">
+              <span className="text-[10px] text-text-muted flex items-center gap-1 select-none">
                 <RotateCw size={9} /> Carried
               </span>
             )}
             {dueDateStr && (
-              <span className={clsx('text-[10px] flex items-center gap-0.5 select-none', isOverdue ? 'text-danger font-medium' : 'text-text-muted')}>
+              <span className={clsx('text-[10px] flex items-center gap-1 select-none', isOverdue ? 'text-danger font-medium' : 'text-text-muted')}>
                 <CalendarDays size={9} /> {dueDateStr}{isOverdue ? ' · Overdue' : ''}
               </span>
             )}
             {task.time_block_start && (
-              <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 select-none">
+              <span className="text-[10px] text-accent font-medium flex items-center gap-1 select-none">
                 <Clock size={9} /> {formatTime(task.time_block_start)}{task.time_block_end ? ` – ${formatTime(task.time_block_end)}` : ''}
               </span>
             )}
             {linkedProject && (
               <span
-                className="text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider flex items-center gap-0.5 select-none"
+                className="text-[9px] font-bold px-2 py-0.2 rounded border uppercase tracking-wider flex items-center gap-1 select-none"
                 style={{
                   borderColor: `${linkedProject.color}33`,
                   color: linkedProject.color || '#3b82f6',
@@ -169,13 +230,6 @@ export function TaskItem({
             )}
           </div>
         </div>
-
-        {/* Priority badge */}
-        {task.priority && isPending && (
-          <span className={clsx('text-[10px] font-semibold px-1.5 py-0.5 rounded border flex-shrink-0 select-none', PRIORITY_STYLES[task.priority] ?? PRIORITY_STYLES[4])}>
-            P{task.priority}
-          </span>
-        )}
 
         {/* Subtask expand toggle */}
         {hasSubtasks && isPending && (
@@ -226,9 +280,7 @@ export function TaskItem({
         </div>
       )}
 
-      {justCompleted && (
-        <div className="absolute inset-0 bg-success/10 rounded-xl pointer-events-none animate-ping-once" />
-      )}
+
 
       {/* Full Task Edit sheet */}
       <TaskEditSheet 

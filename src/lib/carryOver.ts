@@ -1,7 +1,7 @@
-import { db } from '../db'
+import type { LifeOSDatabase } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 
-export async function carryOverTasks(userId: string, fromDate: string, toDate: string) {
+export async function carryOverTasks(db: LifeOSDatabase, userId: string, fromDate: string, toDate: string) {
   const localTasks = await db.tasks
     .where('date').equals(fromDate)
     .filter(t => !t.completed && !t.skipped && t.user_id === userId)
@@ -35,7 +35,7 @@ export async function carryOverTasks(userId: string, fromDate: string, toDate: s
       created_at: new Date().toISOString()
     }
 
-    await db.tasks.add(newTask as Parameters<typeof db.tasks.add>[0])
+    await db.tasks.add(newTask as Parameters<LifeOSDatabase['tasks']['add']>[0])
     await enqueueSync('tasks', 'insert', newTask)
     carriedCount++
   }

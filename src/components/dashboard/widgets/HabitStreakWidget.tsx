@@ -66,7 +66,7 @@ export function HabitStreakWidget() {
               <div key={h.id} className="space-y-1.5 border-b border-border/20 last:border-0 pb-2 last:pb-0">
                 <div className="flex items-baseline justify-between text-xs">
                   <span className="text-text-secondary font-medium truncate max-w-[70%]">{h.name}</span>
-                  <span className="text-[10px] text-warning font-semibold flex items-center gap-0.5 flex-shrink-0">
+                  <span className="text-[10px] text-warning font-semibold flex items-center gap-1 flex-shrink-0">
                     <Flame size={10} className="fill-warning" />{h.habit_streak}d
                   </span>
                 </div>
@@ -85,7 +85,7 @@ export function HabitStreakWidget() {
                         type="button"
                         onClick={(e) => handleHabitToggle(e, h.id, dateStr, status)}
                         className={clsx(
-                          "flex flex-col items-center justify-center py-1.5 rounded-lg border text-[9px] font-bold transition-all aspect-square relative",
+                          "flex flex-col items-center justify-center py-2 rounded-lg border text-[9px] font-bold transition-all aspect-square relative",
                           status === 'check' && "bg-success/15 border-success/35 text-success",
                           status === 'fail'  && "bg-danger/15 border-danger/35 text-danger",
                           status === 'none'  && "bg-surface-2 border-border/80 text-text-muted hover:border-text-secondary hover:text-text",

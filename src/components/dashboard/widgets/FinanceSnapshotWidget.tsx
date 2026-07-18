@@ -48,7 +48,7 @@ export function FinanceSnapshotWidget() {
             <div className="flex justify-between items-baseline">
               <span className="text-xs text-text-muted">Net today</span>
               <span className={clsx(
-                "font-display font-semibold text-xl tracking-tight flex items-center gap-0.5",
+                "font-display font-semibold text-xl tracking-tight flex items-center gap-1",
                 net >= 0 ? "text-success" : "text-danger"
               )}>
                 {net >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}

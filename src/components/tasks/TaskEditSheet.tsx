@@ -103,7 +103,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
           </h3>
           <button 
             onClick={onClose} 
-            className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
+            className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
           >
             <X size={16} />
           </button>
@@ -113,7 +113,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
         <div className="space-y-4 text-left">
           {/* Title */}
           <div>
-            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1.5">Title</label>
+            <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Title</label>
             <input 
               type="text" 
               value={title} 
@@ -125,7 +125,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
 
           {/* Description */}
           <div>
-            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
               <AlignLeft size={12} /> Description
             </label>
             <textarea 
@@ -138,7 +138,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
 
           {/* Priority Options */}
           <div>
-            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
               <AlertCircle size={12} /> Priority
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -163,7 +163,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
           {/* Due date & Project */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
                 <Calendar size={12} /> Due Date
               </label>
               <input 
@@ -175,7 +175,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
                 <Folder size={12} /> Project
               </label>
               <select
@@ -195,7 +195,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
 
           {/* Time block start/end */}
           <div>
-            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
               <Clock size={12} /> Time Block
             </label>
             <div className="flex items-center gap-3">
@@ -217,7 +217,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
 
           {/* Tags */}
           <div>
-            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
               <Tag size={12} /> Tags
             </label>
             <input 
@@ -235,7 +235,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
           <button 
             type="button"
             onClick={() => setShareOpen(true)}
-            className="w-full py-2.5 bg-surface-2 border border-border text-text font-semibold rounded-xl text-xs hover:bg-surface-3 transition-colors flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 bg-surface-2 border border-border text-text font-semibold rounded-xl text-xs hover:bg-surface-3 transition-colors flex items-center justify-center gap-2"
           >
             <Share2 size={13} /> Share Task
           </button>

@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { Wallet, Budget, SavingsGoal, Debt } from '../db/schema'
 
 export function useWallets() {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery<Wallet[]>({
-    queryKey: ['wallets', user?.id],
+    queryKey: QK.wallets(user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -21,9 +23,9 @@ export function useWallets() {
             .eq('user_id', user!.id).order('created_at')
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('wallets', data as Wallet[])
+            const reconciled = await reconcilePendingSync(db, 'wallets', data as Wallet[])
             await db.wallets.bulkPut(reconciled)
-            queryClient.setQueryData(['wallets', user!.id], reconciled)
+            queryClient.setQueryData(QK.wallets(user!.id), reconciled)
           }
         })
       }
@@ -33,9 +35,10 @@ export function useWallets() {
 }
 
 export function useBudgets() {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery<Budget[]>({
-    queryKey: ['budgets', user?.id],
+    queryKey: QK.budgets(user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -47,9 +50,9 @@ export function useBudgets() {
             .eq('user_id', user!.id).order('created_at')
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('budgets', data as Budget[])
+            const reconciled = await reconcilePendingSync(db, 'budgets', data as Budget[])
             await db.budgets.bulkPut(reconciled)
-            queryClient.setQueryData(['budgets', user!.id], reconciled)
+            queryClient.setQueryData(QK.budgets(user!.id), reconciled)
           }
         })
       }
@@ -59,9 +62,10 @@ export function useBudgets() {
 }
 
 export function useSavingsGoals() {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery<SavingsGoal[]>({
-    queryKey: ['savings_goals', user?.id],
+    queryKey: QK.savingsGoals(user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -73,9 +77,9 @@ export function useSavingsGoals() {
             .eq('user_id', user!.id).order('created_at')
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('savings_goals', data as SavingsGoal[])
+            const reconciled = await reconcilePendingSync(db, 'savings_goals', data as SavingsGoal[])
             await db.savings_goals.bulkPut(reconciled)
-            queryClient.setQueryData(['savings_goals', user!.id], reconciled)
+            queryClient.setQueryData(QK.savingsGoals(user!.id), reconciled)
           }
         })
       }
@@ -85,9 +89,10 @@ export function useSavingsGoals() {
 }
 
 export function useDebts() {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery<Debt[]>({
-    queryKey: ['debts', user?.id],
+    queryKey: QK.debts(user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -99,9 +104,9 @@ export function useDebts() {
             .eq('user_id', user!.id).order('created_at')
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('debts', data as Debt[])
+            const reconciled = await reconcilePendingSync(db, 'debts', data as Debt[])
             await db.debts.bulkPut(reconciled)
-            queryClient.setQueryData(['debts', user!.id], reconciled)
+            queryClient.setQueryData(QK.debts(user!.id), reconciled)
           }
         })
       }

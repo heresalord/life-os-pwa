@@ -46,7 +46,7 @@ export function InboxWidget() {
                     day: 'numeric',
                   })
                 }
-              } catch {}
+              } catch { /* date formatting failed — formattedDate stays empty */ }
 
               return (
                 <div

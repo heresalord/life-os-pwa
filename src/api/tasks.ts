@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type TaskRow    = Database['public']['Tables']['tasks']['Row']
@@ -17,12 +17,12 @@ export const tasksApi = {
     return data
   },
   async create(payload: TaskInsert): Promise<TaskRow> {
-    const { data, error } = await db.from('tasks').insert([payload]).select().single()
+    const { data, error } = await supabase.from('tasks').insert([payload]).select().single()
     if (error) throw error
     return data
   },
   async update(id: string, payload: TaskUpdate): Promise<TaskRow> {
-    const { data, error } = await db.from('tasks').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('tasks').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   },

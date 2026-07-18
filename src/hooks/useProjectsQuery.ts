@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { Project } from '../db/schema'
 
 export function useProjectsQuery() {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['projects', user?.id],
+    queryKey: QK.projects(user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -22,9 +24,9 @@ export function useProjectsQuery() {
             .order('created_at')
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('projects', data as Project[])
+            const reconciled = await reconcilePendingSync(db, 'projects', data as Project[])
             await db.projects.bulkPut(reconciled)
-            queryClient.setQueryData(['projects', user.id], reconciled)
+            queryClient.setQueryData(QK.projects(user.id), reconciled)
           }
         })
       }

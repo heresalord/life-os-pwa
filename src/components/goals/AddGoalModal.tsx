@@ -237,7 +237,7 @@ export function AddGoalModal() {
                 Set a SMART goal to track your success
               </Dialog.Description>
             </div>
-            <Dialog.Close className="p-1.5 rounded-full hover:bg-surface-2 text-text-muted hover:text-text transition-colors">
+            <Dialog.Close className="p-2 rounded-full hover:bg-surface-2 text-text-muted hover:text-text transition-colors">
               <X size={16} />
             </Dialog.Close>
           </div>
@@ -247,7 +247,7 @@ export function AddGoalModal() {
             <div className="flex items-center gap-1 text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">
               <Sparkles size={11} className="text-accent" /> Custom Templates
             </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none snap-x -mx-5 px-5">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x -mx-5 px-5">
               {TEMPLATES.map((tpl, i) => {
                 const catDef = CATEGORIES.find(c => c.name === tpl.category)
                 const Icon = catDef?.icon || Activity
@@ -258,8 +258,8 @@ export function AddGoalModal() {
                     onClick={() => handleSelectTemplate(tpl)}
                     className="flex-shrink-0 w-36 snap-start bg-surface-2 border border-border/80 hover:border-accent/40 rounded-xl p-3 text-left transition-all duration-200 group"
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className={`p-1.5 rounded-lg border text-[10px] font-medium ${catDef?.color || ''}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`p-2 rounded-lg border text-[10px] font-medium ${catDef?.color || ''}`}>
                         <Icon size={12} />
                       </span>
                       <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted group-hover:text-accent transition-colors">
@@ -278,7 +278,7 @@ export function AddGoalModal() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Goal name */}
             <div>
-              <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Goal Name</label>
+              <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Goal Name</label>
               <input
                 autoFocus
                 type="text"
@@ -292,8 +292,8 @@ export function AddGoalModal() {
 
             {/* Tracker Type Selection */}
             <div>
-              <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Tracker Type</label>
-              <div className="grid grid-cols-4 gap-1.5">
+              <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Tracker Type</label>
+              <div className="grid grid-cols-4 gap-2">
                 {(['target', 'habit', 'average', 'project'] as TrackerType[]).map(t => (
                   <button
                     key={t}
@@ -320,8 +320,8 @@ export function AddGoalModal() {
 
             {/* Category Select Chips */}
             <div>
-              <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Category</label>
-              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+              <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Category</label>
+              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto pr-1">
                 {CATEGORIES.map(cat => {
                   const Icon = cat.icon
                   const isSelected = category === cat.name
@@ -330,7 +330,7 @@ export function AddGoalModal() {
                       key={cat.name}
                       type="button"
                       onClick={() => setCategory(cat.name)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs border transition-colors ${
                         isSelected
                           ? 'border-accent text-accent bg-accent/10 font-medium'
                           : 'border-border text-text-secondary hover:text-text hover:bg-surface-2'
@@ -346,7 +346,7 @@ export function AddGoalModal() {
 
             {/* Habit Schedule Config */}
             {trackerType === 'habit' && (
-              <div className="bg-surface-2 border border-border/80 rounded-2xl p-3.5 space-y-3">
+              <div className="bg-surface-2 border border-border/80 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-text">Frequency</span>
                   <div className="flex border border-border rounded-lg overflow-hidden p-0.5 bg-surface">
@@ -366,7 +366,7 @@ export function AddGoalModal() {
                 </div>
 
                 <div>
-                  <span className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Scheduled Days (Optional)</span>
+                  <span className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">Scheduled Days (Optional)</span>
                   <div className="flex justify-between">
                     {DAYS_OF_WEEK.map(d => {
                       const active = habitDays.includes(d.value)
@@ -386,7 +386,7 @@ export function AddGoalModal() {
                       )
                     })}
                   </div>
-                  <p className="text-[10px] text-text-muted mt-1.5">
+                  <p className="text-[10px] text-text-muted mt-2">
                     If no days are selected, habit is active every day.
                   </p>
                 </div>
@@ -397,7 +397,7 @@ export function AddGoalModal() {
             {trackerType !== 'habit' && trackerType !== 'project' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
+                  <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">
                     {trackerType === 'average' ? 'Target Average' : 'Target Goal'}
                   </label>
                   <input
@@ -412,7 +412,7 @@ export function AddGoalModal() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Measure Unit</label>
+                  <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Measure Unit</label>
                   <div className="relative">
                     <select
                       value={measurementType}
@@ -433,7 +433,7 @@ export function AddGoalModal() {
             {/* Initial Milestones Input for Project Tracker */}
             {trackerType === 'project' && (
               <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Initial Milestones (Comma separated)</label>
+                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Initial Milestones (Comma separated)</label>
                 <textarea
                   placeholder="e.g. Draft proposal, Setup repository, Final code push"
                   rows={2}
@@ -446,7 +446,7 @@ export function AddGoalModal() {
 
             {/* Link to Project */}
             <div>
-              <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
+              <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">
                 Link to Project (optional)
               </label>
               <div className="relative">
@@ -469,7 +469,7 @@ export function AddGoalModal() {
             {/* Date / Deadline Selector (SMART) */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Start Date</label>
+                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Start Date</label>
                 <input
                   type="date"
                   value={startDate}
@@ -478,7 +478,7 @@ export function AddGoalModal() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Deadline (SMART)</label>
+                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Deadline (SMART)</label>
                 <input
                   type="date"
                   value={endDate}

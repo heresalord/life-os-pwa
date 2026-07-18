@@ -78,7 +78,7 @@ export function DailyLogQuickWidget() {
               <label className="block text-[10px] text-text-muted uppercase tracking-wider font-semibold pl-0.5">
                 How is your mood?
               </label>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-5 gap-2">
                 {MOODS.map(m => {
                   const isSelected = record?.mood === m.value
                   return (

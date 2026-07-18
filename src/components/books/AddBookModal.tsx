@@ -132,7 +132,7 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
 
             {/* Open Library search */}
             <div className="relative">
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Search Open Library</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Search Open Library</label>
               <div className="relative">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
@@ -189,12 +189,12 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
 
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Pages</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Pages</label>
                 <input type="number" min="1" value={pages} onChange={e => setPages(e.target.value)} placeholder="Optional"
                   className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text focus:border-accent focus:outline-none" />
               </div>
               <div className="flex-[2]">
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Status</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Status</label>
                 <select value={status} onChange={e => setStatus(e.target.value as BookStatus)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text focus:border-accent focus:outline-none appearance-none">
                   <option value="to-read">To Read</option>
@@ -220,7 +220,7 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
                       className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none" />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Source</label>
+                    <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Source</label>
                     <select value={source} onChange={e => setSource(e.target.value as any)}
                       className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none appearance-none">
                       <option value="">Select source</option>

@@ -12,7 +12,7 @@ export function YearProgressBar() {
 
   return (
     <div className="mb-2">
-      <div className="flex justify-between text-xs text-text-muted mb-1.5">
+      <div className="flex justify-between text-xs text-text-muted mb-2">
         <div className="flex items-center gap-3">
           <span className="font-medium text-text">{year}</span>
           <span>Day {day}</span>

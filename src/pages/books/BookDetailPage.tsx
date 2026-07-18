@@ -20,7 +20,7 @@ const SOURCE_LABELS: Record<'physical' | 'ebook' | 'audiobook' | 'library', { la
 function StarRating({ value, size = 16 }: { value: number | null; size?: number }) {
   if (!value) return null
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map(n => (
         <Star key={n} size={size}
           className={n <= value ? 'text-warning fill-warning' : 'text-border'}
@@ -128,7 +128,7 @@ export function BookDetailPage() {
       </button>
 
       {/* ── Hero — always centered ──────────────────────────────────────── */}
-      <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm flex flex-col items-center text-center gap-3">
+      <div className="bg-surface border border-border rounded-2xl p-6 shadow-[var(--shadow-card)] flex flex-col items-center text-center gap-3">
         <div className="w-28 h-40 rounded-xl overflow-hidden bg-surface-2 border border-border flex items-center justify-center flex-shrink-0 shadow-md">
           {book.cover_url
             ? <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
@@ -145,7 +145,7 @@ export function BookDetailPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap justify-center gap-1.5 items-center">
+        <div className="flex flex-wrap justify-center gap-2 items-center">
           <span className={clsx('text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border', statusColor)}>
             {statusLabel}
           </span>
@@ -183,7 +183,7 @@ export function BookDetailPage() {
               haptic('light')
               setShowLogModal(true)
             }}
-            className="mt-1 px-5 py-2.5 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors flex items-center gap-1.5 shadow-sm"
+            className="mt-1 px-5 py-2.5 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors flex items-center gap-2 shadow-sm"
           >
             <BookOpen size={14} /> Update Progress
           </button>
@@ -198,7 +198,7 @@ export function BookDetailPage() {
 
           {/* Progress */}
           {book.total_pages ? (
-            <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm space-y-3">
+            <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)] space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Progress</h3>
                 <span className="text-xs font-bold text-text">{progressPct}%</span>
@@ -217,7 +217,7 @@ export function BookDetailPage() {
             </div>
           ) : (
             book.status === 'reading' && (
-              <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm">
+              <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)]">
                 <p className="text-xs text-text-muted italic text-center">
                   Add total pages to track progress.
                 </p>
@@ -227,8 +227,8 @@ export function BookDetailPage() {
 
           {/* Reflection */}
           {book.status === 'finished' && book.reflection && (
-            <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+            <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)] space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
                 <Award size={14} className="text-success" /> Finish Reflection
               </h3>
               <div className="space-y-3.5 mt-2">
@@ -249,7 +249,7 @@ export function BookDetailPage() {
 
           {/* Abandon reason */}
           {book.status === 'abandoned' && book.abandon_reason && (
-            <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm">
+            <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)]">
               <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Reason for Abandoning</h3>
               <p className="text-sm text-text italic">"{book.abandon_reason}"</p>
             </div>
@@ -260,7 +260,7 @@ export function BookDetailPage() {
         <div className="space-y-5">
 
           {/* Details */}
-          <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm space-y-3.5 text-xs">
+          <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)] space-y-3.5 text-xs">
             <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Details</h3>
             <div className="space-y-2">
               {[
@@ -279,8 +279,8 @@ export function BookDetailPage() {
           </div>
 
           {/* Quotes */}
-          <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+          <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)] space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
               <QuoteIcon size={14} /> Quotes
             </h3>
             <form onSubmit={handleAddQuote} className="space-y-2">
@@ -297,11 +297,11 @@ export function BookDetailPage() {
                   value={quotePage}
                   onChange={e => setQuotePage(e.target.value)}
                   placeholder="Page #"
-                  className="selectable w-20 bg-surface-2 border border-border rounded-xl px-2.5 py-1.5 text-xs text-text placeholder-text-muted focus:border-accent focus:outline-none"
+                  className="selectable w-20 bg-surface-2 border border-border rounded-xl px-2.5 py-2 text-xs text-text placeholder-text-muted focus:border-accent focus:outline-none"
                 />
                 <button type="submit"
                   disabled={!quoteText.trim() || addQuote.isPending}
-                  className="flex-1 py-1.5 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-40">
+                  className="flex-1 py-2 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-40">
                   Save Quote
                 </button>
               </div>
@@ -318,7 +318,7 @@ export function BookDetailPage() {
               {quotes.map(q => (
                 <div key={q.id} className="group/quote relative bg-surface-2 border border-border p-3 rounded-xl">
                   <p className="text-xs text-text leading-relaxed italic">"{q.text}"</p>
-                  {q.page && <p className="text-[10px] text-text-muted mt-1.5">— p. {q.page}</p>}
+                  {q.page && <p className="text-[10px] text-text-muted mt-2">— p. {q.page}</p>}
                   <button
                     onClick={() => { haptic('light'); deleteQuote.mutate(q.id) }}
                     className="absolute top-2 right-2 p-1 text-text-muted opacity-0 group-hover/quote:opacity-100 focus:opacity-100 hover:text-danger transition-all"
@@ -349,7 +349,7 @@ export function BookDetailPage() {
 
             <form onSubmit={handleLogSession} className="space-y-4">
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">
                   Current Page
                 </label>
                 <input
@@ -363,7 +363,7 @@ export function BookDetailPage() {
                   className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text text-lg font-semibold focus:border-accent focus:outline-none"
                 />
                 {book.total_pages ? (
-                  <p className="text-[11px] text-text-muted mt-1.5 text-right">
+                  <p className="text-[11px] text-text-muted mt-2 text-right">
                     of {book.total_pages} total pages
                   </p>
                 ) : null}

@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { DbProvider } from '../../db/DbContext'
 
 export function AuthGuard() {
   const { user, profile, loading } = useAuth()
@@ -33,5 +34,9 @@ export function AuthGuard() {
     return <Navigate to="/" replace />
   }
 
-  return <Outlet />
+  return (
+    <DbProvider userId={user.id}>
+      <Outlet />
+    </DbProvider>
+  )
 }

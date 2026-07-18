@@ -1,4 +1,4 @@
-import { db } from '../db'
+import type { LifeOSDatabase } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 import { supabase as supa } from './supabase'
 import type { RecurringTask } from '../db'
@@ -80,7 +80,7 @@ export function shouldRunOn(template: RecurringTask, dateStr: string): boolean {
   }
 }
 
-export async function seedRecurringTasks(userId: string, date: string) {
+export async function seedRecurringTasks(db: LifeOSDatabase, userId: string, date: string) {
   // Only seed once per day per user per session
   const key = `${SEEDED_KEY}-${userId}-${date}`
   if (sessionStorage.getItem(key)) return
@@ -123,7 +123,7 @@ export async function seedRecurringTasks(userId: string, date: string) {
       created_at: new Date().toISOString(),
     }
 
-    await db.tasks.add(task as Parameters<typeof db.tasks.add>[0])
+    await db.tasks.add(task as Parameters<LifeOSDatabase['tasks']['add']>[0])
     if (navigator.onLine) {
       const { error } = await sbAny.from('tasks').insert([task])
       if (error) await enqueueSync('tasks', 'insert', task)

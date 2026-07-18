@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
@@ -19,6 +19,7 @@ interface Result {
 }
 
 function useAllData() {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
     queryKey: ['search_corpus', user?.id],
@@ -183,7 +184,7 @@ export function SearchPage() {
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         {MODULES.map(m => (
           <button key={m.value} onClick={() => setModule(m.value)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+            className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-medium border transition-colors ${
               module === m.value
                 ? 'bg-accent/15 border-accent/40 text-accent'
                 : 'bg-surface-2 border-border text-text-muted hover:text-text'

@@ -1,14 +1,13 @@
 import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
-  CalendarDays, Inbox, FileText, Search, Clock, Heart,
-  Briefcase, MoreHorizontal,
+  LayoutDashboard, Search, Clock, MoreHorizontal,
 } from 'lucide-react'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { displayDate } from '../../lib/dateUtils'
+import { hapticLight } from '../../lib/haptics'
 import { InboxFAB } from '../inbox/InboxFAB'
 import { InstallBanner } from './InstallBanner'
 import { DesktopSidebar } from './DesktopSidebar'
@@ -20,20 +19,20 @@ import { useTranslation } from '../../i18n'
 import { ErrorBoundary } from '../ErrorBoundary'
 import clsx from 'clsx'
 
-export const ALL_NAV_OPTIONS = [
-  { key: 'day',      to: '/day',      icon: Heart,        label: 'Daily Log' },
-  { key: 'tasks',    to: '/tasks',    icon: CheckSquare,  label: 'Tasks'     },
-  { key: 'finance',  to: '/finance',  icon: DollarSign,   label: 'Finance'   },
-  { key: 'goals',    to: '/goals',    icon: Target,       label: 'Goals'     },
-  { key: 'projects', to: '/projects', icon: Briefcase,    label: 'Projects'  },
-  { key: 'books',    to: '/books',    icon: BookOpen,     label: 'Books'     },
-  { key: 'agenda',   to: '/agenda',   icon: CalendarDays, label: 'Agenda'    },
-  { key: 'inbox',    to: '/inbox',    icon: Inbox,        label: 'Inbox'     },
-  { key: 'notes',    to: '/notes',    icon: FileText,     label: 'Notes'     },
-  { key: 'search',   to: '/search',   icon: Search,       label: 'Search'    },
-]
+import { ALL_NAV_OPTIONS } from '../../lib/constants'
 
 const HOME_NAV = { key: 'home', to: '/', icon: LayoutDashboard, label: 'Home' }
+
+/**
+ * Route order used to determine slide direction.
+ * Lower index = further left. Navigating to a higher index = slide from right.
+ */
+const ROUTE_ORDER = ['/', '/day', '/tasks', '/finance', '/goals', '/projects', '/books', '/agenda', '/inbox', '/notes', '/search', '/more', '/profile', '/settings']
+
+function getRouteIndex(pathname: string): number {
+  const idx = ROUTE_ORDER.indexOf(pathname)
+  return idx === -1 ? 999 : idx
+}
 
 interface AppShellProps { children: React.ReactNode }
 
@@ -43,7 +42,11 @@ export function AppShell({ children }: AppShellProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
-  const [animKey, setAnimKey] = React.useState(location.pathname)
+
+  // Track previous pathname to determine slide direction
+  const prevPathnameRef = React.useRef(location.pathname)
+  const [pageKey, setPageKey] = React.useState(location.pathname)
+  const [slideClass, setSlideClass] = React.useState('page-enter')
 
   useNavSync()
   useWidgetSync()
@@ -56,7 +59,25 @@ export function AppShell({ children }: AppShellProps) {
   ]
 
   React.useEffect(() => {
-    setAnimKey(location.pathname)
+    const prev = prevPathnameRef.current
+    const next = location.pathname
+
+    if (prev !== next) {
+      const prevIdx = getRouteIndex(prev)
+      const nextIdx = getRouteIndex(next)
+
+      // On mobile, use directional slides. Desktop always fades (via @media in CSS).
+      if (nextIdx > prevIdx) {
+        setSlideClass('page-slide-right')
+      } else if (nextIdx < prevIdx) {
+        setSlideClass('page-slide-left')
+      } else {
+        setSlideClass('page-enter')
+      }
+
+      setPageKey(next)
+      prevPathnameRef.current = next
+    }
   }, [location.pathname])
 
   const today = new Date().toLocaleDateString('en-CA', { timeZone: timezone })
@@ -100,7 +121,7 @@ export function AppShell({ children }: AppShellProps) {
             </div>
 
             {/* Right: actions */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3">
               <SyncStatusDot />
 
               <ErrorBoundary inline>
@@ -141,7 +162,7 @@ export function AppShell({ children }: AppShellProps) {
         {/* Time-travel banner */}
         {isTimeTravel && (
           <div className="bg-timetravel/15 border-b border-timetravel/30 px-4 py-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs text-timetravel font-medium">
+            <span className="flex items-center gap-2 text-xs text-timetravel font-medium">
               <Clock size={14} /> {t('common.viewing', 'Viewing')} {displayDate(selectedDate, 'MMMM d, yyyy')}
             </span>
             <button
@@ -158,7 +179,7 @@ export function AppShell({ children }: AppShellProps) {
           'max-w-2xl mx-auto',
           'md:max-w-none md:mx-0 md:pb-6 md:px-6 md:py-6',
         )}>
-          <div key={animKey} className="page-enter">
+          <div key={pageKey} className={slideClass}>
             {children}
           </div>
         </main>
@@ -181,10 +202,14 @@ export function AppShell({ children }: AppShellProps) {
               key={key}
               to={to}
               end={to === '/'}
+              onClick={() => void hapticLight()}
               className={({ isActive }) =>
                 clsx(
-                  'flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all',
-                  isActive ? 'text-accent' : 'text-text-muted hover:text-text-secondary'
+                  'flex flex-col items-center gap-1 py-1 transition-all',
+                  /* 6.6: active tab gets pill background */
+                  isActive
+                    ? 'nav-pill-active text-accent'
+                    : 'px-3 text-text-muted hover:text-text-secondary'
                 )
               }
             >

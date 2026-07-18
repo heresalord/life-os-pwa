@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 import { bgSync, reconcilePendingSync } from '../lib/localFirst'
 import { queryClient } from '../lib/queryClient'
+import { QK } from '../lib/queryKeys'
 import type { Note } from '../db/schema'
 
 export function useNotesQuery(date?: string) {
+  const db = useDb()
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['notes', date, user?.id],
+    queryKey: QK.notes(date, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
@@ -29,9 +31,9 @@ export function useNotesQuery(date?: string) {
           const { data, error } = await q
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync('notes', data as Note[])
+            const reconciled = await reconcilePendingSync(db, 'notes', data as Note[])
             await db.notes.bulkPut(reconciled)
-            queryClient.setQueryData(['notes', date, user!.id], reconciled)
+            queryClient.setQueryData(QK.notes(date, user!.id), reconciled)
           }
         })
       }

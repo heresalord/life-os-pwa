@@ -25,7 +25,7 @@ export function InstallBanner() {
             </div>
             <button
               onClick={() => setShowIOSSteps(true)}
-              className="px-3 py-1.5 bg-accent text-bg text-xs font-medium rounded-lg hover:bg-accent-dim transition-colors"
+              className="px-3 py-2 bg-accent text-bg text-xs font-medium rounded-lg hover:bg-accent-dim transition-colors"
             >
               How
             </button>
@@ -95,7 +95,7 @@ export function InstallBanner() {
         </div>
         <button
           onClick={triggerInstall}
-          className="px-3 py-1.5 bg-accent text-bg text-xs font-medium rounded-lg hover:bg-accent-dim transition-colors flex-shrink-0"
+          className="px-3 py-2 bg-accent text-bg text-xs font-medium rounded-lg hover:bg-accent-dim transition-colors flex-shrink-0"
         >
           Install
         </button>

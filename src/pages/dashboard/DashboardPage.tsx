@@ -9,11 +9,14 @@ import {
   GripVertical,
   X,
 } from 'lucide-react'
-// react-grid-layout v2 moved Responsive + WidthProvider to the ./legacy sub-path
+import * as Dialog from '@radix-ui/react-dialog'
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { useAuth } from '../../hooks/useAuth'
 import { useUserSettings } from '../../hooks/useUserSettings'
+import { useTasksQuery } from '../../hooks/useTasksQuery'
+import { useAppStore } from '../../store/useAppStore'
+import { getUserLocalDate } from '../../lib/dateUtils'
 import { haptic } from '../../lib/haptic'
 import { YearProgressWidget } from '../../components/dashboard/widgets/YearProgressWidget'
 import { TasksTodayWidget } from '../../components/dashboard/widgets/TasksTodayWidget'
@@ -173,6 +176,18 @@ export function DashboardPage() {
   const greeting = t(greetingKey)
   const { data: settings, isLoading: settingsLoading, upsert } = useUserSettings()
 
+  const { timezone } = useAppStore()
+  const today = getUserLocalDate(timezone)
+  const { data: tasks = [] } = useTasksQuery(today)
+  const completedTasksToday = tasks.filter(t => t.completed).length
+  const totalTasksToday     = tasks.length
+
+  const taskText = completedTasksToday === totalTasksToday && totalTasksToday > 0
+    ? 'All tasks done today 🎉'
+    : totalTasksToday > 0
+      ? `${completedTasksToday} of ${totalTasksToday} tasks done`
+      : 'No tasks for today'
+
   const [widgetPrefs, setWidgetPrefs] = useState<DashboardWidgetPref[]>([])
   const [isEditing,   setIsEditing]   = useState(false)
   const [isMobile,    setIsMobile]    = useState(false)
@@ -186,8 +201,10 @@ export function DashboardPage() {
     if (settingsLoading) return
     const saved = settings?.dashboard_widgets as DashboardWidgetPref[] | null | undefined
     if (Array.isArray(saved) && saved.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWidgetPrefs(mergeWithDefaults(saved))
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWidgetPrefs(DEFAULT_WIDGET_PREFS)
     }
     requestAnimationFrame(() => { layoutReadyRef.current = true })
@@ -219,7 +236,7 @@ export function DashboardPage() {
   }, [upsert])
 
   // Layout is readonly in v2 types; _layouts is the per-breakpoint map (unused)
-  const handleLayoutChange = useCallback((currentLayout: readonly { i: string; x: number; y: number; w: number; h: number }[], _layouts: any) => {
+  const handleLayoutChange = useCallback((currentLayout: readonly { i: string; x: number; y: number; w: number; h: number }[]) => {
     if (!layoutReadyRef.current) return
     setWidgetPrefs(prev => {
       const updated = prev.map(pref => {
@@ -282,8 +299,9 @@ export function DashboardPage() {
   const mobileLongPress = useLongPress(handleLongPress)
 
   const visibleWidgets = [...widgetPrefs].filter(w => w.visible).sort((a, b) => a.order - b.order)
+  const gridWidgets    = visibleWidgets.filter(w => w.id !== 'year_progress')
   const hiddenWidgets  = widgetPrefs.filter(w => !w.visible)
-  const desktopLayouts = visibleWidgets.map(w => ({
+  const desktopLayouts = gridWidgets.map(w => ({
     i:    w.id,
     x:    w.x,
     y:    w.y,
@@ -308,42 +326,28 @@ export function DashboardPage() {
         }
       `}</style>
 
-      {/* Header */}
-      <header className="flex items-center justify-between gap-3 pt-1">
+      {/* Hero Header */}
+      <header className="flex items-end justify-between gap-3 pt-1">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-text-secondary text-sm mb-0.5">
-            {icon}<span>{greeting}</span>
-          </div>
-          <h2 className="text-xl font-display text-text truncate">{profile?.display_name ?? 'Welcome'}</h2>
+          <p className="text-sm text-text-secondary font-body flex items-center gap-1.5">
+            {icon} {greeting}
+          </p>
+          <h1 className="font-display text-3xl font-bold text-text tracking-tight mt-0.5">
+            {profile?.display_name ?? 'You'}
+          </h1>
+          <p className="text-xs text-text-muted mt-1">{taskText}</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {isEditing ? (
             <>
               {hiddenWidgets.length > 0 && (
-                <div className="relative flex-shrink-0" ref={addMenuRef}>
-                  <button
-                    onClick={() => setShowAddMenu(v => !v)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-accent/10 border border-accent/20 text-accent text-xs font-semibold rounded-xl hover:bg-accent/20 transition-all shadow-sm"
-                  >
-                    <Plus size={14} /> Add Widget
-                  </button>
-                  {showAddMenu && (
-                    <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                      {hiddenWidgets.map(w => {
-                        const meta = WIDGET_METADATA.find(m => m.id === w.id)
-                        return (
-                          <button key={w.id} onClick={() => handleAddWidget(w.id)}
-                            className="w-full text-left px-4 py-2.5 text-xs text-text hover:bg-surface-2 transition-colors font-medium flex items-center gap-2"
-                          >
-                            <Plus size={11} className="text-accent flex-shrink-0" />
-                            {meta?.label ?? w.id}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setShowAddMenu(true)}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-accent/10 border border-accent/20 text-accent text-xs font-semibold rounded-xl hover:bg-accent/20 transition-all shadow-sm"
+                >
+                  <Plus size={14} /> Add Widget
+                </button>
               )}
               <button
                 onClick={handleResetDefault}
@@ -370,6 +374,11 @@ export function DashboardPage() {
         </div>
       </header>
 
+      {/* Year Progress — always anchored at top */}
+      <div className="mb-4">
+        <YearProgressWidget />
+      </div>
+
       {/* Grid */}
       {settingsLoading || widgetPrefs.length === 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -381,7 +390,7 @@ export function DashboardPage() {
             <Droppable droppableId="mobile-widgets">
               {(provided) => (
                 <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-4">
-                  {visibleWidgets.map((pref, index) => {
+                  {gridWidgets.map((pref, index) => {
                     const Component = WIDGET_COMPONENTS[pref.id]
                     if (!Component) return null
                     return (
@@ -395,13 +404,13 @@ export function DashboardPage() {
                             <div className="absolute top-2.5 right-2.5 flex items-center gap-2 z-50">
                               <div
                                 {...drag.dragHandleProps}
-                                className="p-1.5 bg-surface-2 border border-border text-text-muted hover:text-text rounded-lg cursor-grab active:cursor-grabbing"
+                                className="p-2 bg-surface-2 border border-border text-text-muted hover:text-text rounded-lg cursor-grab active:cursor-grabbing"
                               >
                                 <GripVertical size={14} />
                               </div>
                               <button
                                 onClick={() => handleRemoveWidget(pref.id)}
-                                className="p-1.5 bg-surface-2 border border-border text-danger hover:bg-danger/10 rounded-lg transition-colors"
+                                className="p-2 bg-surface-2 border border-border text-danger hover:bg-danger/10 rounded-lg transition-colors"
                               >
                                 <X size={14} />
                               </button>
@@ -421,7 +430,7 @@ export function DashboardPage() {
           </DragDropContext>
         ) : (
           <div className="flex flex-col gap-4">
-            {visibleWidgets.map(pref => {
+            {gridWidgets.map(pref => {
               const Component = WIDGET_COMPONENTS[pref.id]
               if (!Component) return null
               return (
@@ -453,7 +462,7 @@ export function DashboardPage() {
             onLayoutChange={handleLayoutChange}
             className="layout"
           >
-            {visibleWidgets.map(pref => {
+            {gridWidgets.map(pref => {
               const Component = WIDGET_COMPONENTS[pref.id]
               if (!Component) return null
               return (
@@ -465,13 +474,13 @@ export function DashboardPage() {
                   {isEditing && (
                     <>
                       <div className="absolute inset-0 bg-bg/5 cursor-move z-40 rounded-2xl" />
-                      <div className="absolute top-2 right-2 flex items-center gap-1.5 z-50 animate-in fade-in duration-150">
-                        <div className="widget-drag-handle p-1.5 bg-surface border border-border text-text-muted hover:text-text rounded-lg cursor-grab active:cursor-grabbing shadow-sm pointer-events-auto">
+                      <div className="absolute top-2 right-2 flex items-center gap-2 z-50 animate-in fade-in duration-150">
+                        <div className="widget-drag-handle p-2 bg-surface border border-border text-text-muted hover:text-text rounded-lg cursor-grab active:cursor-grabbing shadow-sm pointer-events-auto">
                           <GripVertical size={13} />
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleRemoveWidget(pref.id) }}
-                          className="p-1.5 bg-surface border border-border text-danger hover:bg-danger/10 rounded-lg shadow-sm pointer-events-auto transition-colors"
+                          className="p-2 bg-surface border border-border text-danger hover:bg-danger/10 rounded-lg shadow-sm pointer-events-auto transition-colors"
                           title="Remove widget"
                         >
                           <X size={13} />
@@ -485,6 +494,49 @@ export function DashboardPage() {
           </ResponsiveGridLayout>
         </div>
       )}
+
+      {/* ── Bottom sheet picker for widgets ── */}
+      <Dialog.Root open={showAddMenu} onOpenChange={setShowAddMenu}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/85 backdrop-blur-sm animate-in fade-in duration-200" />
+          <Dialog.Content
+            className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-3xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-3xl sm:border animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
+            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
+            <div className="flex items-center justify-between mb-4">
+              <Dialog.Title className="text-base font-semibold text-text">Add Widget</Dialog.Title>
+              <Dialog.Close className="text-text-muted hover:text-text">
+                <X size={18} />
+              </Dialog.Close>
+            </div>
+            
+            {hiddenWidgets.length === 0 ? (
+              <p className="text-xs text-text-muted italic text-center py-6">
+                All widgets are already added to your dashboard.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[60dvh] overflow-y-auto pr-1">
+                {hiddenWidgets.map(w => {
+                  const meta = WIDGET_METADATA.find(m => m.id === w.id)
+                  return (
+                    <button
+                      key={w.id}
+                      onClick={() => handleAddWidget(w.id)}
+                      className="w-full text-left p-4 bg-surface-2 hover:bg-surface border border-border rounded-2xl transition-all font-medium flex items-center justify-between text-sm group"
+                    >
+                      <span className="text-text-secondary group-hover:text-text">
+                        {meta?.label ?? w.id}
+                      </span>
+                      <Plus size={15} className="text-accent" />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   )
 }

@@ -53,7 +53,7 @@ export function SignUpPage() {
 
       <form onSubmit={handleSignUp} className="space-y-4">
         <div>
-          <label className="block text-sm text-text-secondary mb-1.5">Display Name</label>
+          <label className="block text-sm text-text-secondary mb-2">Display Name</label>
           <input
             id="signup-name"
             type="text"
@@ -66,7 +66,7 @@ export function SignUpPage() {
           />
         </div>
         <div>
-          <label className="block text-sm text-text-secondary mb-1.5">Email</label>
+          <label className="block text-sm text-text-secondary mb-2">Email</label>
           <input
             id="signup-email"
             type="email"
@@ -78,7 +78,7 @@ export function SignUpPage() {
           />
         </div>
         <div>
-          <label className="block text-sm text-text-secondary mb-1.5">Password</label>
+          <label className="block text-sm text-text-secondary mb-2">Password</label>
           <div className="relative">
             <input
               id="signup-password"

@@ -90,7 +90,7 @@ function AddAccountSheet({ currency: defaultCurrency, onClose }: { currency: str
       </div>
       {/* Currency selector */}
       <div>
-        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Currency</label>
+        <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Currency</label>
         <select
           value={walletCurrency}
           onChange={e => setWalletCurrency(e.target.value)}
@@ -102,7 +102,7 @@ function AddAccountSheet({ currency: defaultCurrency, onClose }: { currency: str
         </select>
       </div>
       <div>
-        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Opening Balance ({walletCurrency})</label>
+        <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Opening Balance ({walletCurrency})</label>
         <input type="number" step="0.01" value={balance} onChange={e => setBalance(e.target.value)}
           className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent outline-none" />
       </div>
@@ -195,7 +195,7 @@ function EditAccountSheet({
         </div>
       </div>
       <div>
-        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Balance ({wallet.currency || currency})</label>
+        <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Balance ({wallet.currency || currency})</label>
         <input type="number" step="0.01" value={balance} onChange={e => setBalance(e.target.value)}
           className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent outline-none" />
         <p className="text-[10px] text-text-muted mt-1 leading-normal">
@@ -260,7 +260,7 @@ function TransferSheet({ wallets, currency, onClose }: { wallets: Wallet[]; curr
       <h3 className="font-semibold text-text text-base flex items-center gap-2"><ArrowLeftRight size={18} /> Transfer</h3>
       <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
         <div>
-          <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">From</label>
+          <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">From</label>
           <select value={fromId} onChange={e => {
             const newFrom = e.target.value
             setFromId(newFrom)
@@ -276,7 +276,7 @@ function TransferSheet({ wallets, currency, onClose }: { wallets: Wallet[]; curr
         </div>
         <ArrowLeftRight size={16} className="text-text-muted mt-5 flex-shrink-0" />
         <div>
-          <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">To</label>
+          <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">To</label>
           <select value={toId} onChange={e => setToId(e.target.value)}
             className="w-full bg-surface-2 border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-accent outline-none appearance-none">
             {wallets.filter(w => w.id !== fromId).map(w => <option key={w.id} value={w.id}>{w.name} ({w.currency || currency})</option>)}
@@ -284,7 +284,7 @@ function TransferSheet({ wallets, currency, onClose }: { wallets: Wallet[]; curr
         </div>
       </div>
       <div>
-        <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Amount</label>
+        <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Amount</label>
         <input autoFocus type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleTransfer()}
           className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text text-lg focus:border-accent outline-none" />
@@ -348,35 +348,32 @@ export function AccountsTab({ currency }: { currency: string }) {
       return <p className="text-sm text-text-muted text-center py-4 bg-surface border border-border rounded-xl">{emptyMsg}</p>
     }
     return (
-      <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-3">
         {list.map((w: Wallet) => {
           const TypeIcon = WALLET_TYPES.find(t => t.value === w.type)?.icon ?? WalletIcon
           const walletCurrency = w.currency || currency
           return (
             <div key={w.id} onClick={() => { setEditingWallet(w); setSheet('edit_account') }}
-              className="flex items-center gap-3 p-4 bg-surface border border-border rounded-xl group transition-all hover:bg-surface-2/40 cursor-pointer select-none">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: (w.color || '#4ade80') + '15' }}>
-                <TypeIcon size={18} style={{ color: w.color || '#4ade80' }} />
+              className="relative p-5 rounded-2xl border border-border overflow-hidden shadow-card group transition-all duration-300 hover:scale-[1.02] cursor-pointer select-none aspect-[1.5/1] flex flex-col justify-between"
+              style={{ background: `linear-gradient(135deg, ${w.color ?? '#6366f1'}22, ${w.color ?? '#6366f1'}08)` }}
+            >
+              <div className="flex justify-between items-start w-full">
+                <TypeIcon size={18} className="mb-3" style={{ color: w.color ?? 'var(--color-accent)' }} />
+                <button onClick={(e) => {
+                  e.stopPropagation()
+                  setArchivingWallet(w)
+                }}
+                  title="Archive account"
+                  className="p-1 text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-accent/10">
+                  <Archive size={14} />
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-text truncate text-sm">{w.name}</p>
-                <p className="text-xs text-text-muted capitalize">{w.type === 'credit' ? 'Debt / Credit' : w.type}</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className={clsx('font-semibold text-sm', w.type === 'credit' ? 'text-warning' : Number(w.balance) < 0 ? 'text-danger' : 'text-text')}>
-                  {w.type === 'credit' ? '-' : ''}{Number(w.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="flex-1 min-w-0 flex flex-col justify-end">
+                <p className="text-xs text-text-muted mb-1 truncate">{w.name}</p>
+                <p className="font-display text-2xl font-bold text-text leading-tight truncate">
+                  {walletCurrency} {Number(w.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-[10px] font-semibold text-text-muted">{walletCurrency}</p>
               </div>
-              <button onClick={(e) => {
-                e.stopPropagation()
-                setArchivingWallet(w)
-              }}
-                title="Archive account"
-                className="p-1.5 text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-accent/10">
-                <Archive size={14} />
-              </button>
             </div>
           )
         })}
@@ -387,7 +384,7 @@ export function AccountsTab({ currency }: { currency: string }) {
   return (
     <div className="space-y-6">
       {/* Unified Net balance summary */}
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)]">
         <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Total Net Balance</p>
         <div className="flex items-baseline gap-2">
           <p className={clsx('text-3xl font-display font-medium', netWorth >= 0 ? 'text-text' : 'text-danger')}>
@@ -421,11 +418,11 @@ export function AccountsTab({ currency }: { currency: string }) {
       {/* Action buttons */}
       <div className="flex gap-2">
         <button onClick={() => setSheet('add_account')}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
           <Plus size={16} /> New Account
         </button>
         <button onClick={() => setSheet('transfer')} disabled={wallets.length < 2}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-40">
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-40">
           <ArrowLeftRight size={16} /> Transfer Funds
         </button>
       </div>
@@ -474,7 +471,7 @@ export function AccountsTab({ currency }: { currency: string }) {
                   </div>
                   <button onClick={() => setUnarchivingWallet(w)}
                     title="Unarchive account"
-                    className="p-1.5 text-text-muted hover:text-accent rounded-lg hover:bg-accent/10 transition-colors">
+                    className="p-2 text-text-muted hover:text-accent rounded-lg hover:bg-accent/10 transition-colors">
                     <RotateCcw size={14} />
                   </button>
                 </div>

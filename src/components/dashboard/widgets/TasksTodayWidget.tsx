@@ -70,7 +70,7 @@ export function TasksTodayWidget() {
               <div
                 key={t.id}
                 onClick={(e) => handleToggleComplete(e, t.id, t.completed)}
-                className="flex items-center gap-2.5 p-2 bg-surface-2/60 border border-border/40 hover:bg-surface-2 rounded-xl transition-colors group/item"
+                className="flex items-center gap-3 p-2 bg-surface-2/60 border border-border/40 hover:bg-surface-2 rounded-xl transition-colors group/item"
               >
                 <button type="button" className="text-text-secondary hover:text-accent transition-colors flex-shrink-0">
                   <Circle size={14} className="group-hover/item:scale-110 transition-transform" />

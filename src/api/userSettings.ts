@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type UserSettingsRow    = Database['public']['Tables']['user_settings']['Row']
@@ -12,12 +12,12 @@ export const userSettingsApi = {
     return data
   },
   async upsert(payload: UserSettingsInsert): Promise<UserSettingsRow> {
-    const { data, error } = await db.from('user_settings').upsert(payload, { onConflict: 'user_id' }).select().single()
+    const { data, error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'user_id' }).select().single()
     if (error) throw error
     return data
   },
   async update(userId: string, payload: UserSettingsUpdate): Promise<UserSettingsRow> {
-    const { data, error } = await db.from('user_settings').update(payload).eq('user_id', userId).select().single()
+    const { data, error } = await supabase.from('user_settings').update(payload).eq('user_id', userId).select().single()
     if (error) throw error
     return data
   }

@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type NoteRow    = Database['public']['Tables']['notes']['Row']
@@ -17,12 +17,12 @@ export const notesApi = {
     return data ?? []
   },
   async create(payload: NoteInsert): Promise<NoteRow> {
-    const { data, error } = await db.from('notes').insert([payload]).select().single()
+    const { data, error } = await supabase.from('notes').insert([payload]).select().single()
     if (error) throw error
     return data
   },
   async update(id: string, payload: NoteUpdate): Promise<NoteRow> {
-    const { data, error } = await db.from('notes').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('notes').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   },

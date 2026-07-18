@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useGoalsQuery } from '../../hooks/useGoalsQuery'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
-import { db as supabaseDb } from '../../lib/supabase'
-import { db } from '../../db'
+import { supabase } from '../../lib/supabase'
+import { useDb } from '../../db/DbContext'
 import { getUserLocalDate } from '../../lib/dateUtils'
 import { useAppStore } from '../../store/useAppStore'
 import { format, parseISO } from 'date-fns'
@@ -64,9 +64,9 @@ function AvatarSection({
   const fileRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="relative w-24 h-24 mx-auto">
+    <div className="relative w-20 h-20 mx-auto">
       {/* Avatar circle */}
-      <div className="w-24 h-24 rounded-full border-2 border-border overflow-hidden bg-accent/10 flex items-center justify-center">
+      <div className="w-20 h-20 rounded-full border-2 border-accent/30 overflow-hidden bg-accent/10 flex items-center justify-center shadow-[var(--shadow-card)]">
         {avatarUrl ? (
           <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
         ) : (
@@ -111,11 +111,11 @@ function StatCard({ icon, label, value, color }: {
   color: string
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 bg-surface border border-border rounded-2xl p-4 text-center">
+    <div className="flex flex-col items-center gap-2 bg-surface border border-border rounded-2xl p-4 text-center">
       <div className={clsx('w-9 h-9 rounded-xl flex items-center justify-center', color)}>
         {icon}
       </div>
-      <span className="text-xl font-display font-bold text-text">{value}</span>
+      <span className="text-3xl font-display font-bold text-text">{value}</span>
       <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">{label}</span>
     </div>
   )
@@ -124,6 +124,7 @@ function StatCard({ icon, label, value, color }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
+  const db = useDb()
   const { user, profile, refreshProfile, signOut } = useAuth()
   const { timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
@@ -205,7 +206,7 @@ export function ProfilePage() {
     if (!user || !displayName.trim()) return
     setSaving(true)
     try {
-      const { error } = await supabaseDb
+      const { error } = await supabase
         .from('user_profiles')
         .update({ display_name: displayName.trim() })
         .eq('id', user.id)
@@ -228,7 +229,7 @@ export function ProfilePage() {
     setUploading(true)
     try {
       const dataUrl = await resizeToDataUrl(file, 256)
-      await supabaseDb.from('user_profiles').update({ avatar_url: dataUrl }).eq('id', user.id)
+      await supabase.from('user_profiles').update({ avatar_url: dataUrl }).eq('id', user.id)
       await db.user_profiles.update(user.id, { avatar_url: dataUrl })
       setLocalAvatarUrl(dataUrl)
       await refreshProfile()
@@ -251,7 +252,7 @@ export function ProfilePage() {
       </header>
 
       {/* Avatar + Name Card */}
-      <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-5">
+      <div className="bg-surface border border-border rounded-2xl p-6 shadow-[var(--shadow-card)] space-y-5">
         <AvatarSection
           avatarUrl={avatarUrl}
           initials={initials}
@@ -272,13 +273,13 @@ export function ProfilePage() {
                   if (e.key === 'Enter') handleSaveName()
                   if (e.key === 'Escape') setEditingName(false)
                 }}
-                className="bg-surface-2 border border-accent rounded-xl px-3 py-1.5 text-sm text-text focus:outline-none text-center w-48"
+                className="bg-surface-2 border border-accent rounded-xl px-3 py-2 text-sm text-text focus:outline-none text-center w-48"
                 placeholder="Your name"
               />
               <button
                 onClick={handleSaveName}
                 disabled={saving}
-                className="p-1.5 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                className="p-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
               >
                 {saving
                   ? <div className="w-3 h-3 border-2 border-accent/40 border-t-accent rounded-full animate-spin" />
@@ -287,7 +288,7 @@ export function ProfilePage() {
               </button>
               <button
                 onClick={() => setEditingName(false)}
-                className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
+                className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
               >
                 <X size={14} />
               </button>
@@ -295,19 +296,19 @@ export function ProfilePage() {
           ) : (
             <button
               onClick={() => setEditingName(true)}
-              className="group flex items-center gap-1.5 justify-center mx-auto"
+              className="group flex items-center gap-2 justify-center mx-auto"
             >
-              <span className="text-lg font-semibold text-text">
+              <span className="text-2xl font-display font-semibold text-text">
                 {profile?.display_name || user?.email?.split('@')[0] || 'User'}
               </span>
               <Edit2 size={13} className="text-text-muted group-hover:text-accent transition-colors" />
             </button>
           )}
-          <p className="text-xs text-text-muted flex items-center justify-center gap-1.5">
+          <p className="text-xs text-text-muted flex items-center justify-center gap-2">
             <Mail size={11} />
             {user?.email}
           </p>
-          <p className="text-xs text-text-muted flex items-center justify-center gap-1.5">
+          <p className="text-xs text-text-muted flex items-center justify-center gap-2">
             <Calendar size={11} />
             Member since {joinDate}
           </p>
@@ -337,7 +338,7 @@ export function ProfilePage() {
       </div>
 
       {/* Collaborative Sharing */}
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4 text-left">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4 text-left">
         <h3 className="text-sm font-bold text-text flex items-center gap-2">
           <Share2 size={16} className="text-accent" />
           Collaborative Sharing
@@ -360,7 +361,7 @@ export function ProfilePage() {
               <button
                 type="submit"
                 disabled={redeeming || !shareCode.trim()}
-                className="px-4 py-2 bg-accent text-bg font-semibold rounded-xl text-xs hover:bg-accent-dim transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                className="px-4 py-2 bg-accent text-bg font-semibold rounded-xl text-xs hover:bg-accent-dim transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 {redeeming ? (
                   <div className="w-3.5 h-3.5 border-2 border-bg/40 border-t-bg rounded-full animate-spin" />
@@ -385,7 +386,7 @@ export function ProfilePage() {
         {/* List of Shared Items */}
         {(sharedItems.sent.length > 0 || sharedItems.received.length > 0) && (
           <div className="space-y-3.5 pt-2 border-t border-border/60">
-            <h4 className="text-xs font-bold text-text flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-text flex items-center gap-2">
               <Users size={14} className="text-text-muted" />
               Active Collaborations
             </h4>
@@ -424,7 +425,7 @@ export function ProfilePage() {
       </div>
 
       {/* Info Rows */}
-      <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden divide-y divide-border/60">
+      <div className="bg-surface border border-border rounded-2xl shadow-[var(--shadow-card)] overflow-hidden divide-y divide-border/60">
         {/* Email row */}
         <div className="flex items-center gap-3 px-4 py-3.5">
           <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center">

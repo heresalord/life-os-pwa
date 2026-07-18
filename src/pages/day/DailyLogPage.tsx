@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { 
   Sun, Moon, Zap, Award, FileText, CheckCircle2, 
   ArrowRight, Check, Plus, Edit2, Play, Eye, ChevronLeft, ChevronRight,
-  Frown, Annoyed, Meh, Smile, Laugh, X, Star, AlertTriangle,
+  Frown, Annoyed, Meh, Smile, Laugh, X, Star, AlertTriangle, CalendarDays,
 } from 'lucide-react'
 import { subDays, addDays, format, isToday, parseISO } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
@@ -17,6 +17,8 @@ import { calculateDayScore } from '../../lib/scoreUtils'
 import { displayDate } from '../../lib/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
 import { carryOverTasks } from '../../lib/carryOver'
+import { useDb } from '../../db/DbContext'
+import { haptic } from '../../lib/haptic'
 
 const MOOD_ICONS = [Frown, Annoyed, Meh, Smile, Laugh]
 const MOOD_LABELS = ['Low', 'Difficult', 'Okay', 'Good', 'Great']
@@ -67,6 +69,7 @@ export function DailyLogPage() {
   const { data: tasks = [] } = useTasksQuery(activeDate)
   const { addTask, updateTask } = useTaskMutations(activeDate)
   const { user } = useAuth()
+  const db = useDb()
 
   // Guided mode parameter check
   const guidedMode = searchParams.get('guided') // 'morning' | 'evening' | null
@@ -93,7 +96,7 @@ export function DailyLogPage() {
       try {
         const dateObj = new Date(activeDate + 'T12:00:00')
         const yesterdayStr = format(subDays(dateObj, 1), 'yyyy-MM-dd')
-        const count = await carryOverTasks(user.id, yesterdayStr, activeDate)
+        const count = await carryOverTasks(db, user.id, yesterdayStr, activeDate)
         setCarryOverCount(count)
         localStorage.setItem(flagKey, String(count))
       } catch (err) {
@@ -103,7 +106,7 @@ export function DailyLogPage() {
       }
     }
     checkAndCarryOver()
-  }, [guidedMode, user, activeDate])
+  }, [guidedMode, user, activeDate, carryOverRunning, db])
 
   // --- Morning state ---
   const [energyAm, setEnergyAm] = useState<number>(3)
@@ -189,9 +192,11 @@ export function DailyLogPage() {
     try {
       await upsert.mutateAsync(updates)
       setSaveStatus('saved')
+      haptic('success')
     } catch (err) {
       console.error(err)
       setSaveStatus('error')
+      haptic('error')
     }
   }
 
@@ -274,7 +279,7 @@ export function DailyLogPage() {
   // Energy lightning scale render helper
   const renderLightningScale = (currentVal: number, onChange: (val: number) => void, readonly = false) => {
     return (
-      <div className="flex gap-2.5">
+      <div className="flex gap-3">
         {[1, 2, 3, 4, 5].map(val => (
           <button
             key={val}
@@ -294,36 +299,41 @@ export function DailyLogPage() {
     )
   }
 
-  // Mood Emoji scale render helper
+  // Mood Emoji scale render helper — with spring animation
   // compact=true → smaller padding + no label text (used inside the wizard overlay)
   const renderMoodScale = (currentVal: number, onChange: (val: number) => void, readonly = false, compact = false) => {
     return (
       <div className="flex justify-between gap-2">
         {[1, 2, 3, 4, 5].map(val => {
           const MoodIcon = MOOD_ICONS[val - 1]
+          const isSelected = currentVal === val
           return (
             <button
               key={val}
               disabled={readonly}
               type="button"
-              onClick={() => onChange(val)}
+              onClick={() => {
+                haptic('light')
+                onChange(val)
+              }}
+              style={{ transition: 'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)' }}
               className={`flex-1 flex flex-col items-center justify-center ${
                 compact ? 'py-3 px-1' : 'p-3'
-              } rounded-2xl border transition-all ${
-                currentVal === val
-                  ? 'bg-info/10 border-info text-info scale-105'
-                  : 'bg-surface-2 border-border hover:border-info/30 hover:bg-surface-2/80'
+              } rounded-2xl border ${
+                isSelected
+                  ? 'bg-info/10 border-info text-info scale-125'
+                  : 'bg-surface-2 border-border hover:border-info/30 hover:bg-surface-2/80 scale-90'
               }`}
             >
               <MoodIcon
                 size={compact ? 22 : 24}
                 className={`${compact ? '' : 'mb-1'} ${
-                  currentVal === val ? '' : 'text-text-muted'
+                  isSelected ? '' : 'text-text-muted'
                 }`}
               />
               {!compact && (
                 <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                  currentVal === val ? 'text-info' : 'text-text-muted'
+                  isSelected ? 'text-info' : 'text-text-muted'
                 }`}>
                   {MOOD_LABELS[val - 1]}
                 </span>
@@ -335,93 +345,87 @@ export function DailyLogPage() {
     )
   }
 
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-clear the "saved" dot after 2s
+  useEffect(() => {
+    if (saveStatus !== 'saved') return
+    const t = setTimeout(() => setSaveStatus('idle'), 2000)
+    return () => clearTimeout(t)
+  }, [saveStatus])
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12 relative">
-      {/* Title & Save status */}
-      <header className="flex items-center justify-between flex-wrap gap-4">
-        <div>
+      {/* Header — minimal iOS-style nav */}
+      <header className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => navigate('/day/history')}
-            className="text-xs text-accent font-semibold hover:underline mb-1.5 inline-block"
+            onClick={() => navigate(`/day/${format(subDays(parseISO(activeDate + 'T12:00:00'), 1), 'yyyy-MM-dd')}`)}
+            className="p-2 rounded-xl hover:bg-surface-2 text-text-secondary hover:text-text transition-colors"
+            title="Previous day"
           >
-            ← View History Heatmap
+            <ChevronLeft size={18} />
           </button>
-          <h1 className="text-2xl font-display font-semibold text-text">
-            Daily Log — {displayDate(activeDate, 'EEEE, MMMM d, yyyy')}
+          <h1 className="text-xl font-display font-bold text-text">
+            {displayDate(activeDate, 'EEE, MMM d')}
           </h1>
+          <button
+            onClick={() => navigate(`/day/${format(addDays(parseISO(activeDate + 'T12:00:00'), 1), 'yyyy-MM-dd')}`)}
+            disabled={isToday(parseISO(activeDate + 'T12:00:00'))}
+            className="p-2 rounded-xl hover:bg-surface-2 text-text-secondary hover:text-text transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            title="Next day"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Prev / Next date navigation */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => navigate(`/day/${format(subDays(parseISO(activeDate + 'T12:00:00'), 1), 'yyyy-MM-dd')}`)}
-              className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-text-secondary hover:text-text transition-colors"
-              title="Previous day"
-            >
-              <ChevronLeft size={15} />
-            </button>
-            <button
-              onClick={() => navigate('/day')}
-              disabled={isToday(parseISO(activeDate + 'T12:00:00'))}
-              className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-border bg-surface hover:bg-surface-2 text-text-secondary hover:text-text transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            >
-              Today
-            </button>
-            <button
-              onClick={() => navigate(`/day/${format(addDays(parseISO(activeDate + 'T12:00:00'), 1), 'yyyy-MM-dd')}`)}
-              disabled={isToday(parseISO(activeDate + 'T12:00:00'))}
-              className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-text-secondary hover:text-text transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              title="Next day"
-            >
-              <ChevronRight size={15} />
-            </button>
-          </div>
-          {saveStatus === 'saving' && (
-            <span className="text-xs text-text-muted flex items-center gap-1.5">
-              <span className="w-2 h-2 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-              Saving...
-            </span>
-          )}
-          {saveStatus === 'saved' && (
-            <span className="text-xs text-success flex items-center gap-1">
-              <Check size={14} /> Saved
-            </span>
-          )}
+        <div className="flex items-center gap-2">
+          {/* Save dot */}
+          <span
+            className="w-2 h-2 rounded-full bg-success transition-opacity duration-500"
+            style={{ opacity: saveStatus === 'saved' ? 1 : 0 }}
+          />
           {saveStatus === 'error' && (
             <span className="text-xs text-danger flex items-center gap-1">
-              <AlertTriangle size={12} /> Error saving — check connection
+              <AlertTriangle size={12} /> Error
             </span>
           )}
+          {/* Calendar icon → date picker */}
+          <button
+            onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.focus()}
+            className="p-2 rounded-xl hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+            title="Jump to date"
+          >
+            <CalendarDays size={18} />
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={activeDate}
+            onChange={e => { if (e.target.value) navigate(`/day/${e.target.value}`) }}
+            className="sr-only"
+            aria-label="Jump to date"
+          />
         </div>
       </header>
 
-      {/* Grid of Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+      {/* Grid of Sections — single column */}
+      <div className="space-y-6">
         
-        {/* ========================================================
-            SECTION 1: MORNING
-            ======================================================== */}
-        <section className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+        {/* SECTION 1: MORNING */}
+        <section
+          className="bg-surface border border-border border-l-4 border-l-warning rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4"
+          style={{ background: 'linear-gradient(to right, rgba(251,191,36,0.04), transparent)' }}
+        >
           <div className="flex justify-between items-center pb-2 border-b border-border/50">
             <h2 className="text-base font-semibold text-text flex items-center gap-2">
               <Sun size={18} className="text-warning" />
               Morning Ritual
             </h2>
-            <div className="flex items-center gap-2">
-              {record?.morning_complete && (
-                <span className="text-[10px] bg-success/15 border border-success/30 text-success px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  Complete
-                </span>
-              )}
-              <button
-                onClick={() => startWizard('morning')}
-                className="text-xs font-semibold py-1 px-2.5 bg-warning/15 text-warning border border-warning/20 rounded-lg hover:bg-warning/25 transition-colors flex items-center gap-1"
-              >
-                <Play size={10} className="fill-warning" />
-                Guided Mode
-              </button>
-            </div>
+            {record?.morning_complete && (
+              <span className="text-[10px] bg-success/15 border border-success/30 text-success px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                Complete
+              </span>
+            )}
           </div>
 
           {/* Energy AM */}
@@ -451,7 +455,7 @@ export function DailyLogPage() {
             <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Morning Gratitude</label>
             <div className="space-y-2">
               {gratitude.map((g, idx) => (
-                <div key={idx} className="flex items-center gap-2.5 bg-surface-2 border border-border rounded-xl px-3 py-1.5 text-sm text-text">
+                <div key={idx} className="flex items-center gap-3 bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text">
                   <span className="text-text-muted font-semibold">{idx + 1}.</span>
                   <input
                     type="text"
@@ -481,7 +485,7 @@ export function DailyLogPage() {
               <ul className="space-y-2">
                 {priorities.map(t => (
                   <li key={t.id} className="flex items-center justify-between p-2.5 bg-surface-2 border border-border rounded-xl">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
                       <button 
                         onClick={() => toggleTaskCompletion(t.id, t.completed)}
                         className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center transition-all ${
@@ -512,7 +516,7 @@ export function DailyLogPage() {
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 placeholder="Add priority task..."
-                className="flex-1 bg-surface-2 border border-border focus:border-warning rounded-xl px-3 py-1.5 text-xs text-text focus:outline-none"
+                className="flex-1 bg-surface-2 border border-border focus:border-warning rounded-xl px-3 py-2 text-xs text-text focus:outline-none"
               />
               <button
                 type="submit"
@@ -525,10 +529,10 @@ export function DailyLogPage() {
             {/* Other task promoter */}
             {otherTasks.length > 0 && (
               <div className="pt-2">
-                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1.5">Promote existing task</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Promote existing task</p>
                 <div className="max-h-24 overflow-y-auto space-y-1.5 pr-1.5">
                   {otherTasks.map(t => (
-                    <div key={t.id} className="flex items-center justify-between text-xs text-text-secondary bg-surface-2/40 px-2.5 py-1.5 rounded-lg border border-border/50">
+                    <div key={t.id} className="flex items-center justify-between text-xs text-text-secondary bg-surface-2/40 px-2.5 py-2 rounded-lg border border-border/50">
                       <span className="truncate pr-2">{t.title}</span>
                       <button
                         onClick={() => toggleTaskPriority(t.id, t.priority)}
@@ -542,31 +546,30 @@ export function DailyLogPage() {
               </div>
             )}
           </div>
+          {/* Guided mode — full-width primary CTA at bottom of morning card */}
+          <button
+            onClick={() => startWizard('morning')}
+            className="w-full flex items-center justify-center gap-2 h-12 bg-amber-400 text-gray-900 rounded-xl font-semibold text-sm hover:bg-amber-300 transition-colors"
+          >
+            <Play size={16} className="fill-gray-900" /> Start Morning Ritual
+          </button>
         </section>
 
-        {/* ========================================================
-            SECTION 2: EVENING
-            ======================================================== */}
-        <section className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+        {/* SECTION 2: EVENING */}
+        <section
+          className="bg-surface border border-border border-l-4 border-l-info rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4"
+          style={{ background: 'linear-gradient(to right, rgba(99,102,241,0.04), transparent)' }}
+        >
           <div className="flex justify-between items-center pb-2 border-b border-border/50">
             <h2 className="text-base font-semibold text-text flex items-center gap-2">
               <Moon size={18} className="text-info" />
               Evening Review
             </h2>
-            <div className="flex items-center gap-2">
-              {record?.evening_complete && (
-                <span className="text-[10px] bg-success/15 border border-success/30 text-success px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  Complete
-                </span>
-              )}
-              <button
-                onClick={() => startWizard('evening')}
-                className="text-xs font-semibold py-1 px-2.5 bg-info/15 text-info border border-info/20 rounded-lg hover:bg-info/25 transition-colors flex items-center gap-1"
-              >
-                <Play size={10} className="fill-info" />
-                Guided Mode
-              </button>
-            </div>
+            {record?.evening_complete && (
+              <span className="text-[10px] bg-success/15 border border-success/30 text-success px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                Complete
+              </span>
+            )}
           </div>
 
           {/* Mood 1-5 */}
@@ -616,7 +619,7 @@ export function DailyLogPage() {
                 onBlur={() => handleSaveFields({ went_well: wentWell })}
                 placeholder="Log achievements, good habits, or items that went smoothly..."
                 rows={2}
-                className="w-full bg-surface-2 border border-border focus:border-info rounded-xl px-3 py-1.5 text-xs text-text focus:outline-none transition-all resize-none"
+                className="w-full bg-surface-2 border border-border focus:border-info rounded-xl px-3 py-2 text-xs text-text focus:outline-none transition-all resize-none"
               />
             </div>
 
@@ -628,7 +631,7 @@ export function DailyLogPage() {
                 onBlur={() => handleSaveFields({ do_differently: doDifferently })}
                 placeholder="Log challenges or actions you'd improve next time..."
                 rows={2}
-                className="w-full bg-surface-2 border border-border focus:border-info rounded-xl px-3 py-1.5 text-xs text-text focus:outline-none transition-all resize-none"
+                className="w-full bg-surface-2 border border-border focus:border-info rounded-xl px-3 py-2 text-xs text-text focus:outline-none transition-all resize-none"
               />
             </div>
 
@@ -640,43 +643,38 @@ export function DailyLogPage() {
                 onBlur={() => handleSaveFields({ tomorrow_focus: tomorrowFocus })}
                 placeholder="What is tomorrow's key direction or top goal?"
                 rows={2}
-                className="w-full bg-surface-2 border border-border focus:border-info rounded-xl px-3 py-1.5 text-xs text-text focus:outline-none transition-all resize-none"
+                className="w-full bg-surface-2 border border-border focus:border-info rounded-xl px-3 py-2 text-xs text-text focus:outline-none transition-all resize-none"
               />
             </div>
           </div>
+          {/* Guided mode — full-width primary CTA at bottom of evening card */}
+          <button
+            onClick={() => startWizard('evening')}
+            className="w-full flex items-center justify-center gap-2 h-12 bg-indigo-500 text-white rounded-xl font-semibold text-sm hover:bg-indigo-400 transition-colors"
+          >
+            <Play size={16} /> Start Evening Review
+          </button>
         </section>
       </div>
 
       {/* ========================================================
-          SECTION 3: FREE JOURNAL & SECTION 4: DAY SCORE
+          SECTION 3: FREE JOURNAL
           ======================================================== */}
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 items-start">
+      <div className="space-y-6">
         
         {/* FREE JOURNAL */}
-        <section className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+        <section className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4">
           <div className="flex justify-between items-center pb-2 border-b border-border/50 flex-wrap gap-2">
             <h2 className="text-base font-semibold text-text flex items-center gap-2">
               <FileText size={18} className="text-accent" />
               Free Journal
             </h2>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Template Picker */}
-              <select
-                value={selectedTemplate}
-                onChange={(e) => applyTemplate(e.target.value as any)}
-                className="text-xs bg-surface border border-border focus:border-accent rounded-lg px-2 py-1 text-text-secondary cursor-pointer focus:outline-none"
-              >
-                <option value="blank">Blank Draft</option>
-                <option value="gratitude">Gratitude Log</option>
-                <option value="weekly_review">Weekly Reflection</option>
-                <option value="stress_log">Stress Check-In</option>
-              </select>
-
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Preview toggle */}
               <button
                 type="button"
                 onClick={() => setIsPreviewMode(!isPreviewMode)}
-                className="text-xs font-semibold py-1 px-2.5 bg-accent/10 border border-accent/20 text-accent rounded-lg hover:bg-accent/20 transition-colors flex items-center gap-1.5"
+                className="text-xs font-semibold py-1 px-2.5 bg-accent/10 border border-accent/20 text-accent rounded-lg hover:bg-accent/20 transition-colors flex items-center gap-2"
               >
                 {isPreviewMode ? (
                   <><Edit2 size={12} /> Write</>
@@ -685,6 +683,28 @@ export function DailyLogPage() {
                 )}
               </button>
             </div>
+          </div>
+
+          {/* Template chip scroller */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+            {([
+              { key: 'blank',         label: '📝 Blank'     },
+              { key: 'gratitude',     label: '🙏 Gratitude' },
+              { key: 'weekly_review', label: '📋 Weekly'    },
+              { key: 'stress_log',    label: '😮‍💨 Stress'   },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => applyTemplate(key)}
+                className={`flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
+                  selectedTemplate === key
+                    ? 'bg-accent/15 border-accent/40 text-accent'
+                    : 'bg-surface-2 border-border text-text-secondary hover:text-text hover:border-text-secondary'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           {/* Journal Editor or Preview */}
@@ -697,58 +717,65 @@ export function DailyLogPage() {
               )}
             </div>
           ) : (
-            <textarea
-              value={journal}
-              onChange={(e) => setJournal(e.target.value)}
-              onBlur={() => handleSaveFields({ journal })}
-              placeholder="Reflect freely about your day here (supports full markdown formatting)..."
-              rows={10}
-              className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-3 text-sm text-text focus:outline-none transition-all font-mono"
-            />
+            // Auto-grow textarea via CSS grid overlap trick
+            <div className="grid" style={{ gridTemplateAreas: '"overlap"' }}>
+              <pre
+                aria-hidden
+                style={{
+                  gridArea: 'overlap',
+                  visibility: 'hidden',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                  fontSize: '0.875rem',
+                  lineHeight: '1.5',
+                  padding: '0.75rem 1rem',
+                  margin: 0,
+                }}
+              >{journal + ' '}</pre>
+              <textarea
+                value={journal}
+                onChange={(e) => setJournal(e.target.value)}
+                onBlur={() => handleSaveFields({ journal })}
+                placeholder="Reflect freely about your day here (supports full markdown formatting)..."
+                style={{
+                  gridArea: 'overlap',
+                  resize: 'none',
+                  overflow: 'hidden',
+                  minHeight: '160px',
+                }}
+                className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-3 text-sm text-text focus:outline-none transition-all font-mono"
+              />
+            </div>
           )}
         </section>
 
-        {/* DAY SCORE */}
-        <section className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-5 text-center flex flex-col justify-between h-full min-h-[300px]">
-          <div>
-            <h2 className="text-base font-semibold text-text flex items-center justify-center gap-2 pb-2 border-b border-border/50">
-              <Award size={18} className="text-accent" />
-              Day Score
-            </h2>
-            <p className="text-xs text-text-muted mt-2">Calculated from task completion, mood, and daily energy</p>
-          </div>
+      </div>
 
+      {/* ========================================================
+          SECTION 4: DAY SCORE — full-width at bottom
+          ======================================================== */}
+      <div className="mt-6 p-5 bg-surface border border-border rounded-2xl shadow-[var(--shadow-card)] space-y-5">
+        <h3 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+          <Award size={16} className="text-accent" />
+          Day Score
+        </h3>
+
+        <div className="flex flex-col sm:flex-row items-center gap-6">
           {/* Circular Score Gauge */}
-          <div className="relative w-36 h-36 mx-auto flex items-center justify-center my-3">
+          <div className="relative w-32 h-32 flex-shrink-0 flex items-center justify-center">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              {/* Background circle */}
               <circle
-                cx="50"
-                cy="50"
-                r="40"
-                stroke="var(--color-border)"
-                strokeWidth="8"
-                fill="transparent"
-                className="opacity-25"
+                cx="50" cy="50" r="40"
+                stroke="var(--color-border)" strokeWidth="8" fill="transparent" className="opacity-25"
               />
-              {/* Progress circle */}
               <circle
-                cx="50"
-                cy="50"
-                r="40"
-                stroke={
-                  dayScoreValue >= 80 
-                    ? 'var(--color-success)' 
-                    : dayScoreValue >= 50 
-                    ? 'var(--color-warning)' 
-                    : 'var(--color-danger)'
-                }
-                strokeWidth="8"
-                fill="transparent"
+                cx="50" cy="50" r="40"
+                stroke={dayScoreValue >= 80 ? 'var(--color-success)' : dayScoreValue >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'}
+                strokeWidth="8" fill="transparent"
                 strokeDasharray="251.2"
                 strokeDashoffset={251.2 - (251.2 * dayScoreValue) / 100}
-                className="transition-all duration-1000 ease-out"
-                strokeLinecap="round"
+                className="transition-all duration-1000 ease-out" strokeLinecap="round"
               />
             </svg>
             <div className="absolute text-center">
@@ -758,9 +785,9 @@ export function DailyLogPage() {
           </div>
 
           {/* Component Score breakdown */}
-          <div className="space-y-2.5 text-left text-xs bg-surface-2/40 border border-border/50 rounded-xl p-3">
+          <div className="flex-1 space-y-2.5 text-xs w-full">
             <div className="flex justify-between items-center">
-              <span className="text-text-muted">Task Completion:</span>
+              <span className="text-text-muted">Task Completion</span>
               <span className="font-semibold text-text">
                 {(() => {
                   const nonSkipped = tasks.filter(t => !t.skipped)
@@ -769,20 +796,22 @@ export function DailyLogPage() {
                 })()}
               </span>
             </div>
+            <div className="h-px bg-border/40" />
             <div className="flex justify-between items-center">
-              <span className="text-text-muted">Mood score:</span>
-              <span className="font-semibold text-text">{record?.mood ? `${(record.mood - 1) * 25}/100` : '50/100 (neutral)'}</span>
+              <span className="text-text-muted">Mood</span>
+              <span className="font-semibold text-text">{record?.mood ? `${(record.mood - 1) * 25}/100` : '—'}</span>
             </div>
+            <div className="h-px bg-border/40" />
             <div className="flex justify-between items-center">
-              <span className="text-text-muted">Energy score:</span>
+              <span className="text-text-muted">Energy</span>
               <span className="font-semibold text-text">
                 {(() => {
                   let avg = 3
-                  if (record?.energy_am !== null && record?.energy_am !== undefined && record?.energy_pm !== null && record?.energy_pm !== undefined) {
+                  if (record?.energy_am != null && record?.energy_pm != null) {
                     avg = ((record.energy_am ?? 3) + (record.energy_pm ?? 3)) / 2
-                  } else if (record?.energy_am !== null && record?.energy_am !== undefined) {
+                  } else if (record?.energy_am != null) {
                     avg = record.energy_am ?? 3
-                  } else if (record?.energy_pm !== null && record?.energy_pm !== undefined) {
+                  } else if (record?.energy_pm != null) {
                     avg = record.energy_pm ?? 3
                   }
                   return `${Math.round((avg - 1) * 25)}/100`
@@ -790,7 +819,7 @@ export function DailyLogPage() {
               </span>
             </div>
           </div>
-        </section>
+        </div>
       </div>
 
       {/* ========================================================
@@ -859,7 +888,7 @@ export function DailyLogPage() {
               </div>
 
               {/* Mode label */}
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm border ${accentBorder}`}>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 backdrop-blur-sm border ${accentBorder}`}>
                 {isMorning ? <Sun size={13} className={accentLight} /> : <Moon size={13} className={accentLight} />}
                 <span className={`text-[11px] font-bold uppercase tracking-wider ${accentLight}`}>
                   {isMorning ? 'Morning' : 'Evening'}
@@ -891,13 +920,13 @@ export function DailyLogPage() {
                       {renderLightningScale(energyAm, setEnergyAm)}
                     </div>
                     {carryOverRunning && (
-                      <p className="text-xs text-amber-300/70 text-center flex items-center justify-center gap-1.5 animate-pulse">
+                      <p className="text-xs text-amber-300/70 text-center flex items-center justify-center gap-2 animate-pulse">
                         <Zap size={11} /> Checking yesterday's tasks…
                       </p>
                     )}
                     {carryOverCount !== null && carryOverCount > 0 && (
                       <div className="bg-white/5 border border-amber-400/20 rounded-xl p-3 text-center">
-                        <p className="text-xs text-amber-300 flex items-center justify-center gap-1.5">
+                        <p className="text-xs text-amber-300 flex items-center justify-center gap-2">
                           <Zap size={11} className="fill-amber-400" /> Carried over {carryOverCount} task{carryOverCount !== 1 ? 's' : ''} from yesterday
                         </p>
                       </div>
@@ -956,7 +985,7 @@ export function DailyLogPage() {
                     </div>
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                       {priorities.map(t => (
-                        <div key={t.id} className="flex items-center gap-2.5 p-3 bg-white/5 border border-white/10 rounded-xl">
+                        <div key={t.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl">
                           <Check size={13} className={accentLight} />
                           <span className="text-sm text-white/90 truncate">{t.title}</span>
                         </div>
@@ -1036,19 +1065,19 @@ export function DailyLogPage() {
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-1.5 font-bold">What went well?</label>
+                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-2 font-bold">What went well?</label>
                         <textarea value={wentWell} onChange={e => setWentWell(e.target.value)}
                           placeholder="Wins, good habits, smooth moments…" rows={2}
                           className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-1.5 font-bold">What I'd do differently?</label>
+                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-2 font-bold">What I'd do differently?</label>
                         <textarea value={doDifferently} onChange={e => setDoDifferently(e.target.value)}
                           placeholder="Challenges, errors to improve…" rows={2}
                           className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-1.5 font-bold">Tomorrow's Focus</label>
+                        <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-2 font-bold">Tomorrow's Focus</label>
                         <textarea value={tomorrowFocus} onChange={e => setTomorrowFocus(e.target.value)}
                           placeholder="What's your key direction tomorrow?" rows={2}
                           className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
@@ -1063,7 +1092,7 @@ export function DailyLogPage() {
             <div className="px-5 pb-safe pb-6 pt-3 flex gap-3 max-w-md mx-auto w-full">
               {wizardStep > 1 ? (
                 <button
-                  onClick={() => setWizardStep(s => s - 1)}
+                  onClick={() => { haptic('light'); setWizardStep(s => s - 1) }}
                   className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0"
                 >
                   <ArrowRight size={18} className="text-white rotate-180" />
@@ -1077,14 +1106,14 @@ export function DailyLogPage() {
                   {/* Skip button on optional steps (gratitude/structured reflection) */}
                   {(wizardStep === 3) && (
                     <button
-                      onClick={() => setWizardStep(s => s + 1)}
+                      onClick={() => { haptic('light'); setWizardStep(s => s + 1) }}
                       className="px-4 h-12 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 text-sm transition-colors"
                     >
                       Skip
                     </button>
                   )}
                   <button
-                    onClick={() => setWizardStep(s => s + 1)}
+                    onClick={() => { haptic('light'); setWizardStep(s => s + 1) }}
                     disabled={carryOverRunning && wizardStep === 1}
                     className={`flex-1 h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 ${btnPrimary} transition-colors disabled:opacity-50`}
                   >

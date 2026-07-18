@@ -211,14 +211,14 @@ export function TemplatePicker({ open, onOpenChange, onNoteCreated }: TemplatePi
             </Dialog.Close>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {TEMPLATES.map(tmpl => {
               const Icon = tmpl.icon
               return (
                 <button
                   key={tmpl.key ?? 'blank'}
                   onClick={() => pick(tmpl)}
-                  className="flex flex-col items-start gap-2.5 p-4 rounded-xl border border-border bg-surface-2 hover:border-accent hover:bg-accent/5 transition-all text-left group"
+                  className="flex flex-col items-start gap-3 p-4 rounded-xl border border-border bg-surface-2 hover:border-accent hover:bg-accent/5 transition-all text-left group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/15 flex items-center justify-center text-accent group-hover:scale-105 transition-transform flex-shrink-0">
                     <Icon size={16} />

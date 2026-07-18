@@ -3,11 +3,12 @@ import { Plus, X } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useAuth } from '../../hooks/useAuth'
 import { enqueueSync } from '../../db/syncQueue'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 
 const TYPES = ['thought', 'idea', 'worry', 'todo', 'other'] as const
 
 export function InboxFAB() {
+  const db = useDb()
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [type, setType] = useState<typeof TYPES[number]>('thought')
@@ -90,7 +91,7 @@ export function InboxFAB() {
             rows={3}
             className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none resize-none transition-colors text-sm"
           />
-          <p className="text-xs text-text-muted mt-1.5 mb-4">⌘↵ to save</p>
+          <p className="text-xs text-text-muted mt-2 mb-4">⌘↵ to save</p>
 
           <button
             onClick={handleCapture}

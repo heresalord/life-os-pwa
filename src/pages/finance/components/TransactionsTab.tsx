@@ -6,6 +6,7 @@ import { useScrollToHighlight } from '../../../hooks/useScrollToHighlight'
 import { TransactionItem } from '../../../components/finance/TransactionItem'
 import { AddTransactionModal } from '../../../components/finance/AddTransactionModal'
 import { EmptyState } from '../../../components/EmptyState'
+import { TransactionListSkeleton } from '../../../components/Skeleton'
 import { DollarSign, ChevronDown, Search } from 'lucide-react'
 import { useAppStore } from '../../../store/useAppStore'
 import { getUserLocalDate } from '../../../lib/dateUtils'
@@ -106,7 +107,7 @@ export function TransactionsTab({ currency, from, to, today, highlightId }: Tran
               key={t}
               onClick={() => setTypeFilter(t)}
               className={clsx(
-                'px-3 py-1.5 text-xs font-medium rounded-lg capitalize transition-all',
+                'px-3 py-2 text-xs font-medium rounded-lg capitalize transition-all',
                 typeFilter === t ? 'bg-surface-2 text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
               )}
             >
@@ -155,9 +156,7 @@ export function TransactionsTab({ currency, from, to, today, highlightId }: Tran
 
       {/* Transaction list grouped by date */}
       {isLoading ? (
-        <div className="flex justify-center p-8">
-          <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-        </div>
+        <TransactionListSkeleton count={6} />
       ) : grouped.length === 0 ? (
         <EmptyState icon={<DollarSign size={40} />} title="No transactions found" message="Try adjusting filters or add one above." />
       ) : (
@@ -182,8 +181,8 @@ export function TransactionsTab({ currency, from, to, today, highlightId }: Tran
               format(new Date(date + 'T12:00:00'), 'EEE, MMM d')
 
             return (
-              <section key={date}>
-                <div className="flex items-center justify-between mb-2 px-1">
+              <section key={date} className="relative">
+                <div className="flex items-center justify-between mb-2 px-1 sticky top-14 bg-bg/90 backdrop-blur-md py-2 z-10">
                   <span className="text-xs font-medium text-text-muted uppercase tracking-wider">{dateLabel}</span>
                   <span className={clsx('text-xs font-medium', dayTotal >= 0 ? 'text-success' : 'text-danger')}>
                     {dayTotal >= 0 ? '+' : ''}{dayTotal.toFixed(2)} {currency}

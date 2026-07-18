@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAuth } from './useAuth'
 
 export type SearchResult = {
@@ -13,6 +13,7 @@ export type SearchResult = {
 }
 
 export function useGlobalSearch(query: string) {
+  const db = useDb()
   const { user } = useAuth()
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -55,7 +56,7 @@ export function useGlobalSearch(query: string) {
 
     const timer = setTimeout(search, 300) // 300ms debounce
     return () => { isMounted = false; clearTimeout(timer) }
-  }, [query, user])
+  }, [query, user, db])
 
   return { results, loading }
 }

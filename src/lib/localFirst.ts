@@ -1,28 +1,31 @@
 /**
- * localFirst.ts
+ * localFirst.ts — local-first query utilities
  *
- * Utility for the Dexie-first / local-first data pattern used throughout Life OS.
+ * bgSync: fire a background Supabase fetch without blocking the caller.
+ *   Used by every query hook: serve local Dexie data instantly, then
+ *   silently refresh from Supabase in the background.
  *
- * Pattern for queries:
- *   1. Read from Dexie immediately (< 5 ms, no network).
- *   2. Fire a background Supabase sync via bgSync().
- *   3. When Supabase responds, write to Dexie and call queryClient.setQueryData()
- *      to update the React Query cache — the UI re-renders silently with fresh data.
+ * reconcilePendingSync: merge fresh server rows with any writes that are
+ *   still sitting in the offline queue (localStorage). Without this,
+ *   a background sync could:
+ *     - reinsert a row the user just deleted locally (server still has it)
+ *     - overwrite a row the user just updated locally (server has old version)
+ *     - make a newly-inserted row disappear (server hasn't seen it yet)
  *
- * Pattern for mutations:
- *   mutationFn writes to Dexie + calls enqueueSync() only.
- *   The sync engine (syncQueue) handles pushing to Supabase in the background.
- *   Never await Supabase inside a mutationFn hot path.
+ *   Phase 3 change: previously read the sync_queue Dexie table. Now reads
+ *   the offline queue from localStorage (written by syncToSupabase in sync.ts).
+ *   Function signature and behaviour are identical — all query hook call sites
+ *   are unchanged.
  */
 
-import { db } from '../db'
+import { getQueuedItemsForTable } from './sync'
 
 // Tracks in-progress background syncs by key to prevent duplicate concurrent requests.
 const inFlightSyncs = new Set<string>()
 
 /**
  * Fire `fn` in the background without blocking the caller.
- * If a sync for the same `key` is already in flight, the call is silently dropped.
+ * Drops duplicate concurrent syncs for the same key.
  */
 export function bgSync(key: string, fn: () => Promise<void>): void {
   if (inFlightSyncs.has(key)) return
@@ -33,54 +36,57 @@ export function bgSync(key: string, fn: () => Promise<void>): void {
 }
 
 /**
- * Reconcile freshly-fetched server rows with operations still sitting in the
- * local sync queue for `table`.
+ * Reconcile freshly-fetched server rows with writes pending in the offline
+ * queue for `table`.
  *
- * Without this, a bgSync response that lands before a pending insert/update/
- * delete has been pushed to Supabase will blow away the local-only change
- * when it overwrites Dexie + the React Query cache:
+ * Reads the localStorage offline queue (phase 3 replacement for reading the
+ * sync_queue Dexie table). Applies queued operations in chronological order
+ * so the most recent local write always wins over the server response.
  *
- *  - A row just INSERTED locally (e.g. a new wallet) is missing from the
- *    server response, so it would silently disappear from the UI.
- *  - A row just DELETED locally (e.g. a transaction) is still present in the
- *    server response, so it would reappear in the UI — and if it's deleted
- *    again from there, dependent state (like a wallet balance) gets
- *    adjusted a second time.
- *  - A row just UPDATED locally would briefly revert to its pre-update
- *    server value.
- *
- * This merges in-flight local writes on top of the server data so the cache
- * always reflects the latest known state until the queue item syncs.
+ * @param _db   - Dexie database instance (accepted but unused — kept for
+ *               backward compatibility with all query hook call sites).
+ * @param table - Supabase / Dexie table name.
+ * @param serverRows - Rows returned by the Supabase query.
  */
 export async function reconcilePendingSync<T extends { id: string }>(
-  table: string,
+  _db:        unknown,
+  table:      string,
   serverRows: T[]
 ): Promise<T[]> {
-  const pending = await db.sync_queue
-    .orderBy('created_at')
-    .filter(item => !item.synced && item.table === table)
-    .toArray()
-
-  if (pending.length === 0) return serverRows
+  const queued = getQueuedItemsForTable(table)
+  if (queued.length === 0) return serverRows
 
   const byId = new Map(serverRows.map(row => [row.id, row]))
 
-  // Apply queued operations in order so the most recent local write wins.
-  for (const item of pending) {
+  // Apply queued operations in chronological order (oldest first) so the
+  // most recent write wins.
+  const sorted = [...queued].sort((a, b) => a.ts - b.ts)
+
+  for (const item of sorted) {
     const payload = item.payload as Partial<T> & { id: string }
-    if (item.operation === 'delete') {
+
+    if (item.op === 'delete') {
+      // Row was deleted locally — don't let the server put it back.
       byId.delete(payload.id)
-    } else if (item.operation === 'insert') {
-      // A brand-new local row — include it even if the server hasn't seen it yet.
-      byId.set(payload.id, { ...(byId.get(payload.id) ?? {}), ...payload } as T)
+
+    } else if (item.op === 'insert') {
+      // Row was inserted locally — include it even if the server hasn't
+      // seen it yet (e.g., created while offline).
+      byId.set(payload.id, {
+        ...(byId.get(payload.id) ?? {}),
+        ...payload,
+      } as T)
+
     } else {
-      // 'update': only patch rows that are already part of this result set.
-      // If the row isn't here, the server's filter (e.g. a different date,
-      // or a status that no longer matches this view) may correctly exclude
-      // it now, and re-adding it from a partial payload could put it in the
-      // wrong list.
+      // 'update' — patch the server row with local changes.
+      // Only patch rows that are in the result set; if the row is absent from
+      // the server response it may have been correctly filtered out (e.g. by
+      // date or status), and patching from a partial payload could insert it
+      // in the wrong list.
       const existing = byId.get(payload.id)
-      if (existing) byId.set(payload.id, { ...existing, ...payload } as T)
+      if (existing) {
+        byId.set(payload.id, { ...existing, ...payload } as T)
+      }
     }
   }
 

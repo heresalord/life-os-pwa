@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type UserProfileRow    = Database['public']['Tables']['user_profiles']['Row']
@@ -11,7 +11,7 @@ export const userProfilesApi = {
     return data
   },
   async update(id: string, payload: UserProfileUpdate): Promise<UserProfileRow> {
-    const { data, error } = await db.from('user_profiles').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('user_profiles').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   }

@@ -1,27 +1,32 @@
 import { WifiOff, RefreshCw, CheckCheck } from 'lucide-react'
 import { useSyncStore } from '../store/useSyncStore'
-import { processSyncQueue } from '../lib/sync'
+import { processSyncQueue, hasPendingSync } from '../lib/sync'
 import { useState } from 'react'
 
 export function SyncStatusDot() {
   const { isOnline, isSyncing, pendingCount } = useSyncStore()
   const [showTip, setShowTip] = useState(false)
 
+  // Keep pendingCount in sync with localStorage queue on each render
+  // (the store is updated by startSyncEngine/drainOfflineQueue but a manual
+  // check here handles edge cases where the store count drifts)
+  const actualPending = pendingCount > 0 ? pendingCount : (hasPendingSync() ? 1 : 0)
+
   const handleClick = () => {
-    if (isOnline && pendingCount > 0 && !isSyncing) {
-      processSyncQueue()
+    if (isOnline && actualPending > 0 && !isSyncing) {
+      void processSyncQueue()
     }
     setShowTip(v => !v)
     setTimeout(() => setShowTip(false), 2500)
   }
 
   const state = !isOnline
-    ? { icon: WifiOff, color: 'text-text-muted', label: 'Offline — changes saved locally' }
+    ? { icon: WifiOff,    color: 'text-text-muted', label: 'Offline — changes saved locally' }
     : isSyncing
-    ? { icon: RefreshCw, color: 'text-warning', label: 'Syncing…' }
-    : pendingCount > 0
-    ? { icon: RefreshCw, color: 'text-warning', label: `${pendingCount} change${pendingCount > 1 ? 's' : ''} waiting — tap to sync` }
-    : { icon: CheckCheck, color: 'text-success', label: 'All changes saved' }
+    ? { icon: RefreshCw,  color: 'text-warning',    label: 'Syncing…' }
+    : actualPending > 0
+    ? { icon: RefreshCw,  color: 'text-warning',    label: `${actualPending} change${actualPending > 1 ? 's' : ''} pending — tap to sync` }
+    : { icon: CheckCheck, color: 'text-success',    label: 'All changes saved' }
 
   const Icon = state.icon
 
@@ -30,11 +35,11 @@ export function SyncStatusDot() {
       <button
         onClick={handleClick}
         aria-label={state.label}
-        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors ${state.color}`}
+        className={`flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors ${state.color}`}
       >
         <Icon size={14} className={isSyncing ? 'animate-spin' : ''} />
-        {pendingCount > 0 && isOnline && (
-          <span className="text-[10px] font-medium tabular-nums">{pendingCount}</span>
+        {actualPending > 0 && isOnline && (
+          <span className="text-[10px] font-medium tabular-nums">{actualPending}</span>
         )}
       </button>
 

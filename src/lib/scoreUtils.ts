@@ -1,4 +1,4 @@
-import { db } from '../db'
+import type { LifeOSDatabase } from '../db'
 import { enqueueSync } from '../db/syncQueue'
 
 export function calculateDayScore(
@@ -29,7 +29,7 @@ export function calculateDayScore(
   return Math.round((taskPct + moodScore + energyScore) / 3);
 }
 
-export async function syncDayScore(userId: string, date: string) {
+export async function syncDayScore(db: LifeOSDatabase, userId: string, date: string) {
   try {
     const tasks = await db.tasks.where('date').equals(date).toArray();
     const record = await db.daily_records
@@ -47,7 +47,7 @@ export async function syncDayScore(userId: string, date: string) {
         day_score: score,
         updated_at: new Date().toISOString()
       };
-      await db.daily_records.put(updatedRecord as Parameters<typeof db.daily_records.put>[0]);
+      await db.daily_records.put(updatedRecord as Parameters<LifeOSDatabase['daily_records']['put']>[0]);
       await enqueueSync('daily_records', 'update', updatedRecord);
       return score;
     }

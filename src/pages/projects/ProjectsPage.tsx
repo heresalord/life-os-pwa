@@ -16,8 +16,9 @@ import {
 import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 import { useProjectMutations } from '../../hooks/useProjectMutations'
 import { useAuth } from '../../hooks/useAuth'
-import { db } from '../../db'
+import { useDb } from '../../db/DbContext'
 import { EmptyState } from '../../components/EmptyState'
+import { PageSkeleton } from '../../components/Skeleton'
 import clsx from 'clsx'
 
 type ProjectFilter = 'active' | 'archived'
@@ -34,6 +35,7 @@ const PRESET_COLORS = [
 ]
 
 export function ProjectsPage() {
+  const db = useDb()
   const { user } = useAuth()
   const [filter, setFilter] = useState<ProjectFilter>('active')
   const [open, setOpen] = useState(false)
@@ -78,16 +80,15 @@ export function ProjectsPage() {
       const projGoals = statsData.goals.filter(g => g.project_id === proj.id)
       const completedGoals = projGoals.filter(g => g.is_completed || g.state === 'completed').length
 
-      const totalItems = projTasks.length + projGoals.length
-      const completedItems = completedTasks + completedGoals
-      const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
+      const total = projTasks.length + projGoals.length
+      const completed = completedTasks + completedGoals
 
       stats[proj.id] = {
         totalTasks: projTasks.length,
         completedTasks,
         totalGoals: projGoals.length,
         completedGoals,
-        progress
+        progress: total > 0 ? Math.round((completed / total) * 100) : 0
       }
     })
 
@@ -133,33 +134,50 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-6 lg:max-w-5xl pb-10">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display text-text">Projects</h1>
-          <p className="text-xs text-text-muted mt-0.5">Manage tasks and goals grouped by areas of focus</p>
-        </div>
-
-        {/* State Filter dropdown */}
-        <div className="relative group">
-          <select
-            value={filter}
-            onChange={e => setFilter(e.target.value as ProjectFilter)}
-            className="appearance-none bg-surface border border-border rounded-xl pl-3.5 pr-8 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer transition-colors shadow-sm"
-          >
-            <option value="active">Active Projects</option>
-            <option value="archived">Archived</option>
-          </select>
-          <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted" />
-        </div>
-      </header>
-
-      {/* Trigger Dialog for adding projects */}
+      {/* Dialog root wrapping header buttons & float FAB */}
       <Dialog.Root open={open} onOpenChange={setOpen}>
-        <Dialog.Trigger asChild>
-          <button className="w-full flex items-center justify-center gap-2 py-3.5 bg-surface border border-dashed border-border rounded-2xl text-text-secondary hover:text-text hover:border-text-muted transition-all duration-200 text-sm font-medium shadow-sm hover:shadow active:scale-98">
-            <Plus size={16} /> New Project
-          </button>
-        </Dialog.Trigger>
+        <header className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-display text-text">Projects</h1>
+            <p className="text-xs text-text-muted mt-0.5">Manage tasks and goals grouped by areas of focus</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Desktop New Project trigger */}
+            <div className="hidden md:block">
+              <Dialog.Trigger asChild>
+                <button className="flex items-center gap-2 px-4 py-2 bg-accent text-bg text-xs font-bold rounded-xl hover:bg-accent-dim active:scale-95 transition-all shadow-[var(--shadow-card)]">
+                  <Plus size={16} strokeWidth={2.5} /> New Project
+                </button>
+              </Dialog.Trigger>
+            </div>
+
+            {/* State Filter dropdown */}
+            <div className="relative group">
+              <select
+                value={filter}
+                onChange={e => setFilter(e.target.value as ProjectFilter)}
+                className="appearance-none bg-surface border border-border rounded-xl pl-3.5 pr-8 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer transition-colors shadow-sm"
+              >
+                <option value="active">Active Projects</option>
+                <option value="archived">Archived</option>
+              </select>
+              <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted" />
+            </div>
+          </div>
+        </header>
+
+        {/* Floating FAB on Mobile */}
+        <div className="fixed bottom-24 right-4 z-20 md:hidden">
+          <Dialog.Trigger asChild>
+            <button
+              className="w-14 h-14 rounded-full bg-accent text-bg flex items-center justify-center shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:bg-accent-dim active:scale-95 transition-all"
+              aria-label="New Project"
+            >
+              <Plus size={24} strokeWidth={2.5} />
+            </button>
+          </Dialog.Trigger>
+        </div>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm animate-in fade-in duration-200" />
           <Dialog.Content
@@ -174,7 +192,7 @@ export function ProjectsPage() {
                   Organize your related goals and tasks together
                 </Dialog.Description>
               </div>
-              <Dialog.Close className="p-1.5 rounded-full hover:bg-surface-2 text-text-muted hover:text-text transition-colors">
+              <Dialog.Close className="p-2 rounded-full hover:bg-surface-2 text-text-muted hover:text-text transition-colors">
                 <X size={16} />
               </Dialog.Close>
             </div>
@@ -182,7 +200,7 @@ export function ProjectsPage() {
             <form onSubmit={handleCreateProject} className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Project Name</label>
+                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Project Name</label>
                 <input
                   autoFocus
                   type="text"
@@ -196,7 +214,7 @@ export function ProjectsPage() {
 
               {/* Description */}
               <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Description (optional)</label>
+                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Description (optional)</label>
                 <textarea
                   rows={3}
                   placeholder="Describe the main focus or boundaries of this project..."
@@ -208,8 +226,8 @@ export function ProjectsPage() {
 
               {/* Color highlights */}
               <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Highlight Color</label>
-                <div className="flex flex-wrap gap-2.5">
+                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Highlight Color</label>
+                <div className="flex flex-wrap gap-3">
                   {PRESET_COLORS.map(c => {
                     const isSelected = selectedColor === c.hex
                     return (
@@ -245,9 +263,7 @@ export function ProjectsPage() {
       </Dialog.Root>
 
       {isLoading ? (
-        <div className="flex justify-center p-12">
-          <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-        </div>
+        <PageSkeleton />
       ) : filteredProjects.length === 0 ? (
         <EmptyState
           icon={<Folder size={40} />}
@@ -260,45 +276,55 @@ export function ProjectsPage() {
             const stats = projectStats[proj.id] || { totalTasks: 0, completedTasks: 0, totalGoals: 0, completedGoals: 0, progress: 0 }
             const colorDef = getProjectColorCls(proj.color)
 
+            // Status pill details
+            const statusLabel = stats.progress >= 70 ? 'On Track' : stats.progress >= 25 ? 'Active' : 'At Risk'
+            const statusColor = stats.progress >= 70 ? 'bg-success/10 text-success border-success/20'
+              : stats.progress >= 25 ? 'bg-info/10 text-info border-info/20'
+              : 'bg-danger/10 text-danger border-danger/20'
+
             return (
               <div
                 key={proj.id}
-                className="bg-surface border border-border hover:border-border-hover rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 group relative overflow-hidden"
+                style={{
+                  borderColor: `${proj.color || '#3B82F6'}30`,
+                  background: `linear-gradient(135deg, ${(proj.color || '#3B82F6')}0d 0%, var(--theme-surface) 100%)`
+                }}
+                className="border rounded-2xl p-5 shadow-[var(--shadow-card)] transition-all flex flex-col justify-between space-y-4 group relative overflow-hidden"
               >
-                {/* Glowing border effect using project color */}
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-1.5"
-                  style={{ backgroundColor: proj.color || '#3b82f6' }}
-                />
-
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-base text-text leading-tight group-hover:text-accent transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-base text-text leading-tight group-hover:text-accent transition-colors flex-1 min-w-0">
                       {proj.name}
                     </h3>
-                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          handleToggleArchive(proj.id, proj.archived)
-                        }}
-                        className="p-1.5 rounded-lg border border-border text-text-muted hover:text-text hover:bg-surface-2 transition-all"
-                        title={proj.archived ? 'Unarchive Project' : 'Archive Project'}
-                      >
-                        <Archive size={13} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          handleDeleteProject(proj.id)
-                        }}
-                        className="p-1.5 rounded-lg border border-transparent hover:border-danger/20 text-text-muted hover:text-danger hover:bg-danger/5 transition-all"
-                        title="Delete Project"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Status Pill */}
+                      <span className={clsx('text-[10px] font-bold px-2 py-0.5 rounded-full border tracking-wide uppercase', statusColor)}>
+                        {statusLabel}
+                      </span>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleToggleArchive(proj.id, proj.archived)
+                          }}
+                          className="p-2 rounded-lg border border-border text-text-muted hover:text-text hover:bg-surface-2 transition-all bg-surface"
+                          title={proj.archived ? 'Unarchive Project' : 'Archive Project'}
+                        >
+                          <Archive size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleDeleteProject(proj.id)
+                          }}
+                          className="p-2 rounded-lg border border-transparent hover:border-danger/20 text-text-muted hover:text-danger hover:bg-danger/5 transition-all"
+                          title="Delete Project"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -329,18 +355,18 @@ export function ProjectsPage() {
                 {/* Quick details */}
                 <div className="flex items-center justify-between pt-3 border-t border-border/40 text-xs">
                   <div className="flex gap-4">
-                    <span className="flex items-center gap-1.5 text-text-secondary">
+                    <span className="flex items-center gap-2 text-text-secondary">
                       <CheckCircle2 size={12} className={colorDef.text} />
                       <strong>{stats.completedTasks}</strong> / {stats.totalTasks} Tasks
                     </span>
-                    <span className="flex items-center gap-1.5 text-text-secondary">
+                    <span className="flex items-center gap-2 text-text-secondary">
                       <Target size={12} className={colorDef.text} />
                       <strong>{stats.completedGoals}</strong> / {stats.totalGoals} Goals
                     </span>
                   </div>
                   <Link
                     to={`/projects/${proj.id}`}
-                    className="flex items-center gap-0.5 text-xs text-accent hover:text-accent-dim font-semibold group-hover:translate-x-0.5 transition-transform"
+                    className="flex items-center gap-1 text-xs text-accent hover:text-accent-dim font-semibold group-hover:translate-x-0.5 transition-transform"
                   >
                     View details <ChevronRight size={13} />
                   </Link>

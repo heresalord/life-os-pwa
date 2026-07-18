@@ -199,14 +199,14 @@ export function NotificationCenter() {
 
                   return (
                     <div key={groupName} className="flex flex-col">
-                      <div className="px-4 py-1.5 bg-surface-2/30 text-[9px] font-bold text-text-muted uppercase tracking-wider border-b border-border/30">
+                      <div className="px-4 py-2 bg-surface-2/30 text-[9px] font-bold text-text-muted uppercase tracking-wider border-b border-border/30">
                         {groupName}
                       </div>
                       <div className="divide-y divide-border/40">
                         {items.map((notif) => {
                           const meta = getNotificationMeta(notif.type)
                           const Icon = meta.icon
-                          let distance = ''
+                          let distance: string
                           try {
                             distance = formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })
                           } catch {
@@ -232,12 +232,12 @@ export function NotificationCenter() {
 
                                 {/* Content */}
                                 <div className="flex-1 min-w-0 space-y-0.5 pr-6">
-                                  <div className="flex items-start justify-between gap-1.5">
+                                  <div className="flex items-start justify-between gap-2">
                                     <p className={clsx("text-xs font-semibold truncate", !notif.read ? "text-text" : "text-text-secondary")}>
                                       {notif.title}
                                     </p>
                                     {!notif.read && (
-                                      <Circle size={6} className="fill-accent text-accent mt-1.5 flex-shrink-0 animate-pulse" />
+                                      <Circle size={6} className="fill-accent text-accent mt-2 flex-shrink-0 animate-pulse" />
                                     )}
                                   </div>
                                   <p className="text-xs text-text-secondary leading-normal line-clamp-2">

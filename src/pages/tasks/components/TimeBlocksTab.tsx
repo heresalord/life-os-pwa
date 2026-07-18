@@ -60,11 +60,11 @@ export function TimeBlocksTab() {
       <div className="flex items-center gap-3">
         <div className="flex p-1 bg-surface-2 border border-border rounded-lg">
           <button onClick={() => setViewMode('list')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'list' ? 'bg-surface text-text shadow-sm' : 'text-text-muted'}`}>
+            className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${viewMode === 'list' ? 'bg-surface text-text shadow-sm' : 'text-text-muted'}`}>
             List
           </button>
           <button onClick={() => setViewMode('timeline')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'timeline' ? 'bg-surface text-text shadow-sm' : 'text-text-muted'}`}>
+            className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${viewMode === 'timeline' ? 'bg-surface text-text shadow-sm' : 'text-text-muted'}`}>
             Timeline
           </button>
         </div>

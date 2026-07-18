@@ -93,7 +93,7 @@ export function AgendaTaskBlock({ task, onDelete }: AgendaTaskBlockProps) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={clsx(
-          'relative flex items-center p-3 bg-surface transition-transform duration-200 ease-out gap-2.5',
+          'relative flex items-center p-3 bg-surface transition-transform duration-200 ease-out gap-3',
           isActive ? 'border-l-4 border-l-accent' : 'border-l-4 border-l-transparent',
           swiped ? '-translate-x-16' : 'translate-x-0'
         )}
@@ -149,7 +149,7 @@ export function AgendaTaskBlock({ task, onDelete }: AgendaTaskBlockProps) {
             {/* Priority Badge */}
             {task.priority && !task.completed && (
               <span className={clsx(
-                'text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider',
+                'text-[9px] font-bold px-2 py-0.2 rounded border uppercase tracking-wider',
                 task.priority === 1 ? 'border-danger/30 text-danger bg-danger/5'
                 : task.priority === 2 ? 'border-warning/30 text-warning bg-warning/5'
                 : 'border-border text-text-muted bg-surface-2'
@@ -168,7 +168,7 @@ export function AgendaTaskBlock({ task, onDelete }: AgendaTaskBlockProps) {
             {/* Linked Project Highlight */}
             {linkedProject && (
               <span
-                className="text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider flex items-center gap-1"
+                className="text-[9px] font-bold px-2 py-0.2 rounded border uppercase tracking-wider flex items-center gap-1"
                 style={{
                   borderColor: `${linkedProject.color}33`,
                   color: linkedProject.color || '#3b82f6',

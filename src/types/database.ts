@@ -1,3 +1,16 @@
+// ============================================================================
+// database.ts — Life OS Supabase type definitions
+//
+// Manually maintained until `npm run types:supabase` is wired with a valid
+// SUPABASE_PROJECT_ID secret in CI (see .github/workflows/build-apk.yml).
+//
+// IMPORTANT: every table MUST have `Relationships: []` (even if empty).
+// @supabase/postgrest-js resolves Insert/Update types via:
+//   type TablesInsert<S, T> = S['Tables'][T] extends GenericTable ? S['Tables'][T]['Insert'] : never
+// where GenericTable requires { Row, Insert, Update, Relationships }.
+// Without Relationships, every insert/update parameter resolves to `never`.
+// ============================================================================
+
 export type Json =
   | string
   | number
@@ -9,41 +22,8 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      shared_items: {
-        Row: {
-          id: string
-          shared_by: string
-          shared_with_email: string
-          shared_with_id: string | null
-          item_type: 'project' | 'task' | 'inbox'
-          item_id: string
-          code: string
-          status: 'pending' | 'accepted'
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          shared_by: string
-          shared_with_email: string
-          shared_with_id?: string | null
-          item_type: 'project' | 'task' | 'inbox'
-          item_id: string
-          code: string
-          status?: 'pending' | 'accepted'
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          shared_by?: string
-          shared_with_email?: string
-          shared_with_id?: string | null
-          item_type?: 'project' | 'task' | 'inbox'
-          item_id?: string
-          code?: string
-          status?: 'pending' | 'accepted'
-          created_at?: string
-        }
-      }
+
+      // ── user_profiles ───────────────────────────────────────────────────
       user_profiles: {
         Row: {
           id: string
@@ -72,7 +52,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
+
+      // ── user_settings ────────────────────────────────────────────────────
       user_settings: {
         Row: {
           id: string
@@ -89,6 +72,8 @@ export interface Database {
           notifications_enabled: boolean
           dashboard_widgets: Json
           auto_theme: string | null
+          nav_items: string[] | null
+          locale: string | null
           updated_at: string
         }
         Insert: {
@@ -106,6 +91,8 @@ export interface Database {
           notifications_enabled?: boolean
           dashboard_widgets?: Json
           auto_theme?: string | null
+          nav_items?: string[] | null
+          locale?: string | null
           updated_at?: string
         }
         Update: {
@@ -123,74 +110,14 @@ export interface Database {
           notifications_enabled?: boolean
           dashboard_widgets?: Json
           auto_theme?: string | null
+          nav_items?: string[] | null
+          locale?: string | null
           updated_at?: string
         }
+        Relationships: []
       }
-      daily_records: {
-        Row: {
-          id: string
-          user_id: string
-          date: string
-          mood: number | null
-          intent: string | null
-          reflections: Json
-          energy_am: number | null
-          energy_pm: number | null
-          gratitude: Json
-          win_of_day: string | null
-          went_well: string | null
-          do_differently: string | null
-          tomorrow_focus: string | null
-          morning_complete: boolean
-          evening_complete: boolean
-          day_score: number | null
-          journal: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          date: string
-          mood?: number | null
-          intent?: string | null
-          reflections?: Json
-          energy_am?: number | null
-          energy_pm?: number | null
-          gratitude?: Json
-          win_of_day?: string | null
-          went_well?: string | null
-          do_differently?: string | null
-          tomorrow_focus?: string | null
-          morning_complete?: boolean
-          evening_complete?: boolean
-          day_score?: number | null
-          journal?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          date?: string
-          mood?: number | null
-          intent?: string | null
-          reflections?: Json
-          energy_am?: number | null
-          energy_pm?: number | null
-          gratitude?: Json
-          win_of_day?: string | null
-          went_well?: string | null
-          do_differently?: string | null
-          tomorrow_focus?: string | null
-          morning_complete?: boolean
-          evening_complete?: boolean
-          day_score?: number | null
-          journal?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
+
+      // ── tasks ─────────────────────────────────────────────────────────────
       tasks: {
         Row: {
           id: string
@@ -258,7 +185,10 @@ export interface Database {
           time_block_end?: string | null
           created_at?: string
         }
+        Relationships: []
       }
+
+      // ── transactions ─────────────────────────────────────────────────────
       transactions: {
         Row: {
           id: string
@@ -302,7 +232,165 @@ export interface Database {
           notes?: string | null
           created_at?: string
         }
+        Relationships: []
       }
+
+      // ── wallets ───────────────────────────────────────────────────────────
+      wallets: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          type: 'cash' | 'bank' | 'credit' | 'savings'
+          currency: string
+          balance: number
+          color: string | null
+          archived: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          type: 'cash' | 'bank' | 'credit' | 'savings'
+          currency?: string
+          balance?: number
+          color?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          type?: 'cash' | 'bank' | 'credit' | 'savings'
+          currency?: string
+          balance?: number
+          color?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── budgets ───────────────────────────────────────────────────────────
+      budgets: {
+        Row: {
+          id: string
+          user_id: string
+          category: string
+          period: 'daily' | 'monthly' | 'yearly'
+          limit_amount: number
+          currency: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category: string
+          period: 'daily' | 'monthly' | 'yearly'
+          limit_amount: number
+          currency: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category?: string
+          period?: 'daily' | 'monthly' | 'yearly'
+          limit_amount?: number
+          currency?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── savings_goals ─────────────────────────────────────────────────────
+      savings_goals: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          target: number
+          current: number
+          currency: string
+          deadline: string | null
+          color: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          target: number
+          current?: number
+          currency: string
+          deadline?: string | null
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          target?: number
+          current?: number
+          currency?: string
+          deadline?: string | null
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── debts ─────────────────────────────────────────────────────────────
+      debts: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          amount: number
+          type: 'i_owe' | 'owe_me'
+          due_date: string | null
+          paid: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          amount: number
+          type: 'i_owe' | 'owe_me'
+          due_date?: string | null
+          paid?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          amount?: number
+          type?: 'i_owe' | 'owe_me'
+          due_date?: string | null
+          paid?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── goals ─────────────────────────────────────────────────────────────
       goals: {
         Row: {
           id: string
@@ -330,8 +418,8 @@ export interface Database {
           id?: string
           user_id: string
           name: string
-          goal_type: 'year' | 'general' | 'binary'
-          measurement_type: 'count' | 'currency' | 'time' | 'percentage' | 'binary'
+          goal_type?: 'year' | 'general' | 'binary'
+          measurement_type?: 'count' | 'currency' | 'time' | 'percentage' | 'binary'
           target?: number | null
           currency?: string | null
           start_date?: string | null
@@ -370,7 +458,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
+
+      // ── goal_events ───────────────────────────────────────────────────────
       goal_events: {
         Row: {
           id: string
@@ -414,7 +505,10 @@ export interface Database {
           new_target?: number | null
           created_at?: string
         }
+        Relationships: []
       }
+
+      // ── habit_logs ────────────────────────────────────────────────────────
       habit_logs: {
         Row: {
           id: string
@@ -443,7 +537,10 @@ export interface Database {
           note?: string | null
           created_at?: string
         }
+        Relationships: []
       }
+
+      // ── milestones ────────────────────────────────────────────────────────
       milestones: {
         Row: {
           id: string
@@ -475,7 +572,45 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
+
+      // ── projects ──────────────────────────────────────────────────────────
+      projects: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          color: string | null
+          description: string | null
+          archived: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          color?: string | null
+          description?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          color?: string | null
+          description?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── books ─────────────────────────────────────────────────────────────
       books: {
         Row: {
           id: string
@@ -552,7 +687,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
+
+      // ── quotes ────────────────────────────────────────────────────────────
       quotes: {
         Row: {
           id: string
@@ -581,7 +719,10 @@ export interface Database {
           date?: string
           created_at?: string
         }
+        Relationships: []
       }
+
+      // ── reading_goals ─────────────────────────────────────────────────────
       reading_goals: {
         Row: {
           id: string
@@ -610,7 +751,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
+
+      // ── agenda_blocks ─────────────────────────────────────────────────────
       agenda_blocks: {
         Row: {
           id: string
@@ -645,7 +789,10 @@ export interface Database {
           recurrence?: Json | null
           created_at?: string
         }
+        Relationships: []
       }
+
+      // ── inbox_items ───────────────────────────────────────────────────────
       inbox_items: {
         Row: {
           id: string
@@ -680,7 +827,10 @@ export interface Database {
           archived_at?: string | null
           captured_at?: string
         }
+        Relationships: []
       }
+
+      // ── notes ─────────────────────────────────────────────────────────────
       notes: {
         Row: {
           id: string
@@ -724,7 +874,116 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
+
+      // ── daily_records ─────────────────────────────────────────────────────
+      daily_records: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          mood: number | null
+          intent: string | null
+          reflections: Json
+          energy_am: number | null
+          energy_pm: number | null
+          gratitude: Json
+          win_of_day: string | null
+          went_well: string | null
+          do_differently: string | null
+          tomorrow_focus: string | null
+          morning_complete: boolean
+          evening_complete: boolean
+          day_score: number | null
+          journal: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          mood?: number | null
+          intent?: string | null
+          reflections?: Json
+          energy_am?: number | null
+          energy_pm?: number | null
+          gratitude?: Json
+          win_of_day?: string | null
+          went_well?: string | null
+          do_differently?: string | null
+          tomorrow_focus?: string | null
+          morning_complete?: boolean
+          evening_complete?: boolean
+          day_score?: number | null
+          journal?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          mood?: number | null
+          intent?: string | null
+          reflections?: Json
+          energy_am?: number | null
+          energy_pm?: number | null
+          gratitude?: Json
+          win_of_day?: string | null
+          went_well?: string | null
+          do_differently?: string | null
+          tomorrow_focus?: string | null
+          morning_complete?: boolean
+          evening_complete?: boolean
+          day_score?: number | null
+          journal?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── shared_items ──────────────────────────────────────────────────────
+      shared_items: {
+        Row: {
+          id: string
+          shared_by: string
+          shared_with_email: string
+          shared_with_id: string | null
+          item_type: 'project' | 'task' | 'inbox'
+          item_id: string
+          code: string
+          status: 'pending' | 'accepted'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          shared_by: string
+          shared_with_email: string
+          shared_with_id?: string | null
+          item_type: 'project' | 'task' | 'inbox'
+          item_id: string
+          code: string
+          status?: 'pending' | 'accepted'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          shared_by?: string
+          shared_with_email?: string
+          shared_with_id?: string | null
+          item_type?: 'project' | 'task' | 'inbox'
+          item_id?: string
+          code?: string
+          status?: 'pending' | 'accepted'
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── push_subscriptions ────────────────────────────────────────────────
       push_subscriptions: {
         Row: {
           id: string
@@ -750,182 +1009,15 @@ export interface Database {
           user_agent?: string | null
           created_at?: string
         }
+        Relationships: []
       }
-      wallets: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          type: 'cash' | 'bank' | 'credit' | 'savings'
-          currency: string
-          balance: number
-          color: string | null
-          archived: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          type: 'cash' | 'bank' | 'credit' | 'savings'
-          currency: string
-          balance?: number
-          color?: string | null
-          archived?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          type?: 'cash' | 'bank' | 'credit' | 'savings'
-          currency?: string
-          balance?: number
-          color?: string | null
-          archived?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      budgets: {
-        Row: {
-          id: string
-          user_id: string
-          category: string
-          period: 'daily' | 'monthly' | 'yearly'
-          limit_amount: number
-          currency: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          category: string
-          period: 'daily' | 'monthly' | 'yearly'
-          limit_amount: number
-          currency: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          category?: string
-          period?: 'daily' | 'monthly' | 'yearly'
-          limit_amount?: number
-          currency?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      savings_goals: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          target: number
-          current: number
-          currency: string
-          deadline: string | null
-          color: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          target: number
-          current?: number
-          currency: string
-          deadline?: string | null
-          color?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          target?: number
-          current?: number
-          currency?: string
-          deadline?: string | null
-          color?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      debts: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          amount: number
-          type: 'i_owe' | 'owe_me'
-          due_date: string | null
-          paid: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          amount: number
-          type: 'i_owe' | 'owe_me'
-          due_date?: string | null
-          paid?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          amount?: number
-          type?: 'i_owe' | 'owe_me'
-          due_date?: string | null
-          paid?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      projects: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          color: string | null
-          description: string | null
-          archived: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          color?: string | null
-          description?: string | null
-          archived?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          color?: string | null
-          description?: string | null
-          archived?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
+
     }
+
+    // Supabase client requires these sections even if unused
+    Views:          { [_ in never]: never }
+    Functions:      { [_ in never]: never }
+    Enums:          { [_ in never]: never }
+    CompositeTypes: { [_ in never]: never }
   }
 }

@@ -1,0 +1,28 @@
+# <type>(<scope>): <short summary>
+#
+# Types:
+#   feat     — A new feature
+#   fix      — A bug fix
+#   style    — UI/CSS changes (no logic change)
+#   refactor — Code change that neither fixes a bug nor adds a feature
+#   perf     — A code change that improves performance
+#   test     — Adding or correcting tests
+#   chore    — Build process, dependency, or tooling changes
+#   docs     — Documentation only changes
+#   ci       — CI/CD configuration changes
+#
+# Scopes (optional, pick one):
+#   dashboard | daily-log | inbox | tasks | goals | finance | notes
+#   books | projects | profile | settings | more | auth | db | sync | shell
+#
+# Examples:
+#   feat(goals): add haptic feedback to progress log
+#   fix(finance): correct budget bar threshold for danger state
+#   style(tasks): align section padding to 8pt grid
+#   chore: bump dexie to 4.0.8
+#
+# Keep the summary line under 72 characters.
+# Use the body below to explain *what* and *why* (not *how*):
+#
+# --- BODY (optional, leave blank line above) ---
+

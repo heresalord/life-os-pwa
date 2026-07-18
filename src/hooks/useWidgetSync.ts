@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { WidgetData, formatWidgetAmount } from '../lib/widgetBridge'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
 import { getUserLocalDate } from '../lib/dateUtils'
@@ -24,6 +24,7 @@ import { getUserLocalDate } from '../lib/dateUtils'
  * No-ops on web/iOS — all WidgetData methods are stubs on non-Android.
  */
 export function useWidgetSync() {
+  const db = useDb()
   const { timezone }  = useAppStore()
   const { user }      = useAuth()
   const isSyncing     = useRef(false)

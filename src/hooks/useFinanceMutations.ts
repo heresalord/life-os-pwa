@@ -1,14 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import type { Wallet, Budget, SavingsGoal, Debt } from '../db/schema'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
+import { QK } from '../lib/queryKeys'
 
 async function write(table: string, op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
   await enqueueSync(table, op, payload)
 }
 
 export function useFinanceMutations() {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
 
@@ -44,7 +46,7 @@ export function useFinanceMutations() {
       console.error('[FinanceMutation] addWallet mutation failed:', err)
       window.alert(`Failed to add account: ${err instanceof Error ? err.message : 'Unknown error'}`)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['wallets'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.wallets(user?.id ?? '') }),
   })
 
   const updateWallet = useMutation({
@@ -54,7 +56,7 @@ export function useFinanceMutations() {
       const updated = await db.wallets.get(id)
       if (updated) await write('wallets', 'update', updated as Record<string, unknown>)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['wallets'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.wallets(user?.id ?? '') }),
   })
 
   const deleteWallet = useMutation({
@@ -62,7 +64,7 @@ export function useFinanceMutations() {
       await db.wallets.delete(id)
       await write('wallets', 'delete', { id })
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['wallets'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.wallets(user?.id ?? '') }),
   })
 
   // ── Budgets ──────────────────────────────────────────────────────────
@@ -75,7 +77,7 @@ export function useFinanceMutations() {
       await write('budgets', 'insert', newBudget as Record<string, unknown>)
       return newBudget
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['budgets'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.budgets(user?.id ?? '') }),
   })
 
   const deleteBudget = useMutation({
@@ -83,7 +85,7 @@ export function useFinanceMutations() {
       await db.budgets.delete(id)
       await write('budgets', 'delete', { id })
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['budgets'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.budgets(user?.id ?? '') }),
   })
 
   const updateBudget = useMutation({
@@ -93,7 +95,7 @@ export function useFinanceMutations() {
       const updated = await db.budgets.get(id)
       if (updated) await write('budgets', 'update', updated as Record<string, unknown>)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['budgets'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.budgets(user?.id ?? '') }),
   })
 
   // ── Savings Goals ─────────────────────────────────────────────────────
@@ -106,7 +108,7 @@ export function useFinanceMutations() {
       await write('savings_goals', 'insert', newGoal as Record<string, unknown>)
       return newGoal
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['savings_goals'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.savingsGoals(user?.id ?? '') }),
   })
 
   const updateSavingsGoal = useMutation({
@@ -116,7 +118,7 @@ export function useFinanceMutations() {
       const updated = await db.savings_goals.get(id)
       if (updated) await write('savings_goals', 'update', updated as Record<string, unknown>)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['savings_goals'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.savingsGoals(user?.id ?? '') }),
   })
 
   const deleteSavingsGoal = useMutation({
@@ -124,7 +126,7 @@ export function useFinanceMutations() {
       await db.savings_goals.delete(id)
       await write('savings_goals', 'delete', { id })
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['savings_goals'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.savingsGoals(user?.id ?? '') }),
   })
 
   // ── Debts ─────────────────────────────────────────────────────────────
@@ -137,7 +139,7 @@ export function useFinanceMutations() {
       await write('debts', 'insert', newDebt as Record<string, unknown>)
       return newDebt
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['debts'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.debts(user?.id ?? '') }),
   })
 
   const updateDebt = useMutation({
@@ -147,7 +149,7 @@ export function useFinanceMutations() {
       const updated = await db.debts.get(id)
       if (updated) await write('debts', 'update', updated as Record<string, unknown>)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['debts'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.debts(user?.id ?? '') }),
   })
 
   const deleteDebt = useMutation({
@@ -155,7 +157,7 @@ export function useFinanceMutations() {
       await db.debts.delete(id)
       await write('debts', 'delete', { id })
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['debts'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.debts(user?.id ?? '') }),
   })
 
   const toggleDebtPaid = useMutation({
@@ -165,7 +167,7 @@ export function useFinanceMutations() {
       const updated = await db.debts.get(id)
       if (updated) await write('debts', 'update', updated as Record<string, unknown>)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['debts'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: QK.debts(user?.id ?? '') }),
   })
 
   return {

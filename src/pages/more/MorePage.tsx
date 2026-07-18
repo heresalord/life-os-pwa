@@ -110,17 +110,18 @@ export function MorePage() {
           <h2 className="text-[11px] font-bold text-text-muted uppercase tracking-widest px-1">
             {t('more.more_modules', 'More Modules')}
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden divide-y divide-border">
             {others.map(({ key, to, icon: Icon, label }) => (
               <button
                 key={key}
                 onClick={() => go(to)}
-                className="flex flex-col items-center gap-2 p-4 bg-surface border border-border rounded-2xl hover:bg-surface-2 hover:border-accent/30 transition-all text-center"
+                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2 transition-colors text-left"
               >
-                <Icon size={22} className="text-text-secondary" />
-                <span className="text-xs font-medium text-text-muted">
-                  {t(`nav.${key}`, label)}
-                </span>
+                <div className="w-8 h-8 rounded-xl bg-surface-2 border border-border flex items-center justify-center flex-shrink-0">
+                  <Icon size={16} className="text-text-secondary" />
+                </div>
+                <span className="text-sm font-medium text-text flex-1">{t(`nav.${key}`, label)}</span>
+                <ChevronRight size={15} className="text-text-muted" />
               </button>
             ))}
           </div>
@@ -132,17 +133,18 @@ export function MorePage() {
         <h2 className="text-[11px] font-bold text-text-muted uppercase tracking-widest px-1">
           {t('more.pinned', 'Pinned in Nav')}
         </h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="bg-surface border border-accent/20 rounded-2xl overflow-hidden divide-y divide-border">
           {pinned.map(({ key, to, icon: Icon, label }) => (
             <button
               key={key}
               onClick={() => go(to)}
-              className="flex flex-col items-center gap-2 p-4 bg-accent/5 border border-accent/20 rounded-2xl hover:bg-accent/10 transition-all text-center"
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/5 transition-colors text-left"
             >
-              <Icon size={22} className="text-accent" />
-              <span className="text-xs font-medium text-accent">
-                {t(`nav.${key}`, label)}
-              </span>
+              <div className="w-8 h-8 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
+                <Icon size={16} className="text-accent" />
+              </div>
+              <span className="text-sm font-medium text-text flex-1">{t(`nav.${key}`, label)}</span>
+              <ChevronRight size={15} className="text-accent/60" />
             </button>
           ))}
         </div>

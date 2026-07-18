@@ -100,7 +100,7 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
 
             {/* Amount */}
             <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Amount</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Amount</label>
               <input autoFocus type="number" step="0.01" min="0" required value={amount} onChange={e => setAmount(e.target.value)}
                 className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
             </div>
@@ -108,12 +108,12 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
             {/* Date + time */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Date</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Date</label>
                 <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Time</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Time</label>
                 <input type="time" value={txTime} onChange={e => setTxTime(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
               </div>
@@ -122,7 +122,7 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
             {/* Category — hidden for adjustments */}
             {!isAdjustment && (
             <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Category</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Category</label>
               <select value={category} onChange={e => setCategory(e.target.value)}
                 className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text capitalize focus:border-accent focus:outline-none appearance-none">
                 {(type === 'expense' ? expCats : incCats).map(c => <option key={c} value={c}>{c}</option>)}
@@ -133,7 +133,7 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
             {/* Wallet / Account */}
             {visibleWallets.length > 0 && (
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Account</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Account</label>
                 <select value={walletId} onChange={e => setWalletId(e.target.value)}
                   className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none appearance-none">
                   <option value="">No account</option>
@@ -144,7 +144,7 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
 
             {/* Description */}
             <div>
-              <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Description (optional)</label>
+              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Description (optional)</label>
               <input type="text" placeholder="What was this for?" value={description} onChange={e => setDescription(e.target.value)}
                 className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none" />
             </div>

@@ -22,7 +22,7 @@ export function QuotesWidget() {
   if (quotes.length === 0) {
     return (
       <div className="bg-surface border border-border rounded-2xl p-4 space-y-2">
-        <p className="text-xs text-text-muted uppercase tracking-widest flex items-center gap-1.5">
+        <p className="text-xs text-text-muted uppercase tracking-widest flex items-center gap-2">
           <Quote size={11} /> Quote
         </p>
         <p className="text-sm text-text-muted italic leading-relaxed">
@@ -36,7 +36,7 @@ export function QuotesWidget() {
     <div className="bg-surface border border-border rounded-2xl p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-text-muted uppercase tracking-widest flex items-center gap-1.5">
+        <p className="text-xs text-text-muted uppercase tracking-widest flex items-center gap-2">
           <Quote size={11} /> Quote
         </p>
         <span className="text-[10px] text-text-muted bg-surface-2 px-2 py-0.5 rounded-full">

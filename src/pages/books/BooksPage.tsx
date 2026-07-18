@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import * as Dialog from '@radix-ui/react-dialog'
 import { BookOpen, Search, X, SlidersHorizontal, Award, Star } from 'lucide-react'
 import { useBooksQuery } from '../../hooks/useBooksQuery'
@@ -6,6 +7,7 @@ import { useBookMutations } from '../../hooks/useBookMutations'
 import { BookItem } from '../../components/books/BookItem'
 import { AddBookModal } from '../../components/books/AddBookModal'
 import { EmptyState } from '../../components/EmptyState'
+import { PageSkeleton } from '../../components/Skeleton'
 import { useReadingGoalsQuery, useSaveReadingGoalMutation } from '../../hooks/useReadingGoalsQuery'
 import { haptic } from '../../lib/haptic'
 import clsx from 'clsx'
@@ -29,6 +31,7 @@ const EMPTY_MESSAGES: Record<Exclude<TabStatus, 'stats'>, string> = {
 
 export function BooksPage() {
   const [tab, setTab] = useState<TabStatus>('reading')
+  const navigate = useNavigate()
   const { data: allBooks = [], isLoading } = useBooksQuery()
   const { deleteBook } = useBookMutations()
 
@@ -180,7 +183,7 @@ export function BooksPage() {
         {targetBooks > 0 ? (
           <button
             onClick={() => { haptic('light'); setShowGoalModal(true) }}
-            className="flex items-center gap-3 bg-surface border border-border px-3.5 py-1.5 rounded-xl hover:border-accent transition-all hover:shadow-sm"
+            className="flex items-center gap-3 bg-surface border border-border px-3.5 py-2 rounded-xl hover:border-accent transition-all hover:shadow-sm"
           >
             <div className="relative flex items-center justify-center">
               <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
@@ -204,7 +207,7 @@ export function BooksPage() {
         ) : (
           <button
             onClick={() => { haptic('light'); setShowGoalModal(true) }}
-            className="text-xs font-medium text-accent border border-accent/25 bg-accent/5 hover:bg-accent/10 hover:border-accent/40 transition-colors px-3 py-1.5 rounded-xl flex items-center gap-1.5"
+            className="text-xs font-medium text-accent border border-accent/25 bg-accent/5 hover:bg-accent/10 hover:border-accent/40 transition-colors px-3 py-2 rounded-xl flex items-center gap-2"
           >
             <Award size={14} /> Set Reading Goal
           </button>
@@ -220,7 +223,7 @@ export function BooksPage() {
               key={t.value}
               onClick={() => { haptic('light'); setTab(t.value) }}
               className={clsx(
-                'flex-1 min-w-fit py-1.5 px-2.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all',
+                'flex-1 min-w-fit py-2 px-2.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all',
                 tab === t.value
                   ? 'bg-surface text-text shadow-sm'
                   : 'text-text-muted hover:text-text-secondary'
@@ -228,7 +231,7 @@ export function BooksPage() {
             >
               {t.label}
               {t.value !== 'stats' && count > 0 && (
-                <span className="ml-1.5 text-[10px] opacity-60">{count}</span>
+                <span className="ml-2 text-[10px] opacity-60">{count}</span>
               )}
             </button>
           )
@@ -241,7 +244,7 @@ export function BooksPage() {
           <AddBookModal defaultStatus={tab === 'finished' || tab === 'abandoned' ? 'to-read' : tab} />
 
           {/* Sort & Filter */}
-          <div className="bg-surface border border-border p-3.5 rounded-2xl space-y-3 shadow-sm">
+          <div className="bg-surface border border-border p-4 rounded-2xl space-y-3 shadow-[var(--shadow-card)]">
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -260,7 +263,7 @@ export function BooksPage() {
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={clsx(
-                  'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition-colors',
+                  'flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl border transition-colors',
                   showFilters ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface-2 text-text-secondary hover:text-text'
                 )}
               >
@@ -319,7 +322,7 @@ export function BooksPage() {
                 )}
                 <button
                   onClick={() => { setFilterGenre('all'); setFilterSource('all'); setFilterShelf('all'); setFilterYear('all'); setSearchQuery('') }}
-                  className="self-end px-3 py-1.5 text-text-muted hover:text-text font-medium underline text-[11px]"
+                  className="self-end px-3 py-2 text-text-muted hover:text-text font-medium underline text-[11px]"
                 >
                   Reset All
                 </button>
@@ -329,9 +332,7 @@ export function BooksPage() {
 
           <div className="mt-4">
             {isLoading ? (
-              <div className="flex justify-center p-8">
-                <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-              </div>
+              <PageSkeleton />
             ) : processedBooks.length === 0 ? (
               <EmptyState
                 icon={<BookOpen size={40} />}
@@ -339,14 +340,36 @@ export function BooksPage() {
                 message={EMPTY_MESSAGES[tab as Exclude<TabStatus, 'stats'>]}
               />
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {processedBooks.map(b => (
+              <div>
+                {tab === 'reading' && processedBooks.length > 0 && (
                   <BookItem
-                    key={b.id}
-                    book={b as Parameters<typeof BookItem>[0]['book']}
+                    key={processedBooks[0].id}
+                    book={processedBooks[0] as any}
                     onDelete={id => deleteBook.mutate(id)}
+                    layoutMode="hero"
                   />
-                ))}
+                )}
+                
+                {(tab !== 'reading' || processedBooks.length > 1) && (
+                  <>
+                    {tab === 'reading' && (
+                      <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3 pl-1 mt-4">
+                        Other Books In Progress
+                      </h3>
+                    )}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {processedBooks
+                        .slice(tab === 'reading' ? 1 : 0)
+                        .map(b => (
+                          <BookItem
+                            key={b.id}
+                            book={b as any}
+                            onDelete={id => deleteBook.mutate(id)}
+                          />
+                        ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -355,9 +378,88 @@ export function BooksPage() {
 
       {/* ── Stats panel ──────────────────────────────────────────────────── */}
       {tab === 'stats' && (
-        <div className="space-y-5 animate-in fade-in duration-200">
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* Hero Row: Goal Ring & Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Hero Progress Ring Card */}
+            <div className="md:col-span-2 bg-surface border border-border rounded-3xl p-6 shadow-[var(--shadow-card)] flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="flex-1 space-y-3">
+                <span className="text-[10px] bg-success/10 text-success border border-success/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                  Annual Reading Goal
+                </span>
+                <h3 className="text-xl font-display font-bold text-text">
+                  {currentYear} Reading Journey
+                </h3>
+                <p className="text-sm text-text-secondary">
+                  You have completed <strong className="text-text font-bold">{completedThisYear}</strong> out of <strong className="text-text font-bold">{targetBooks || 1}</strong> books set for this year's goal.
+                </p>
+                {targetBooks > 0 ? (
+                  <button
+                    onClick={() => { haptic('light'); setShowGoalModal(true) }}
+                    className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
+                  >
+                    Adjust reading goal
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { haptic('light'); setShowGoalModal(true) }}
+                    className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
+                  >
+                    Set a reading goal
+                  </button>
+                )}
+              </div>
 
-          {/* Status breakdown */}
+              {/* Large Progress Ring */}
+              <div className="relative w-36 h-36 flex-shrink-0 flex items-center justify-center">
+                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" className="text-surface-2" strokeWidth="6" />
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                    className="text-success"
+                    strokeWidth="6"
+                    strokeDasharray={`${(pct / 100) * 263.89} 263.89`}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dasharray 600ms ease' }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-display font-extrabold text-text">{pct}%</span>
+                  <span className="text-[9px] text-text-muted uppercase tracking-wider font-semibold">Done</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick stats panel beside ring */}
+            <div className="bg-surface border border-border rounded-3xl p-6 shadow-[var(--shadow-card)] flex flex-col justify-between gap-4">
+              <div>
+                <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Total Pages Read</p>
+                <p className="text-4xl font-display text-accent font-bold mt-2">
+                  {stats.totalPagesFinished.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-text-secondary mt-1">across finished books</p>
+              </div>
+              <div className="border-t border-border/40 pt-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] text-text-muted uppercase tracking-wider font-semibold">Library Size</p>
+                  <p className="text-lg font-display text-text font-bold">{allBooks.length}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-text-muted uppercase tracking-wider font-semibold">Avg Rating</p>
+                  {stats.avgRating ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-lg font-display text-warning font-bold">{stats.avgRating.toFixed(1)}</span>
+                      <Star size={12} className="fill-warning text-warning" />
+                    </div>
+                  ) : (
+                    <span className="text-sm font-semibold text-text-muted">—</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Status Breakdown Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {([ 
               { label: 'Reading',   count: stats.byStatus.reading,   color: 'text-info',    bg: 'bg-info/10'    },
@@ -365,91 +467,23 @@ export function BooksPage() {
               { label: 'Finished',  count: stats.byStatus.finished,  color: 'text-success', bg: 'bg-success/10' },
               { label: 'Abandoned', count: stats.byStatus.abandoned, color: 'text-warning', bg: 'bg-warning/10' },
             ] as const).map(({ label, count, color, bg }) => (
-              <div key={label} className={clsx('border border-border rounded-2xl p-4 text-center shadow-sm', bg)}>
+              <div key={label} className={clsx('border border-border rounded-2xl p-4 text-center shadow-[var(--shadow-card)]', bg)}>
                 <p className={clsx('text-3xl font-display font-bold', color)}>{count}</p>
                 <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold mt-1">{label}</p>
               </div>
             ))}
           </div>
 
-          {/* Key metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm text-center">
-              <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Finished {currentYear}</p>
-              <p className="text-3xl font-display text-text mt-2 font-bold">{completedThisYear}</p>
-              {targetBooks > 0
-                ? <p className="text-[10px] text-text-secondary mt-1">Goal: {targetBooks} books</p>
-                : <p className="text-[10px] text-text-muted mt-1 italic">No goal set</p>
-              }
-            </div>
-
-            <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm text-center">
-              <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Pages Read</p>
-              <p className="text-3xl font-display text-text mt-2 font-bold">
-                {stats.totalPagesFinished >= 1000
-                  ? `${(stats.totalPagesFinished / 1000).toFixed(1)}k`
-                  : stats.totalPagesFinished}
-              </p>
-              <p className="text-[10px] text-text-secondary mt-1">across finished books</p>
-            </div>
-
-            <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm text-center">
-              <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Avg Rating</p>
-              {stats.avgRating ? (
-                <>
-                  <p className="text-3xl font-display text-text mt-2 font-bold">{stats.avgRating.toFixed(1)}</p>
-                  <div className="flex justify-center mt-1 gap-0.5">
-                    {[1,2,3,4,5].map(n => (
-                      <Star key={n} size={10}
-                        className={n <= Math.round(stats.avgRating!) ? 'text-warning fill-warning' : 'text-border'}
-                        strokeWidth={1.5}
-                      />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-3xl font-display text-text mt-2 font-bold">—</p>
-                  <p className="text-[10px] text-text-muted mt-1 italic">No ratings yet</p>
-                </>
-              )}
-            </div>
-
-            <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm text-center">
-              <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Library Size</p>
-              <p className="text-3xl font-display text-text mt-2 font-bold">{allBooks.length}</p>
-              <p className="text-[10px] text-text-secondary mt-1">books total</p>
-            </div>
-
-            {/* Goal progress */}
-            {targetBooks > 0 && (
-              <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm text-center col-span-2 md:col-span-2">
-                <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold mb-3">
-                  {currentYear} Goal Progress
-                </p>
-                <div className="h-2.5 bg-surface-2 rounded-full overflow-hidden border border-border mb-2">
-                  <div
-                    className="h-full bg-success/60 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <p className="text-xs font-semibold text-text">
-                  {completedThisYear} / {targetBooks} books — {pct}%
-                </p>
-              </div>
-            )}
-          </div>
-
           {/* Currently reading progress */}
           {stats.currentlyReading.length > 0 && (
-            <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">
+            <div className="bg-surface border border-border p-5 rounded-3xl shadow-[var(--shadow-card)]">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">
                 In Progress
               </h3>
               <div className="space-y-4">
                 {stats.currentlyReading.map(b => (
                   <div key={b.id}>
-                    <div className="flex justify-between items-baseline mb-1.5">
+                    <div className="flex justify-between items-baseline mb-2">
                       <p className="text-xs font-semibold text-text truncate max-w-[70%]">{b.title}</p>
                       <span className="text-[11px] font-bold text-text-secondary">{b.pct}%</span>
                     </div>
@@ -466,6 +500,55 @@ export function BooksPage() {
               </div>
             </div>
           )}
+
+          {/* Completed Bookshelf Visual Grid */}
+          {(() => {
+            const finishedBooks = allBooks.filter(b => b.status === 'finished')
+            const size = 4
+            const shelfChunks = Array.from({ length: Math.ceil(finishedBooks.length / size) }, (_, i) =>
+              finishedBooks.slice(i * size, i * size + size)
+            )
+
+            if (finishedBooks.length === 0) return null
+
+            return (
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted pl-1">
+                  Completed Bookshelf
+                </h3>
+                <div className="space-y-8 bg-surface-2/45 p-6 rounded-3xl border border-border/80">
+                  {shelfChunks.map((shelf, shelfIdx) => (
+                    <div key={shelfIdx} className="relative pb-4">
+                      <div className="grid grid-cols-4 gap-4 justify-items-center relative z-10 px-2">
+                        {shelf.map(book => (
+                          <div key={book.id} className="w-full max-w-[80px] sm:max-w-[100px] flex flex-col items-center">
+                            <div
+                              onClick={() => navigate(`/books/${book.id}`)}
+                              className="w-full aspect-[3/4] rounded-md shadow-md border border-border/60 overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 bg-surface cursor-pointer"
+                            >
+                              {book.cover_url ? (
+                                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-2xl font-bold bg-surface-2 opacity-50">📘</div>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-text-secondary mt-1.5 font-medium truncate w-full text-center">
+                              {book.title}
+                            </span>
+                          </div>
+                        ))}
+                        {Array.from({ length: 4 - shelf.length }).map((_, i) => (
+                          <div key={i} className="w-full max-w-[80px] sm:max-w-[100px]" />
+                        ))}
+                      </div>
+                      <div className="absolute bottom-3 left-0 right-0 h-2 bg-gradient-to-r from-amber-800 to-amber-950 rounded-full shadow-sm opacity-80" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
         </div>
       )}
 
@@ -484,7 +567,7 @@ export function BooksPage() {
             </div>
             <form onSubmit={handleSaveGoal} className="space-y-4">
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Target Books</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Target Books</label>
                 <input required type="number" min="1"
                   value={goalBooks} onChange={e => setGoalBooks(e.target.value)}
                   placeholder="e.g. 24"
@@ -492,7 +575,7 @@ export function BooksPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Target Pages (Optional)</label>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Target Pages (Optional)</label>
                 <input type="number" min="1"
                   value={goalPages} onChange={e => setGoalPages(e.target.value)}
                   placeholder="e.g. 5000"

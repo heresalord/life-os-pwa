@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type React from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus,
@@ -30,7 +31,7 @@ import type { Goal } from '../../db/schema'
 import clsx from 'clsx'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, isSameDay } from 'date-fns'
 
-const CATEGORY_ICONS: Record<string, any> = {
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   Health: Activity,
   Fitness: Dumbbell,
   Finance: DollarSign,
@@ -41,6 +42,11 @@ const CATEGORY_ICONS: Record<string, any> = {
   Creative: Palette,
   Travel: Map,
   Routine: Calendar,
+}
+
+function getCategoryIcon(catName: string | null): React.ComponentType<{ size?: number; className?: string }> {
+  if (!catName) return TargetIcon
+  return CATEGORY_ICONS[catName] || TargetIcon
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -125,13 +131,8 @@ export function GoalItem({ goal }: { goal: Goal }) {
     : 'units'
 
   // Categories & Icons
-  const CatIcon = CATEGORIES_MAP_ICON(goal.category)
+  const CatIcon = getCategoryIcon(goal.category)
   const catColor = CATEGORY_COLORS[goal.category || ''] || 'text-text-secondary bg-surface-2 border-border/40'
-
-  function CATEGORIES_MAP_ICON(catName: string | null) {
-    if (!catName) return TargetIcon
-    return CATEGORY_ICONS[catName] || TargetIcon
-  }
 
   // Toggle habit check-in for a specific date in the week grid
   const handleHabitToggle = (dateStr: string, currentStatus: 'check' | 'fail' | 'none') => {
@@ -210,14 +211,24 @@ export function GoalItem({ goal }: { goal: Goal }) {
     )
   }
 
+  // At-risk: habit with 0 check-ins in last 3 days (but has a streak > 0)
+  const last3 = [1, 2, 3].map(n => {
+    const d = new Date(); d.setDate(d.getDate() - n); return format(d, 'yyyy-MM-dd')
+  })
+  const isAtRisk = goal.tracker_type === 'habit' &&
+    (goal.habit_streak ?? 0) > 0 &&
+    !last3.some(d => habitLogs.find(l => l.date === d && l.value === 1))
+
   return (
     <div className={clsx(
-      'bg-surface border rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 hover:shadow-md relative overflow-hidden group',
-      isComplete ? 'border-success/30 ring-1 ring-success/10' : 'border-border'
+      'bg-surface border rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 shadow-[var(--shadow-card)] relative overflow-hidden group',
+      isComplete ? 'border-success/30 ring-1 ring-success/10'
+      : isAtRisk ? 'border-warning/50 animate-pulse'
+      : 'border-border'
     )}>
       {/* Top badges */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <span className={clsx(
             'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0',
             catColor
@@ -230,9 +241,14 @@ export function GoalItem({ goal }: { goal: Goal }) {
               {linkedProject.name}
             </span>
           )}
+          {isAtRisk && (
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-danger/20 bg-danger/5 text-danger animate-pulse flex-shrink-0">
+              At Risk
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <span className="text-[9px] font-bold text-text-secondary uppercase bg-surface-2 border border-border px-2 py-0.5 rounded-full tracking-wider">
             {goal.tracker_type}
           </span>
@@ -246,48 +262,63 @@ export function GoalItem({ goal }: { goal: Goal }) {
         </div>
       </div>
 
-      {/* Goal Title / Link */}
-      <div className="flex-1 cursor-pointer" onClick={() => navigate(`/goals/${goal.id}`)}>
-        <h3 className="text-sm font-semibold text-text group-hover:text-accent transition-colors leading-snug flex items-center gap-1">
-          {goal.name}
-          {isComplete && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-success/15 text-success">
-              DONE
-            </span>
-          )}
-        </h3>
-
-        {/* Target/Average Stats */}
-        {goal.tracker_type === 'target' && (
-          <p className="text-xs text-text-muted mt-1">
-            <span className="font-semibold text-text-secondary">{targetProgress.toLocaleString()}</span> / {targetVal.toLocaleString()} {unitLabel}
-          </p>
-        )}
-
-        {goal.tracker_type === 'average' && (
-          <p className="text-xs text-text-muted mt-1">
-            Current: <span className="font-semibold text-text-secondary">{averageProgress}</span> {unitLabel} (Target: {targetVal} {unitLabel})
-          </p>
-        )}
-
-        {goal.tracker_type === 'project' && (
-          <p className="text-xs text-text-muted mt-1">
-            Milestones: <span className="font-semibold text-text-secondary">{completedMilestones}</span> of {totalMilestones} ({projectPct}%)
-          </p>
-        )}
-
-        {/* Habit Streak Display */}
-        {goal.tracker_type === 'habit' && (
-          <div className="flex items-center gap-3 mt-1.5">
-            <div className="flex items-center gap-1 text-xs text-text font-medium bg-warning/10 border border-warning/20 text-warning px-2.5 py-0.5 rounded-full">
-              <Flame size={12} className="fill-warning" />
-              <span>{goal.habit_streak} day streak</span>
-            </div>
-            {goal.last_checkin && (
-              <span className="text-[10px] text-text-muted">
-                Last checkin: {goal.last_checkin}
+      {/* Core card body */}
+      <div className="flex justify-between items-start gap-4 flex-1">
+        <div className="flex-1 cursor-pointer min-w-0" onClick={() => navigate(`/goals/${goal.id}`)}>
+          <h3 className="text-sm font-semibold text-text group-hover:text-accent transition-colors leading-snug flex flex-wrap items-center gap-1">
+            {goal.name}
+            {isComplete && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-success/15 text-success">
+                DONE
               </span>
             )}
+          </h3>
+
+          {/* Target/Average Stats */}
+          {goal.tracker_type === 'target' && (
+            <p className="text-xs text-text-muted mt-1">
+              <span className="font-semibold text-text-secondary">{targetProgress.toLocaleString()}</span> / {targetVal.toLocaleString()} {unitLabel}
+            </p>
+          )}
+
+          {goal.tracker_type === 'average' && (
+            <p className="text-xs text-text-muted mt-1">
+              Current: <span className="font-semibold text-text-secondary">{averageProgress}</span> {unitLabel} (Target: {targetVal} {unitLabel})
+            </p>
+          )}
+
+          {goal.tracker_type === 'project' && (
+            <p className="text-xs text-text-muted mt-1">
+              Milestones: <span className="font-semibold text-text-secondary">{completedMilestones}</span> of {totalMilestones}
+            </p>
+          )}
+
+          {/* Habit Streak Display (Display Font) */}
+          {goal.tracker_type === 'habit' && (
+            <div className="flex items-baseline gap-1 mt-1 text-warning">
+              <Flame size={15} className="fill-warning animate-pulse inline self-center mr-0.5" />
+              <span className="font-display font-extrabold text-2xl leading-none">{goal.habit_streak}</span>
+              <span className="text-[9px] text-text-muted uppercase tracking-wider font-semibold ml-1">day streak</span>
+            </div>
+          )}
+        </div>
+
+        {/* Hero Progress Ring on Right (non-habit types) */}
+        {(goal.tracker_type === 'target' || goal.tracker_type === 'average' || goal.tracker_type === 'project') && (
+          <div className="relative w-14 h-14 flex-shrink-0">
+            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" className="text-surface-2" strokeWidth="3" />
+              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor"
+                className={clsx(isComplete ? 'text-success' : 'text-accent')}
+                strokeWidth="3"
+                strokeDasharray={`${(pct / 100) * 100.5} 100.5`}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dasharray 400ms ease' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold font-display text-text">
+              {pct}%
+            </div>
           </div>
         )}
       </div>
@@ -299,35 +330,18 @@ export function GoalItem({ goal }: { goal: Goal }) {
         </div>
       )}
 
-      {(goal.tracker_type === 'target' || goal.tracker_type === 'average' || goal.tracker_type === 'project') && (
-        <div className="space-y-1.5 mt-4">
-          <div className="flex items-center justify-between text-[10px] font-semibold text-text-secondary">
-            <span>Progress</span>
-            <span>{pct}%</span>
-          </div>
-          <div className="h-2 bg-surface-2 border border-border/50 rounded-full overflow-hidden">
-            <div
-              className={clsx(
-                'h-full rounded-full transition-all duration-700 ease-out',
-                isComplete ? 'bg-success' : 'bg-accent/80'
-              )}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Top 3 Milestones check-off for projects */}
       {goal.tracker_type === 'project' && milestones.length > 0 && (
         <div className="mt-3.5 space-y-1 bg-surface-2/40 border border-border/40 p-2.5 rounded-xl">
-          <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-2 flex items-center gap-1">
             <MilestoneIcon size={9} /> Milestones Quick Checklist
           </p>
           {milestones.slice(0, 3).map(m => (
             <button
               key={m.id}
               onClick={() => toggleMilestone.mutate({ id: m.id, completed: !m.completed })}
-              className="w-full flex items-center gap-2 text-left text-xs text-text hover:bg-surface rounded-lg p-1.5 transition-colors border border-transparent hover:border-border/50"
+              className="w-full flex items-center gap-2 text-left text-xs text-text hover:bg-surface rounded-lg p-2 transition-colors border border-transparent hover:border-border/50"
             >
               <div className={clsx(
                 'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors',
@@ -356,11 +370,11 @@ export function GoalItem({ goal }: { goal: Goal }) {
 
       {/* SMART Info block ( measurable target + deadline ) */}
       <div className="mt-4 pt-3.5 border-t border-border/50 flex items-center justify-between text-[11px] text-text-muted">
-        <span className="flex items-center gap-1.5 truncate max-w-[60%]">
+        <span className="flex items-center gap-2 truncate max-w-[60%]">
           <TargetIcon size={12} className="text-text-muted flex-shrink-0" /> <span className="truncate">Target: {targetVal} {goal.measurement_type !== 'binary' ? unitLabel : ''}</span>
         </span>
         {goal.end_date ? (
-          <span className="flex items-center gap-1.5 flex-shrink-0 text-text-secondary">
+          <span className="flex items-center gap-2 flex-shrink-0 text-text-secondary">
             <Calendar size={12} className="text-text-muted flex-shrink-0" /> {goal.end_date}
           </span>
         ) : (
@@ -389,18 +403,18 @@ export function GoalItem({ goal }: { goal: Goal }) {
             step="any"
             value={logValue}
             onChange={e => setLogValue(e.target.value)}
-            className="flex-1 min-w-0 bg-surface-2 border border-border rounded-lg px-2.5 py-1.5 text-xs text-text focus:border-accent focus:outline-none text-center"
+            className="flex-1 min-w-0 bg-surface-2 border border-border rounded-lg px-2.5 py-2 text-xs text-text focus:border-accent focus:outline-none text-center"
           />
           <span className="text-[10px] text-text-muted">{unitLabel}</span>
           <button
             onClick={() => handleLog('subtract')}
-            className="px-2.5 py-1.5 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
+            className="px-2.5 py-2 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
           >
             Minus
           </button>
           <button
             onClick={() => handleLog('add')}
-            className="px-2.5 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-semibold"
+            className="px-2.5 py-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-semibold"
           >
             Add
           </button>
@@ -411,7 +425,7 @@ export function GoalItem({ goal }: { goal: Goal }) {
       <div className="mt-2.5 flex justify-end">
         <button
           onClick={() => setExpanded(v => !v)}
-          className="text-[10px] font-semibold text-text-muted hover:text-text flex items-center gap-0.5 transition-colors"
+          className="text-[10px] font-semibold text-text-muted hover:text-text flex items-center gap-1 transition-colors"
         >
           {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           {expanded ? 'Hide actions' : 'More actions'}
@@ -423,14 +437,14 @@ export function GoalItem({ goal }: { goal: Goal }) {
           {!isComplete && (
             <button
               onClick={handleMarkComplete}
-              className="flex-1 py-1.5 text-[10px] font-bold text-success bg-success/10 border border-success/20 rounded-xl hover:bg-success/20 transition-colors text-center"
+              className="flex-1 py-2 text-[10px] font-bold text-success bg-success/10 border border-success/20 rounded-xl hover:bg-success/20 transition-colors text-center"
             >
               ✓ Complete
             </button>
           )}
           <button
             onClick={handleArchive}
-            className="flex-1 py-1.5 text-[10px] font-bold text-text-secondary bg-surface-2 border border-border rounded-xl hover:text-text hover:bg-muted transition-colors text-center"
+            className="flex-1 py-2 text-[10px] font-bold text-text-secondary bg-surface-2 border border-border rounded-xl hover:text-text hover:bg-muted transition-colors text-center"
           >
             Archive
           </button>
@@ -440,7 +454,7 @@ export function GoalItem({ goal }: { goal: Goal }) {
                 deleteGoal.mutate(goal.id)
               }
             }}
-            className="p-1.5 text-danger bg-danger/10 border border-danger/20 rounded-xl hover:bg-danger/20 transition-colors"
+            className="p-2 text-danger bg-danger/10 border border-danger/20 rounded-xl hover:bg-danger/20 transition-colors"
             title="Delete"
           >
             <Trash2 size={12} />

@@ -3,6 +3,7 @@ import { format, eachDayOfInterval } from 'date-fns'
 import { TrendingDown, TrendingUp, ChevronDown } from 'lucide-react'
 import { useTransactionsRange } from '../../../hooks/useRangeQueries'
 import type { Transaction } from '../../../db/schema'
+import { PageSkeleton } from '../../../components/Skeleton'
 import clsx from 'clsx'
 
 function MiniBarChart({
@@ -26,7 +27,7 @@ function MiniBarChart({
   const PX = 64
 
   return (
-    <div className="flex items-end w-full h-16 gap-0.5 sm:gap-1">
+    <div className="flex items-end w-full h-16 gap-1 sm:gap-1">
       {data.map(d => {
         const showExp = showType !== 'income' && d.expense > 0
         const showInc = showType !== 'expense' && d.income > 0
@@ -34,7 +35,7 @@ function MiniBarChart({
         const incPx   = Math.max(2, Math.round((d.income  / maxVal) * PX))
 
         return (
-          <div key={d.date} className="flex-1 flex flex-col-reverse gap-0.5 items-stretch">
+          <div key={d.date} className="flex-1 flex flex-col-reverse gap-1 items-stretch">
             {showExp && (
               <div className="bg-accent/60 rounded-sm transition-all duration-300" style={{ height: expPx }} />
             )}
@@ -148,7 +149,7 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {isLoading ? (
-        <div className="flex justify-center p-8"><div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>
+        <PageSkeleton />
       ) : (
         <>
           {/* Net cashflow hero */}

@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '../db'
+import { useDb } from '../db/DbContext'
 import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
+
+import { QK } from '../lib/queryKeys'
 
 type AnyItem = { id: string; [key: string]: unknown }
 
@@ -10,10 +12,11 @@ async function writeAgenda(op: 'insert' | 'update' | 'delete', payload: Record<s
 }
 
 export function useAgendaMutations(date: string) {
+  const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
-  const queryKey = ['agenda_blocks', date, user?.id]
-  const invalidate = () => qc.invalidateQueries({ queryKey })
+  const queryKey = QK.agenda(date, user?.id ?? '')
+  const invalidate = () => qc.invalidateQueries({ queryKey: QK.agendaAll() })
 
   const addBlock = useMutation({
     mutationFn: async (payload: { description: string; start_time: string; end_time: string; date: string; all_day?: boolean; recurrence?: any }) => {
@@ -59,7 +62,7 @@ export function useAgendaMutations(date: string) {
   const updateBlock = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
       const originalId = id.split('-')[0]
-      await db.agenda_blocks.update(originalId, updates)
+      await db.agenda_blocks.update(originalId, updates as Partial<Parameters<typeof db.agenda_blocks.put>[0]>)
       const updated = await db.agenda_blocks.get(originalId)
       if (updated) await writeAgenda('update', updated as Record<string, unknown>)
     },

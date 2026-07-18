@@ -4,6 +4,8 @@ import { List, Calendar, Clock } from 'lucide-react'
 import { ListTab } from './components/ListTab'
 import { CalendarTab } from './components/CalendarTab'
 import { TimeBlocksTab } from './components/TimeBlocksTab'
+import { AddTaskModal } from '../../components/tasks/AddTaskModal'
+import { useTasksQuery } from '../../hooks/useTasksQuery'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../i18n'
 import clsx from 'clsx'
@@ -20,8 +22,13 @@ export function TasksPage() {
   const { t } = useTranslation()
   const [view, setView] = useState<View>('list')
   const [searchParams, setSearchParams] = useSearchParams()
-  const { setSelectedDate } = useAppStore()
+  const { setSelectedDate, selectedDate } = useAppStore()
   const highlight = searchParams.get('highlight')
+
+  // Completion ratio
+  const { data: tasks = [] } = useTasksQuery(selectedDate)
+  const completedCount = tasks.filter(t => t.completed).length
+  const totalCount = tasks.length
 
   // Deep link from search: jump to the task's date and switch to list view
   useEffect(() => {
@@ -38,11 +45,22 @@ export function TasksPage() {
 
   return (
     <div className="space-y-4 lg:max-w-5xl">
-      <header>
-        <h1 className="text-2xl font-display text-text">{t('tasks.title', 'Tasks')}</h1>
+      <header className="flex flex-col justify-start">
+        <h1 className="text-2xl font-display font-bold text-text">{t('tasks.title', 'Tasks')}</h1>
+        {totalCount > 0 && (
+          <div className="mt-2 w-full max-w-xs space-y-1">
+            <p className="text-xs text-text-muted">{completedCount} of {totalCount} done today</p>
+            <div className="h-1 bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all duration-500"
+                style={{ width: `${(completedCount / totalCount) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* View switcher - Grid with 3 columns matching Finance module tab layout */}
+      {/* View switcher */}
       <div className="grid grid-cols-3 gap-1 p-1 bg-surface-2 border border-border rounded-2xl">
         {VIEWS.map(v => {
           const Icon = v.icon
@@ -59,7 +77,6 @@ export function TasksPage() {
               )}
             >
               <Icon size={16} strokeWidth={isActive ? 2.5 : 1.75} />
-              {/* Label: always visible on sm+, only on active on mobile */}
               <span className={clsx(
                 'text-xs sm:text-sm',
                 isActive ? 'inline' : 'hidden sm:inline'
@@ -77,6 +94,13 @@ export function TasksPage() {
         {view === 'calendar'   && <CalendarTab />}
         {view === 'timeblocks' && <TimeBlocksTab />}
       </div>
+
+      {/* Floating Add Task button — shown on list view */}
+      {view === 'list' && (
+        <div className="fixed bottom-24 right-5 z-30">
+          <AddTaskModal date={selectedDate} asFab />
+        </div>
+      )}
     </div>
   )
 }

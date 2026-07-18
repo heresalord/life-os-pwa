@@ -1,4 +1,4 @@
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type DailyRecordRow    = Database['public']['Tables']['daily_records']['Row']
@@ -12,12 +12,12 @@ export const dailyRecordsApi = {
     return data
   },
   async upsert(payload: DailyRecordInsert): Promise<DailyRecordRow> {
-    const { data, error } = await db.from('daily_records').upsert(payload, { onConflict: 'user_id,date' }).select().single()
+    const { data, error } = await supabase.from('daily_records').upsert(payload, { onConflict: 'user_id,date' }).select().single()
     if (error) throw error
     return data
   },
   async update(id: string, payload: DailyRecordUpdate): Promise<DailyRecordRow> {
-    const { data, error } = await db.from('daily_records').update(payload).eq('id', id).select().single()
+    const { data, error } = await supabase.from('daily_records').update(payload).eq('id', id).select().single()
     if (error) throw error
     return data
   }
