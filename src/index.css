@@ -5,6 +5,7 @@
   --color-bg:        var(--theme-bg);
   --color-surface:   var(--theme-surface);
   --color-surface-2: var(--theme-surface-2);
+  --color-surface-3: var(--theme-surface-3);
   --color-border:    var(--theme-border);
   --color-muted:     var(--theme-muted);
 
@@ -69,6 +70,7 @@
   --theme-bg:             #0a0a0a;
   --theme-surface:        #111111;
   --theme-surface-2:      #1a1a1a;
+  --theme-surface-3:      #222222;
   --theme-border:         #2a2a2a;
   --theme-muted:          #3a3a3a;
   --theme-text:           #f0ede8;
@@ -82,6 +84,7 @@
   --theme-danger:         #b86a6a;
   --theme-info:           #6a8ab8;
   --theme-timetravel:     #c8a92a;
+  --theme-bg-translucent: rgba(10, 10, 10, 0.85);
 
   /* 6.4 Elevation shadows — dark theme */
   --theme-shadow-card:    0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
@@ -98,6 +101,7 @@
   --theme-bg:             #fcfbfa;
   --theme-surface:        #ffffff;
   --theme-surface-2:      #f4f2ef;
+  --theme-surface-3:      #ede9e4;
   --theme-border:         #e5e2db;
   --theme-muted:          #d4d0c8;
   --theme-text:           #1a1918;
@@ -111,6 +115,7 @@
   --theme-danger:         #a85454;
   --theme-info:           #4f6d99;
   --theme-timetravel:     #b59414;
+  --theme-bg-translucent: rgba(252, 251, 250, 0.85);
 
   /* 6.4 Elevation shadows — light theme */
   --theme-shadow-card:    0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
@@ -163,6 +168,16 @@ button, a {
 button:active, a:active {
   opacity: 0.88;
   transform: scale(0.97);
+}
+
+.press-row {
+  transition: transform 120ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+
+.press-row:active {
+  background-color: var(--theme-surface-3) !important;
+  transform: scale(0.985);
+  opacity: 0.92;
 }
 
 /* Re-enable selection in inputs */
@@ -257,12 +272,29 @@ input, textarea, [contenteditable], .selectable {
 }
 
 /* ── Modal / sheet entrance ── */
-@keyframes sheet-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes sheet-up-mobile {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes modal-fade-in-desktop {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 .sheet-enter {
-  animation: sheet-up 220ms cubic-bezier(0.34, 1.1, 0.64, 1) both;
+  animation: sheet-up-mobile 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (min-width: 640px) {
+  .sheet-enter {
+    animation: modal-fade-in-desktop 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 5px;
+  background-color: var(--theme-border);
+  border-radius: var(--radius-full);
+  margin: 0 auto 1.25rem auto;
 }
 
 /* ── Skeleton shimmer ── */
@@ -333,4 +365,32 @@ input, textarea, [contenteditable], .selectable {
   padding: 0 24px;
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--theme-border);
+}
+
+/* ── Collapsible dynamic header ── */
+.collapsible-header-container {
+  position: sticky;
+  top: 56px;
+  z-index: 20;
+  background-color: var(--theme-bg);
+  transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@supports (padding-top: env(safe-area-inset-top)) {
+  .collapsible-header-container {
+    top: calc(3.5rem + env(safe-area-inset-top, 0px));
+  }
+}
+@media (min-width: 768px) {
+  .collapsible-header-container {
+    top: 64px;
+  }
+}
+
+.collapsible-header-container.collapsed {
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--theme-border);
+  box-shadow: var(--theme-shadow-card);
+  backdrop-filter: blur(20px);
+  background-color: var(--theme-bg-translucent);
 }

@@ -10,6 +10,9 @@ import { EmptyState } from '../../components/EmptyState'
 import { PageSkeleton } from '../../components/Skeleton'
 import { useReadingGoalsQuery, useSaveReadingGoalMutation } from '../../hooks/useReadingGoalsQuery'
 import { haptic } from '../../lib/haptic'
+import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader'
+import { useAppStore } from '../../store/useAppStore'
+import { SheetSelect } from '../../components/SheetSelect'
 import clsx from 'clsx'
 
 type TabStatus = 'reading' | 'to-read' | 'finished' | 'abandoned' | 'stats'
@@ -30,6 +33,7 @@ const EMPTY_MESSAGES: Record<Exclude<TabStatus, 'stats'>, string> = {
 }
 
 export function BooksPage() {
+  const { sentinelRef, isCollapsed } = useCollapsibleHeader()
   const [tab, setTab] = useState<TabStatus>('reading')
   const navigate = useNavigate()
   const { data: allBooks = [], isLoading } = useBooksQuery()
@@ -61,6 +65,17 @@ export function BooksPage() {
   const [filterYear, setFilterYear]   = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [showFilters, setShowFilters] = useState<boolean>(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const headerAddTrigger = useAppStore(s => s.headerAddTrigger)
+
+  // Opens whenever the header's contextual "+" is tapped — switches off Stats first if needed
+  useEffect(() => {
+    if (headerAddTrigger > 0) {
+      if (tab === 'stats') setTab('to-read')
+      setAddOpen(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headerAddTrigger])
 
   const completedThisYear = useMemo(() =>
     allBooks.filter(b => b.status === 'finished' && b.finished_at?.startsWith(String(currentYear))).length,
@@ -172,10 +187,21 @@ export function BooksPage() {
 
   return (
     <div className="space-y-4 lg:max-w-4xl">
-      <header className="flex items-center justify-between border-b border-border/40 pb-4">
+      <header className={clsx(
+        "flex items-center justify-between border-b border-border/40 pb-4 collapsible-header-container px-4 -mx-4 md:px-0 md:mx-0",
+        isCollapsed && "collapsed"
+      )}>
         <div>
-          <h1 className="text-2xl font-display text-text">Library</h1>
-          <p className="text-xs text-text-secondary mt-0.5">
+          <h1 className={clsx(
+            "font-display text-text transition-all duration-200",
+            isCollapsed ? "text-lg font-semibold ml-4 md:ml-0" : "text-2xl font-bold"
+          )}>
+            Library
+          </h1>
+          <p className={clsx(
+            "text-xs text-text-secondary mt-0.5 transition-all duration-200 origin-left ml-4 md:ml-0",
+            isCollapsed ? "opacity-0 scale-90 h-0 overflow-hidden mt-0" : "opacity-100 scale-100 h-auto"
+          )}>
             {allBooks.length} book{allBooks.length !== 1 ? 's' : ''} total
           </p>
         </div>
@@ -183,7 +209,10 @@ export function BooksPage() {
         {targetBooks > 0 ? (
           <button
             onClick={() => { haptic('light'); setShowGoalModal(true) }}
-            className="flex items-center gap-3 bg-surface border border-border px-3.5 py-2 rounded-xl hover:border-accent transition-all hover:shadow-sm"
+            className={clsx(
+              "flex items-center gap-3 bg-surface border border-border px-3.5 py-2 rounded-xl hover:border-accent transition-all hover:shadow-sm mr-4 md:mr-0",
+              isCollapsed && "scale-90"
+            )}
           >
             <div className="relative flex items-center justify-center">
               <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
@@ -207,12 +236,13 @@ export function BooksPage() {
         ) : (
           <button
             onClick={() => { haptic('light'); setShowGoalModal(true) }}
-            className="text-xs font-medium text-accent border border-accent/25 bg-accent/5 hover:bg-accent/10 hover:border-accent/40 transition-colors px-3 py-2 rounded-xl flex items-center gap-2"
+            className="text-xs font-medium text-accent border border-accent/25 bg-accent/5 hover:bg-accent/10 hover:border-accent/40 transition-colors px-3 py-2 rounded-xl flex items-center gap-2 mr-4 md:mr-0"
           >
             <Award size={14} /> Set Reading Goal
           </button>
         )}
       </header>
+      <div ref={sentinelRef} className="h-0 w-full" />
 
       {/* ── Tab switcher — matches "list / calendar / time block" style ── */}
       <div className="flex bg-surface-2 p-1 rounded-xl gap-1 overflow-x-auto">
@@ -241,7 +271,7 @@ export function BooksPage() {
       {/* ── Book list panels ─────────────────────────────────────────────── */}
       {tab !== 'stats' && (
         <>
-          <AddBookModal defaultStatus={tab === 'finished' || tab === 'abandoned' ? 'to-read' : tab} />
+          <AddBookModal defaultStatus={tab === 'finished' || tab === 'abandoned' ? 'to-read' : tab} open={addOpen} onOpenChange={setAddOpen} />
 
           {/* Sort & Filter */}
           <div className="bg-surface border border-border p-4 rounded-2xl space-y-3 shadow-[var(--shadow-card)]">
@@ -269,55 +299,68 @@ export function BooksPage() {
               >
                 <SlidersHorizontal size={13} /> Filters
               </button>
-              <select
+              <SheetSelect
+                label="Sort by"
                 value={sortBy}
-                onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                className="bg-surface-2 border border-border rounded-xl px-2.5 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent appearance-none"
-              >
-                <option value="added">🕒 Added</option>
-                <option value="rating">⭐️ Rating</option>
-                <option value="pages">📖 Pages</option>
-                <option value="title">🔤 Title</option>
-              </select>
+                onChange={(v) => setSortBy(v as typeof sortBy)}
+                options={[
+                  { value: 'added', label: '🕒 Added' },
+                  { value: 'rating', label: '⭐️ Rating' },
+                  { value: 'pages', label: '📖 Pages' },
+                  { value: 'title', label: '🔤 Title' },
+                ]}
+                className="!w-auto text-xs font-semibold"
+              />
             </div>
 
             {showFilters && (
               <div className="flex flex-wrap gap-2 text-xs pt-1 border-t border-border/40 mt-2 animate-in fade-in duration-200">
                 <div className="flex flex-col gap-1">
                   <label className="text-[9px] uppercase tracking-wider text-text-muted font-bold pl-1">Genre</label>
-                  <select value={filterGenre} onChange={e => setFilterGenre(e.target.value)}
-                    className="bg-surface-2 border border-border rounded-lg px-2 py-1 text-text-secondary focus:outline-none">
-                    <option value="all">All Genres</option>
-                    {genres.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
+                  <SheetSelect
+                    label="Genre"
+                    value={filterGenre}
+                    onChange={setFilterGenre}
+                    options={[{ value: 'all', label: 'All Genres' }, ...genres.map(g => ({ value: g, label: g }))]}
+                    className="!w-auto !py-1 !px-2 text-text-secondary"
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[9px] uppercase tracking-wider text-text-muted font-bold pl-1">Source</label>
-                  <select value={filterSource} onChange={e => setFilterSource(e.target.value)}
-                    className="bg-surface-2 border border-border rounded-lg px-2 py-1 text-text-secondary focus:outline-none">
-                    <option value="all">All Sources</option>
-                    <option value="physical">Physical</option>
-                    <option value="ebook">E-Book</option>
-                    <option value="audiobook">Audiobook</option>
-                    <option value="library">Library</option>
-                  </select>
+                  <SheetSelect
+                    label="Source"
+                    value={filterSource}
+                    onChange={setFilterSource}
+                    options={[
+                      { value: 'all', label: 'All Sources' },
+                      { value: 'physical', label: 'Physical' },
+                      { value: 'ebook', label: 'E-Book' },
+                      { value: 'audiobook', label: 'Audiobook' },
+                      { value: 'library', label: 'Library' },
+                    ]}
+                    className="!w-auto !py-1 !px-2 text-text-secondary"
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[9px] uppercase tracking-wider text-text-muted font-bold pl-1">Shelf</label>
-                  <select value={filterShelf} onChange={e => setFilterShelf(e.target.value)}
-                    className="bg-surface-2 border border-border rounded-lg px-2 py-1 text-text-secondary focus:outline-none">
-                    <option value="all">All Shelves</option>
-                    {shelves.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <SheetSelect
+                    label="Shelf"
+                    value={filterShelf}
+                    onChange={setFilterShelf}
+                    options={[{ value: 'all', label: 'All Shelves' }, ...shelves.map(s => ({ value: s, label: s }))]}
+                    className="!w-auto !py-1 !px-2 text-text-secondary"
+                  />
                 </div>
                 {tab === 'finished' && yearsFinished.length > 0 && (
                   <div className="flex flex-col gap-1">
                     <label className="text-[9px] uppercase tracking-wider text-text-muted font-bold pl-1">Year</label>
-                    <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
-                      className="bg-surface-2 border border-border rounded-lg px-2 py-1 text-text-secondary focus:outline-none">
-                      <option value="all">All Years</option>
-                      {yearsFinished.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
+                    <SheetSelect
+                      label="Year"
+                      value={filterYear}
+                      onChange={setFilterYear}
+                      options={[{ value: 'all', label: 'All Years' }, ...yearsFinished.map(y => ({ value: y, label: y }))]}
+                      className="!w-auto !py-1 !px-2 text-text-secondary"
+                    />
                   </div>
                 )}
                 <button

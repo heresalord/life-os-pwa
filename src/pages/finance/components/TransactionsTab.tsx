@@ -24,9 +24,13 @@ interface TransactionsTabProps {
   today: string
   /** Transaction id to scroll to and highlight, from a search deep link. */
   highlightId?: string | null
+  /** Add-modal open state, lifted to FinancePage so the header "+" can open it
+   *  from any tab (this tab isn't always mounted). */
+  addOpen: boolean
+  onAddOpenChange: (open: boolean) => void
 }
 
-export function TransactionsTab({ currency, from, to, today, highlightId }: TransactionsTabProps) {
+export function TransactionsTab({ currency, from, to, today, highlightId, addOpen, onAddOpenChange }: TransactionsTabProps) {
   const { selectedDate, timezone } = useAppStore()
 
   const [typeFilter,     setTypeFilter]     = useState<TypeFilter>('all')
@@ -83,10 +87,8 @@ export function TransactionsTab({ currency, from, to, today, highlightId }: Tran
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Add Transaction — defaults to the period being viewed, never a future date */}
-      <div>
-        <AddTransactionModal date={defaultAddDate} />
-      </div>
+      {/* Add Transaction — opened via the header's contextual "+" action */}
+      <AddTransactionModal date={defaultAddDate} open={addOpen} onOpenChange={onAddOpenChange} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">

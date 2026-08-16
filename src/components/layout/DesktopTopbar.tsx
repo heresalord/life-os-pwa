@@ -1,14 +1,15 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Sun, Moon, Search, Settings, LogOut } from 'lucide-react'
+import { Sun, Moon, Search, Settings, LogOut, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
 import { displayDate } from '../../lib/dateUtils'
-import { SyncStatusDot } from '../SyncStatusDot'
+import { SyncStatusDot, useHasSyncIssue } from '../SyncStatusDot'
 import { NavLink } from 'react-router-dom'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { CalendarDays, Inbox, FileText } from 'lucide-react'
 import { ErrorBoundary } from '../ErrorBoundary'
+import { ROUTES_WITH_ADD_ACTION } from '../../lib/constants'
 
 const pathTitleMap: Record<string, string> = {
   '/':         'Dashboard',
@@ -37,6 +38,7 @@ export function DesktopTopbar() {
   const { selectedDate } = useAppStore()
   const { profile, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const hasSyncIssue = useHasSyncIssue()
 
   const title = pathTitleMap[location.pathname] || 'Life OS'
 
@@ -62,31 +64,35 @@ export function DesktopTopbar() {
       {/* Right: quick actions + sync + search + avatar */}
       <div className="flex items-center gap-3 flex-shrink-0">
 
-        {/* Quick-access routine buttons */}
-        <div className="hidden lg:flex gap-2">
+        {/* Quick-access routine buttons — icon-only from md, labeled from lg */}
+        <div className="flex gap-2">
           <button
             onClick={() => navigate('/day?guided=morning')}
-            className="text-xs px-3 py-2 bg-warning/10 text-warning border border-warning/20 rounded-full hover:bg-warning/20 transition-all font-medium flex items-center gap-1"
+            title="Morning routine"
+            className="text-xs px-2 lg:px-3 py-2 bg-warning/10 text-warning border border-warning/20 rounded-full hover:bg-warning/20 transition-all font-medium flex items-center gap-1"
           >
             <Sun size={12} />
-            Morning
+            <span className="hidden lg:inline">Morning</span>
           </button>
           <button
             onClick={() => navigate('/day?guided=evening')}
-            className="text-xs px-3 py-2 bg-info/10 text-info border border-info/20 rounded-full hover:bg-info/20 transition-all font-medium flex items-center gap-1"
+            title="Evening review"
+            className="text-xs px-2 lg:px-3 py-2 bg-info/10 text-info border border-info/20 rounded-full hover:bg-info/20 transition-all font-medium flex items-center gap-1"
           >
             <Moon size={12} />
-            Review
+            <span className="hidden lg:inline">Review</span>
           </button>
         </div>
 
-        {/* Selected date chip */}
-        <div className="hidden lg:flex items-center gap-2 text-xs text-text-muted font-medium bg-surface px-3 py-2 rounded-lg border border-border whitespace-nowrap">
-          <CalendarDays size={14} /> <span className="text-text">{displayDate(selectedDate, 'EEE, MMM d')}</span>
+        {/* Selected date chip — abbreviated from md, full from lg */}
+        <div className="flex items-center gap-2 text-xs text-text-muted font-medium bg-surface px-2 lg:px-3 py-2 rounded-lg border border-border whitespace-nowrap">
+          <CalendarDays size={14} />
+          <span className="text-text lg:hidden">{displayDate(selectedDate, 'MMM d')}</span>
+          <span className="text-text hidden lg:inline">{displayDate(selectedDate, 'EEE, MMM d')}</span>
         </div>
 
-        {/* Sync status */}
-        <SyncStatusDot />
+        {/* Sync status — only shown when there's something to report */}
+        {hasSyncIssue && <SyncStatusDot />}
 
         {/* Notifications */}
         <ErrorBoundary inline>
@@ -101,6 +107,16 @@ export function DesktopTopbar() {
         >
           <Search size={17} />
         </button>
+
+        {ROUTES_WITH_ADD_ACTION.has(location.pathname) && (
+          <button
+            onClick={() => useAppStore.getState().triggerHeaderAdd()}
+            className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
+            aria-label="Add"
+          >
+            <Plus size={17} />
+          </button>
+        )}
 
         {/* Avatar + dropdown */}
         <div className="relative">

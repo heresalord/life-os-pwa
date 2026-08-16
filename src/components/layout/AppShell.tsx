@@ -1,9 +1,9 @@
 import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard, Search, Clock, MoreHorizontal,
+  LayoutDashboard, Search, Clock, MoreHorizontal, Plus,
 } from 'lucide-react'
-import { SyncStatusDot } from '../SyncStatusDot'
+import { SyncStatusDot, useHasSyncIssue } from '../SyncStatusDot'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { displayDate } from '../../lib/dateUtils'
@@ -19,7 +19,7 @@ import { useTranslation } from '../../i18n'
 import { ErrorBoundary } from '../ErrorBoundary'
 import clsx from 'clsx'
 
-import { ALL_NAV_OPTIONS } from '../../lib/constants'
+import { ALL_NAV_OPTIONS, ROUTES_WITH_ADD_ACTION } from '../../lib/constants'
 
 const HOME_NAV = { key: 'home', to: '/', icon: LayoutDashboard, label: 'Home' }
 
@@ -85,6 +85,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const displayName = profile?.display_name || 'You'
   const initials = displayName.slice(0, 2).toUpperCase()
+  const hasSyncIssue = useHasSyncIssue()
 
   // Translate nav label using JSON keys; fall back to the English label
   const navLabel = (key: string, fallback: string) =>
@@ -104,25 +105,22 @@ export function AppShell({ children }: AppShellProps) {
         >
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
 
-            {/* Left: app name + date picker */}
-            <div className="flex flex-col leading-tight relative group">
-              <span className="text-xs text-text-muted font-body uppercase tracking-widest">Life OS</span>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => useAppStore.getState().setSelectedDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                />
-                <span className="text-sm text-text font-medium group-hover:text-accent transition-colors">
-                  {displayDate(selectedDate, 'EEE, MMM d')}
-                </span>
-              </div>
+            {/* Left: date picker */}
+            <div className="relative group">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => useAppStore.getState().setSelectedDate(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+              />
+              <span className="text-sm text-text-secondary font-medium group-hover:text-accent transition-colors">
+                {displayDate(selectedDate, 'EEE, MMM d')}
+              </span>
             </div>
 
             {/* Right: actions */}
             <div className="flex items-center gap-3">
-              <SyncStatusDot />
+              {hasSyncIssue && <SyncStatusDot />}
 
               <ErrorBoundary inline>
                 <NotificationCenter />
@@ -135,6 +133,16 @@ export function AppShell({ children }: AppShellProps) {
               >
                 <Search size={18} />
               </button>
+
+              {ROUTES_WITH_ADD_ACTION.has(location.pathname) && (
+                <button
+                  onClick={() => { hapticLight(); useAppStore.getState().triggerHeaderAdd() }}
+                  className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors"
+                  aria-label="Add"
+                >
+                  <Plus size={18} />
+                </button>
+              )}
 
               {/* Avatar → Profile */}
               <button

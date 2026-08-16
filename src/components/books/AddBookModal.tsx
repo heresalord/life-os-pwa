@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Plus, X, Search, Loader } from 'lucide-react'
+import { Plus, X, Search, Loader, AlertCircle, Check } from 'lucide-react'
 import { useBookMutations } from '../../hooks/useBookMutations'
 import { useBooksQuery } from '../../hooks/useBooksQuery'
+import { SheetSelect } from '../SheetSelect'
 
 type BookStatus = 'reading' | 'to-read' | 'finished' | 'abandoned'
 
@@ -33,13 +34,21 @@ async function searchOpenLibrary(query: string): Promise<OLBook[]> {
   }))
 }
 
-export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: BookStatus }) {
-  const [open, setOpen] = useState(false)
+export function AddBookModal({ defaultStatus = 'to-read', open: openProp, onOpenChange }: { defaultStatus?: BookStatus; open?: boolean; onOpenChange?: (open: boolean) => void }) {
+  const [openState, setOpenState] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : openState
+  const setOpen = (v: boolean) => {
+    if (isControlled) onOpenChange?.(v)
+    else setOpenState(v)
+  }
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [pages, setPages] = useState('')
   const [status, setStatus] = useState<BookStatus>(defaultStatus)
   const [coverUrl, setCoverUrl] = useState<string | undefined>()
+  const [duplicateError, setDuplicateError] = useState(false)
+  const [justAdded, setJustAdded] = useState(false)
 
   const [genre, setGenre] = useState('')
   const [isbn, setIsbn] = useState('')
@@ -81,6 +90,7 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
     if (book.genre) setGenre(book.genre)
     setSuggestions([])
     setSearchQ('')
+    setDuplicateError(false)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -88,9 +98,10 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
     const titleTrimmed = title.trim()
     if (!titleTrimmed) return
     if (allBooks.some(b => b.title.toLowerCase() === titleTrimmed.toLowerCase())) {
-      alert("This book is already in your library.")
+      setDuplicateError(true)
       return
     }
+    setDuplicateError(false)
     addBook.mutate({
       title: titleTrimmed,
       author: author.trim() || undefined,
@@ -107,18 +118,24 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
         setTitle(''); setAuthor(''); setPages(''); setCoverUrl(undefined); setSearchQ('')
         setGenre(''); setIsbn(''); setLanguage(''); setSource(''); setShelves('')
         setShowAdvanced(false)
-        setOpen(false)
+        setJustAdded(true)
+        setTimeout(() => {
+          setJustAdded(false)
+          setOpen(false)
+        }, 700)
       }
     })
   }
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
-        <button className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-xl text-text-secondary hover:text-text hover:border-text-muted transition-colors text-sm font-medium">
-          <Plus size={18} /> Add Book
-        </button>
-      </Dialog.Trigger>
+      {!isControlled && (
+        <Dialog.Trigger asChild>
+          <button className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-xl text-text-secondary hover:text-text hover:border-text-muted transition-colors text-sm font-medium">
+            <Plus size={18} /> Add Book
+          </button>
+        </Dialog.Trigger>
+      )}
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
         <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-2xl sm:border max-h-[90vh] overflow-y-auto"
@@ -176,8 +193,13 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
               <div className="flex-1 space-y-3">
                 <div>
                   <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Title</label>
-                  <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="Book title"
+                  <input required value={title} onChange={e => { setTitle(e.target.value); setDuplicateError(false) }} placeholder="Book title"
                     className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none" />
+                  {duplicateError && (
+                    <p className="flex items-center gap-1.5 text-xs text-danger mt-1.5">
+                      <AlertCircle size={12} /> This book is already in your library.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Author</label>
@@ -195,11 +217,12 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
               </div>
               <div className="flex-[2]">
                 <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Status</label>
-                <select value={status} onChange={e => setStatus(e.target.value as BookStatus)}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text focus:border-accent focus:outline-none appearance-none">
-                  <option value="to-read">To Read</option>
-                  <option value="reading">Reading</option>
-                </select>
+                <SheetSelect
+                  label="Status"
+                  value={status}
+                  onChange={(v) => setStatus(v as BookStatus)}
+                  options={[{ value: 'to-read', label: 'To Read' }, { value: 'reading', label: 'Reading' }]}
+                />
               </div>
             </div>
 
@@ -221,14 +244,19 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Source</label>
-                    <select value={source} onChange={e => setSource(e.target.value as any)}
-                      className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none appearance-none">
-                      <option value="">Select source</option>
-                      <option value="physical">Physical</option>
-                      <option value="ebook">E-Book</option>
-                      <option value="audiobook">Audiobook</option>
-                      <option value="library">Library</option>
-                    </select>
+                    <SheetSelect
+                      label="Source"
+                      value={source}
+                      onChange={(v) => setSource(v as typeof source)}
+                      placeholder="Select source"
+                      options={[
+                        { value: '', label: 'Select source' },
+                        { value: 'physical', label: 'Physical' },
+                        { value: 'ebook', label: 'E-Book' },
+                        { value: 'audiobook', label: 'Audiobook' },
+                        { value: 'library', label: 'Library' },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -254,9 +282,10 @@ export function AddBookModal({ defaultStatus = 'to-read' }: { defaultStatus?: Bo
               </div>
             )}
 
-            <button type="submit" disabled={!title.trim() || addBook.isPending}
-              className="w-full bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
-              {addBook.isPending ? 'Saving…' : 'Add Book'}
+            <button type="submit" disabled={!title.trim() || addBook.isPending || justAdded}
+              className={`w-full font-medium rounded-xl py-3 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 ${justAdded ? 'bg-success text-bg' : 'bg-accent text-bg hover:bg-accent-dim'}`}>
+              {justAdded && <Check size={16} />}
+              {justAdded ? 'Added!' : addBook.isPending ? 'Saving…' : 'Add Book'}
             </button>
           </form>
         </Dialog.Content>

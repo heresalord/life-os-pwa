@@ -30,6 +30,7 @@ import { UpcomingBlocksWidget } from '../../components/dashboard/widgets/Upcomin
 import { WellbeingHeatmapWidget } from '../../components/dashboard/widgets/WellbeingHeatmapWidget'
 import { InboxWidget } from '../../components/dashboard/widgets/InboxWidget'
  import { WeeklyRecapModal } from '../../components/dashboard/WeeklyRecapModal'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useTranslation } from '../../i18n'
 
 import 'react-grid-layout/css/styles.css'
@@ -192,6 +193,7 @@ export function DashboardPage() {
   const [isEditing,   setIsEditing]   = useState(false)
   const [isMobile,    setIsMobile]    = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const layoutReadyRef = useRef(false)
   const addMenuRef     = useRef<HTMLDivElement>(null)
@@ -283,8 +285,6 @@ export function DashboardPage() {
   }, [widgetPrefs, saveLayout])
 
   const handleResetDefault = useCallback(() => {
-    if (!window.confirm('Reset dashboard layout to default?')) return
-    haptic('medium')
     layoutReadyRef.current = false
     saveLayout(DEFAULT_WIDGET_PREFS)
     requestAnimationFrame(() => { layoutReadyRef.current = true })
@@ -315,6 +315,15 @@ export function DashboardPage() {
     <div className={`space-y-4 ${isEditing ? 'is-editing' : ''}`}>
       {/* Weekly Recap modal — self-determines visibility */}
       <WeeklyRecapModal />
+
+      <ConfirmDialog
+        open={showResetConfirm}
+        onOpenChange={setShowResetConfirm}
+        title="Reset layout?"
+        description="This puts every widget back to its default position and size. Your data isn't affected."
+        confirmLabel="Reset layout"
+        onConfirm={handleResetDefault}
+      />
       <style>{`
         .react-resizable-handle { opacity: 0; transition: opacity 0.2s; pointer-events: none; }
         .is-editing .react-resizable-handle { opacity: 1; pointer-events: auto; }
@@ -350,7 +359,7 @@ export function DashboardPage() {
                 </button>
               )}
               <button
-                onClick={handleResetDefault}
+                onClick={() => setShowResetConfirm(true)}
                 className="p-2 bg-surface-2 border border-border text-text-secondary hover:text-text rounded-xl shadow-sm transition-all"
                 title="Reset layout to default"
               >

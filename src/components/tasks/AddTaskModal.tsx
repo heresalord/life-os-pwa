@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Plus, X, CalendarDays, AlignLeft, Clock } from 'lucide-react'
+import { Plus, X, CalendarDays, AlignLeft, Clock, Check } from 'lucide-react'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import type { AddTaskPayload } from '../../hooks/useTaskMutations'
 import { useProjectsQuery } from '../../hooks/useProjectsQuery'
 import { useTranslation } from '../../i18n'
+import { SheetSelect } from '../SheetSelect'
 
 type KanbanStatus = 'backlog' | 'todo' | 'in_progress' | 'done'
 
@@ -21,11 +22,21 @@ interface Props {
   onAdded?: () => void
   /** When true, renders as a round FAB button instead of the full-width dashed button */
   asFab?: boolean
+  /** External open state — when provided, no internal trigger button is rendered
+   *  and the caller fully controls visibility (used by the header "+" action). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function AddTaskModal({ date, defaultKanbanStatus, onAdded, asFab }: Props) {
+export function AddTaskModal({ date, defaultKanbanStatus, onAdded, asFab, open: openProp, onOpenChange }: Props) {
   const { t } = useTranslation()
-  const [open, setOpen]           = useState(false)
+  const [openState, setOpenState] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : openState
+  const setOpen = (v: boolean) => {
+    if (isControlled) onOpenChange?.(v)
+    else setOpenState(v)
+  }
   const [title, setTitle]         = useState('')
   const [priority, setPriority]   = useState<number | null>(null)
   const [dueDate, setDueDate]     = useState('')
@@ -34,6 +45,7 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded, asFab }: Prop
   const [endTime, setEndTime]     = useState('')
   const [projectId, setProjectId] = useState('')
   const [showExtra, setShowExtra] = useState(false)
+  const [justAdded, setJustAdded] = useState(false)
 
   const { data: projects } = useProjectsQuery()
   const { addTask } = useTaskMutations(date)
@@ -65,30 +77,36 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded, asFab }: Prop
       project_id: projectId || null,
     }
     addTask.mutate(payload)
-    reset()
-    setOpen(false)
     onAdded?.()
+    setJustAdded(true)
+    setTimeout(() => {
+      reset()
+      setJustAdded(false)
+      setOpen(false)
+    }, 700)
   }
 
   const isTimeInvalid = (!!startTime && !!endTime && startTime >= endTime) || (!startTime && !!endTime)
 
   return (
     <Dialog.Root open={open} onOpenChange={v => { setOpen(v); if (!v) reset() }}>
-      <Dialog.Trigger asChild>
-        {asFab ? (
-          <button
-            className="w-14 h-14 bg-accent text-bg rounded-full flex items-center justify-center shadow-modal hover:scale-105 active:scale-95 transition-transform"
-            style={{ transition: 'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-            aria-label={t('tasks.add_task', 'Add Task')}
-          >
-            <Plus size={24} strokeWidth={2.5} />
-          </button>
-        ) : (
-          <button className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-xl text-text-secondary hover:text-text hover:border-text-muted transition-colors text-sm font-medium">
-            <Plus size={18} /> {t('tasks.add_task', 'Add Task')}
-          </button>
-        )}
-      </Dialog.Trigger>
+      {!isControlled && (
+        <Dialog.Trigger asChild>
+          {asFab ? (
+            <button
+              className="w-14 h-14 bg-accent text-bg rounded-full flex items-center justify-center shadow-modal hover:scale-105 active:scale-95 transition-transform"
+              style={{ transition: 'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+              aria-label={t('tasks.add_task', 'Add Task')}
+            >
+              <Plus size={24} strokeWidth={2.5} />
+            </button>
+          ) : (
+            <button className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-xl text-text-secondary hover:text-text hover:border-text-muted transition-colors text-sm font-medium">
+              <Plus size={18} /> {t('tasks.add_task', 'Add Task')}
+            </button>
+          )}
+        </Dialog.Trigger>
+      )}
 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
@@ -164,18 +182,13 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded, asFab }: Prop
               <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">
                 {t('tasks.project', 'Project (optional)')}
               </label>
-              <select
+              <SheetSelect
+                label={t('tasks.project', 'Project')}
                 value={projectId}
-                onChange={e => setProjectId(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none"
-              >
-                <option value="">{t('tasks.no_project', 'No Project')}</option>
-                {projects?.filter(p => !p.archived).map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setProjectId}
+                placeholder={t('tasks.no_project', 'No Project')}
+                options={[{ value: '', label: t('tasks.no_project', 'No Project') }, ...(projects?.filter(p => !p.archived).map(p => ({ value: p.id, label: p.name })) ?? [])]}
+              />
             </div>
 
             {/* Description (toggle) */}
@@ -199,9 +212,10 @@ export function AddTaskModal({ date, defaultKanbanStatus, onAdded, asFab }: Prop
               </button>
             )}
 
-            <button type="submit" disabled={!title.trim() || addTask.isPending || isTimeInvalid}
-              className="w-full bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
-              {addTask.isPending ? t('tasks.adding', 'Adding…') : t('tasks.add_task', 'Add Task')}
+            <button type="submit" disabled={!title.trim() || addTask.isPending || isTimeInvalid || justAdded}
+              className={`w-full font-medium rounded-xl py-3 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 ${justAdded ? 'bg-success text-bg' : 'bg-accent text-bg hover:bg-accent-dim'}`}>
+              {justAdded && <Check size={16} />}
+              {justAdded ? t('tasks.added', 'Added!') : addTask.isPending ? t('tasks.adding', 'Adding…') : t('tasks.add_task', 'Add Task')}
             </button>
           </form>
         </Dialog.Content>

@@ -20,6 +20,7 @@ import { ACCENT_PRESETS, type AccentPreset } from '../../lib/colorUtils'
 import {
   pushSupported, isPushSubscribed, subscribeToPush, unsubscribeFromPush
 } from '../../lib/pushNotifications'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import clsx from 'clsx'
 
 const Toggle = ({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) => {
@@ -184,6 +185,8 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
+  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false)
 
   // ── Profile
   const [displayName, setDisplayName] = useState('')
@@ -282,11 +285,13 @@ export function SettingsPage() {
   }
 
   const handleSignOut = async () => {
-    if (window.confirm('Sign out? Unsynced local data will be lost.')) {
-      await supabase.auth.signOut()
-      await db.delete()
-      window.location.href = '/signin'
-    }
+    await supabase.auth.signOut()
+    await db.delete()
+    window.location.href = '/signin'
+  }
+
+  const handleClearCache = () => {
+    db.delete().then(() => window.location.reload())
   }
 
   const handleTogglePush = async () => {
@@ -371,7 +376,7 @@ export function SettingsPage() {
         </SettingRow>
         <SettingRow label="Email" sub={user?.email}>
           <button
-            onClick={handleSignOut}
+            onClick={() => setShowSignOutConfirm(true)}
             className="flex items-center gap-2 px-3 py-2 bg-danger/10 text-danger text-xs font-medium rounded-lg hover:bg-danger/20 transition-colors"
           >
             <LogOut size={13} /> Sign Out
@@ -606,7 +611,7 @@ export function SettingsPage() {
                 onClick={handleTogglePush}
                 disabled={pushLoading}
                 className={clsx(
-                  'flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 bg-surface border border-border hover:bg-surface-2',
+                  'flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 bg-surface border border-border hover:bg-surface-2 press-row',
                   pushEnabled ? 'text-danger border-danger/25' : 'text-accent border-accent/25'
                 )}
               >
@@ -669,7 +674,7 @@ export function SettingsPage() {
                 { key: 'savings_goal_reached',icon: PiggyBank,    label: 'Savings Goal Reached',   sub: 'Real-time' },
                 { key: 'weekly_review',       icon: BarChart3,    label: 'Weekly Review',          sub: 'Sundays at 7 PM' },
               ].map(item => (
-                <div key={item.key} className="flex items-center justify-between gap-4 px-4 py-3 bg-surface hover:bg-surface-2/40 transition-colors">
+                <div key={item.key} className="flex items-center justify-between gap-4 px-4 py-3 bg-surface hover:bg-surface-2/40 press-row transition-colors">
                   <div className="flex items-start gap-3 min-w-0">
                     <item.icon size={16} className="text-text-muted flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
@@ -722,13 +727,13 @@ export function SettingsPage() {
         <div className="pt-3 grid grid-cols-2 gap-3">
           <button
             onClick={() => exportAllDataToJson(db)}
-            className="flex items-center justify-center gap-2 py-3 bg-surface-2 text-text text-sm font-medium rounded-xl hover:bg-muted border border-border transition-colors"
+            className="flex items-center justify-center gap-2 py-3 bg-surface-2 text-text text-sm font-medium rounded-xl hover:bg-muted border border-border press-row transition-colors"
           >
             <Download size={14} /> JSON Backup
           </button>
           <button
             onClick={() => exportTransactionsCSV(db)}
-            className="flex items-center justify-center gap-2 py-3 bg-surface-2 text-text text-sm font-medium rounded-xl hover:bg-muted border border-border transition-colors"
+            className="flex items-center justify-center gap-2 py-3 bg-surface-2 text-text text-sm font-medium rounded-xl hover:bg-muted border border-border press-row transition-colors"
           >
             <Download size={14} /> Finance CSV
           </button>
@@ -743,7 +748,7 @@ export function SettingsPage() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={importing}
-          className="w-full py-3 bg-surface-2 text-text font-medium text-sm rounded-xl hover:bg-muted border border-border transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full py-3 bg-surface-2 text-text font-medium text-sm rounded-xl hover:bg-muted border border-border press-row transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {importing
             ? <><Loader size={14} className="animate-spin" /> Importing…</>
@@ -776,8 +781,8 @@ export function SettingsPage() {
           Clears the local offline cache. Data re-fetches from the cloud on next load.
         </p>
         <button
-          onClick={() => { if (window.confirm('Clear local cache?')) db.delete().then(() => window.location.reload()) }}
-          className="px-4 py-2 bg-danger/10 text-danger text-xs font-medium rounded-lg hover:bg-danger/20 transition-colors"
+          onClick={() => setShowClearCacheConfirm(true)}
+          className="px-4 py-2 bg-danger/10 text-danger text-xs font-medium rounded-lg hover:bg-danger/20 press-row transition-colors"
         >
           Reset Local Cache
         </button>
@@ -843,6 +848,26 @@ export function SettingsPage() {
           {saving ? 'Saving…' : saveSuccess ? 'Saved!' : 'Save Changes'}
         </button>
       )}
+
+      <ConfirmDialog
+        open={showSignOutConfirm}
+        onOpenChange={setShowSignOutConfirm}
+        title="Sign out?"
+        description="Any local changes that haven't synced yet will be lost."
+        confirmLabel="Sign out"
+        variant="danger"
+        onConfirm={handleSignOut}
+      />
+
+      <ConfirmDialog
+        open={showClearCacheConfirm}
+        onOpenChange={setShowClearCacheConfirm}
+        title="Clear local cache?"
+        description="This deletes all offline data stored on this device. Everything re-downloads from the cloud on next load — nothing synced is lost, but this device will need a connection to work again."
+        confirmLabel="Clear cache"
+        variant="danger"
+        onConfirm={handleClearCache}
+      />
     </div>
   )
 }

@@ -48,7 +48,7 @@ export function MorePage() {
       {/* Profile card */}
       <button
         onClick={() => go('/profile')}
-        className="w-full flex items-center gap-4 p-4 bg-surface border border-border rounded-2xl hover:bg-surface-2 transition-colors text-left"
+        className="w-full flex items-center gap-4 p-4 bg-surface border border-border rounded-2xl hover:bg-surface-2 press-row transition-colors text-left"
       >
         <div className="w-12 h-12 rounded-full bg-accent/20 border-2 border-accent/40 flex items-center justify-center text-accent text-base font-bold flex-shrink-0">
           {initials}
@@ -63,7 +63,7 @@ export function MorePage() {
       {/* Weekly Recap */}
       <button
         onClick={() => setRecapOpen(true)}
-        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 rounded-2xl hover:from-violet-500/20 hover:to-blue-500/20 transition-all text-left"
+        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 rounded-2xl hover:from-violet-500/20 hover:to-blue-500/20 press-row transition-all text-left"
       >
         <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0">
           <Sparkles size={18} className="text-violet-400" />
@@ -83,7 +83,7 @@ export function MorePage() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => go('/day?guided=morning')}
-            className="flex items-center gap-3 p-4 bg-warning/10 border border-warning/20 rounded-2xl hover:bg-warning/20 transition-colors text-left"
+            className="flex items-center gap-3 p-4 bg-warning/10 border border-warning/20 rounded-2xl hover:bg-warning/20 press-row transition-colors text-left"
           >
             <Sun size={20} className="text-warning flex-shrink-0" />
             <div>
@@ -93,7 +93,7 @@ export function MorePage() {
           </button>
           <button
             onClick={() => go('/day?guided=evening')}
-            className="flex items-center gap-3 p-4 bg-info/10 border border-info/20 rounded-2xl hover:bg-info/20 transition-colors text-left"
+            className="flex items-center gap-3 p-4 bg-info/10 border border-info/20 rounded-2xl hover:bg-info/20 press-row transition-colors text-left"
           >
             <Moon size={20} className="text-info flex-shrink-0" />
             <div>
@@ -115,7 +115,7 @@ export function MorePage() {
               <button
                 key={key}
                 onClick={() => go(to)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2 press-row transition-colors text-left"
               >
                 <div className="w-8 h-8 rounded-xl bg-surface-2 border border-border flex items-center justify-center flex-shrink-0">
                   <Icon size={16} className="text-text-secondary" />
@@ -138,7 +138,7 @@ export function MorePage() {
             <button
               key={key}
               onClick={() => go(to)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/5 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/5 press-row transition-colors text-left"
             >
               <div className="w-8 h-8 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
                 <Icon size={16} className="text-accent" />
@@ -158,7 +158,7 @@ export function MorePage() {
         <div className="bg-surface border border-border rounded-2xl overflow-hidden divide-y divide-border">
           <button
             onClick={() => go('/settings')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2 transition-colors text-left"
+            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2 press-row transition-colors text-left"
           >
             <Settings size={17} className="text-text-secondary flex-shrink-0" />
             <span className="text-sm font-medium text-text flex-1">{t('settings.title', 'Settings')}</span>
@@ -168,7 +168,7 @@ export function MorePage() {
             onClick={async () => {
               if (window.confirm('Sign out?')) await signOut()
             }}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-danger/5 transition-colors text-left"
+            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-danger/5 press-row transition-colors text-left"
           >
             <LogOut size={17} className="text-danger flex-shrink-0" />
             <span className="text-sm font-medium text-danger flex-1">{t('more.sign_out', 'Sign Out')}</span>

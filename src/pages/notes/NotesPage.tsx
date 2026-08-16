@@ -14,9 +14,11 @@ import { TemplatePicker } from '../../components/notes/TemplatePicker'
 import { EmptyState } from '../../components/EmptyState'
 import { NoteCardSkeleton } from '../../components/Skeleton'
 import { extractTags, stripTags, applyTags, collectAllTags, cleanTaskTitle } from '../../lib/noteTagUtils'
+import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader'
+import { SheetSelect } from '../../components/SheetSelect'
 import {
   FileText, Plus, Search, X, Eye, Edit3,
-  FolderOpen, FolderPlus, ChevronDown, ArrowUpDown,
+  FolderOpen, FolderPlus,
   Folder, Pin, BookText, LayoutTemplate, FolderTree, ListTodo,
 } from 'lucide-react'
 import type { Note } from '../../db/schema'
@@ -240,12 +242,13 @@ function DesktopEditorPlaceholder() {
     <div className="flex flex-col items-center justify-center bg-surface border border-dashed border-border rounded-2xl text-center p-12" style={{ minHeight: '60vh' }}>
       <FileText size={36} className="text-text-muted mb-3" />
       <p className="text-sm font-medium text-text-secondary">Select a note to edit</p>
-      <p className="text-xs text-text-muted mt-1">Or create a new one with the + button</p>
+      <p className="text-xs text-text-muted mt-1">Or create a new one with the header + button</p>
     </div>
   )
 }
 
 export function NotesPage() {
+  const { sentinelRef, isCollapsed } = useCollapsibleHeader()
   const { data: notes = [], isLoading } = useNotesQuery()
   const { deleteNote } = useNoteMutations()
   const [searchParams] = useSearchParams()
@@ -258,13 +261,13 @@ export function NotesPage() {
   const [activeTag, setActiveTag]         = useState<string | null>(null)
   const [activeFolder, setActiveFolder]   = useState('All')
   const [sortBy, setSortBy]               = useState<'updated' | 'created' | 'alpha' | 'words'>('updated')
-  const [showSortMenu, setShowSortMenu]   = useState(false)
   const [customFolders, setCustomFolders] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(FOLDERS_KEY) ?? '[]') } catch { return [] }
   })
   const [newFolderInput, setNewFolderInput] = useState('')
   const [showNewFolder, setShowNewFolder]   = useState(false)
   const [folderSidebarOpen, setFolderSidebarOpen] = useState(true)
+  const headerAddTrigger = useAppStore(s => s.headerAddTrigger)
 
   const activeNote = (notes as Note[]).find(n => n.id === activeNoteId) || null
   const allFolders = [...SYSTEM_FOLDERS, ...customFolders]
@@ -334,6 +337,12 @@ export function NotesPage() {
   const handleCreateNew = () => {
     setTemplatePickerOpen(true)
   }
+
+  // Opens whenever the header's contextual "+" is tapped
+  useEffect(() => {
+    if (headerAddTrigger > 0) handleCreateNew()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headerAddTrigger])
 
   const handleNoteCreated = (id: string) => {
     setActiveNoteId(id)
@@ -449,32 +458,37 @@ export function NotesPage() {
       {/* ── List pane ── */}
       <div className="flex-shrink-0 lg:w-72 space-y-3">
         {/* Header */}
-        <header className="flex items-center justify-between">
+        <header className={clsx(
+          "flex items-center justify-between pb-4 collapsible-header-container px-4 -mx-4 md:px-0 md:mx-0",
+          isCollapsed && "collapsed"
+        )}>
           <div>
-            <h1 className="text-2xl font-display text-text">Notes</h1>
-            <p className="text-sm text-text-secondary mt-0.5">
+            <h1 className={clsx(
+              "font-display text-text transition-all duration-200 ml-4 md:ml-0",
+              isCollapsed ? "text-lg font-semibold" : "text-2xl font-bold"
+            )}>
+              Notes
+            </h1>
+            <p className={clsx(
+              "text-xs text-text-secondary mt-0.5 transition-all duration-200 origin-left ml-4 md:ml-0",
+              isCollapsed ? "opacity-0 scale-90 h-0 overflow-hidden mt-0" : "opacity-100 scale-100 h-auto"
+            )}>
               {(notes as Note[]).length > 0 ? `${(notes as Note[]).length} note${(notes as Note[]).length > 1 ? 's' : ''}` : 'Freewrite, reflect, or draft.'}
             </p>
           </div>
-          <button
-            onClick={handleCreateNew}
-            className="w-10 h-10 rounded-full bg-accent/20 text-accent flex items-center justify-center hover:bg-accent/30 transition-colors"
-          >
-            <Plus size={20} strokeWidth={2.5} />
-          </button>
         </header>
+        <div ref={sentinelRef} className="h-0 w-full" />
 
         {/* Mobile folder dropdown + new-folder action */}
         <div className="lg:hidden flex items-center gap-2">
-          <select
-            value={activeFolder}
-            onChange={e => setActiveFolder(e.target.value)}
-            className="flex-1 bg-surface border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none"
-          >
-            {allFolders.map(f => (
-              <option key={f} value={f}>{f} ({folderCount(f)})</option>
-            ))}
-          </select>
+          <div className="flex-1">
+            <SheetSelect
+              label="Folder"
+              value={activeFolder}
+              onChange={setActiveFolder}
+              options={allFolders.map(f => ({ value: f, label: `${f} (${folderCount(f)})` }))}
+            />
+          </div>
           <button
             onClick={() => setShowNewFolder(v => !v)}
             title="New folder"
@@ -543,32 +557,13 @@ export function NotesPage() {
 
         {/* Sort controls */}
         {(notes as Note[]).length > 0 && (
-          <div className="relative">
-            <button
-              onClick={() => setShowSortMenu(v => !v)}
-              className="flex items-center gap-2 text-xs text-text-muted hover:text-text transition-colors"
-            >
-              <ArrowUpDown size={12} />
-              {SORT_LABELS[sortBy]}
-              <ChevronDown size={11} className={clsx('transition-transform', showSortMenu && 'rotate-180')} />
-            </button>
-            {showSortMenu && (
-              <div className="absolute top-full left-0 mt-1 z-20 bg-surface border border-border rounded-xl shadow-2xl py-1 min-w-[160px]">
-                {(Object.entries(SORT_LABELS) as [string, string][]).map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => { setSortBy(key as any); setShowSortMenu(false) }}
-                    className={clsx(
-                      'w-full text-left px-3 py-2 text-sm transition-colors',
-                      sortBy === key ? 'text-accent bg-accent/5' : 'text-text hover:bg-surface-2'
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <SheetSelect
+            label="Sort by"
+            value={sortBy}
+            onChange={(v) => setSortBy(v as typeof sortBy)}
+            options={Object.entries(SORT_LABELS).map(([key, label]) => ({ value: key, label }))}
+            className="!w-auto !bg-transparent !border-none !px-0 !py-0 gap-2 text-xs text-text-muted hover:text-text"
+          />
         )}
 
         {/* Note list */}
@@ -640,11 +635,6 @@ export function NotesPage() {
         onOpenChange={setTemplatePickerOpen}
         onNoteCreated={handleNoteCreated}
       />
-
-      {/* Close sort menu on outside click */}
-      {showSortMenu && (
-        <div className="fixed inset-0 z-10" onClick={() => setShowSortMenu(false)} />
-      )}
     </div>
   )
 }

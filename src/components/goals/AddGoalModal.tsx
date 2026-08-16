@@ -13,7 +13,8 @@ import {
   Palette,
   Map,
   Calendar,
-  Sparkles
+  Sparkles,
+  Check
 } from 'lucide-react'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
 
@@ -128,9 +129,21 @@ const DAYS_OF_WEEK = [
 ]
 
 import { useProjectsQuery } from '../../hooks/useProjectsQuery'
+import { SheetSelect } from '../SheetSelect'
 
-export function AddGoalModal() {
-  const [open, setOpen] = useState(false)
+interface Props {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function AddGoalModal({ open: openProp, onOpenChange }: Props = {}) {
+  const [openState, setOpenState] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : openState
+  const setOpen = (v: boolean) => {
+    if (isControlled) onOpenChange?.(v)
+    else setOpenState(v)
+  }
   const [name, setName] = useState('')
   const [trackerType, setTrackerType] = useState<TrackerType>('target')
   const [category, setCategory] = useState('Health')
@@ -142,6 +155,7 @@ export function AddGoalModal() {
   const [habitDays, setHabitDays] = useState<number[]>([])
   const [initialMilestones, setInitialMilestones] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [justCreated, setJustCreated] = useState(false)
 
   const { data: projects } = useProjectsQuery()
   const { addGoal, addMilestone } = useGoalMutations()
@@ -213,16 +227,22 @@ export function AddGoalModal() {
     setHabitDays([])
     setInitialMilestones('')
     setProjectId('')
-    setOpen(false)
+    setJustCreated(true)
+    setTimeout(() => {
+      setJustCreated(false)
+      setOpen(false)
+    }, 700)
   }
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
-        <button className="w-full flex items-center justify-center gap-2 py-3.5 bg-surface-2 border border-dashed border-border rounded-2xl text-text-secondary hover:text-text hover:border-text-muted transition-all duration-200 text-sm font-medium shadow-sm hover:shadow active:scale-98">
-          <Plus size={16} /> New Goal
-        </button>
-      </Dialog.Trigger>
+      {!isControlled && (
+        <Dialog.Trigger asChild>
+          <button className="w-full flex items-center justify-center gap-2 py-3.5 bg-surface-2 border border-dashed border-border rounded-2xl text-text-secondary hover:text-text hover:border-text-muted transition-all duration-200 text-sm font-medium shadow-sm hover:shadow active:scale-98">
+            <Plus size={16} /> New Goal
+          </button>
+        </Dialog.Trigger>
+      )}
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm animate-in fade-in duration-200" />
         <Dialog.Content
@@ -413,19 +433,17 @@ export function AddGoalModal() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Measure Unit</label>
-                  <div className="relative">
-                    <select
-                      value={measurementType}
-                      onChange={e => setMeasurementType(e.target.value as MeasurementType)}
-                      className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-sm text-text focus:outline-none appearance-none cursor-pointer transition-colors"
-                    >
-                      <option value="count">Count (Numbers)</option>
-                      <option value="currency">Currency ($)</option>
-                      <option value="time">Time (Hours)</option>
-                      <option value="percentage">Percentage (%)</option>
-                    </select>
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-xs">▼</span>
-                  </div>
+                  <SheetSelect
+                    label="Measure Unit"
+                    value={measurementType}
+                    onChange={(v) => setMeasurementType(v as MeasurementType)}
+                    options={[
+                      { value: 'count', label: 'Count (Numbers)' },
+                      { value: 'currency', label: 'Currency ($)' },
+                      { value: 'time', label: 'Time (Hours)' },
+                      { value: 'percentage', label: 'Percentage (%)' },
+                    ]}
+                  />
                 </div>
               </div>
             )}
@@ -449,21 +467,13 @@ export function AddGoalModal() {
               <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">
                 Link to Project (optional)
               </label>
-              <div className="relative">
-                <select
-                  value={projectId}
-                  onChange={e => setProjectId(e.target.value)}
-                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-sm text-text focus:outline-none appearance-none cursor-pointer transition-colors"
-                >
-                  <option value="">No Project</option>
-                  {projects?.filter(p => !p.archived).map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-xs">▼</span>
-              </div>
+              <SheetSelect
+                label="Link to Project"
+                value={projectId}
+                onChange={setProjectId}
+                placeholder="No Project"
+                options={[{ value: '', label: 'No Project' }, ...(projects?.filter(p => !p.archived).map(p => ({ value: p.id, label: p.name })) ?? [])]}
+              />
             </div>
 
             {/* Date / Deadline Selector (SMART) */}
@@ -491,10 +501,11 @@ export function AddGoalModal() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={!name.trim() || addGoal.isPending}
-              className="w-full bg-accent text-bg font-semibold rounded-xl py-3 hover:bg-accent-dim active:scale-[0.99] transition-all disabled:opacity-50 text-sm shadow-sm"
+              disabled={!name.trim() || addGoal.isPending || justCreated}
+              className={`w-full font-semibold rounded-xl py-3 active:scale-[0.99] transition-all duration-300 disabled:opacity-50 text-sm shadow-sm flex items-center justify-center gap-2 ${justCreated ? 'bg-success text-bg' : 'bg-accent text-bg hover:bg-accent-dim'}`}
             >
-              {addGoal.isPending ? 'Creating…' : 'Create Goal'}
+              {justCreated && <Check size={16} />}
+              {justCreated ? 'Created!' : addGoal.isPending ? 'Creating…' : 'Create Goal'}
             </button>
           </form>
         </Dialog.Content>

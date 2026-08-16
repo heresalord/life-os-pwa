@@ -36,10 +36,11 @@ export function FinancePage() {
   const currency = settings?.currency ?? 'USD'
   const [active, setActive] = useState<TabValue>('overview')
 
-  const { timezone } = useAppStore()
+  const { timezone, headerAddTrigger } = useAppStore()
   const today = getUserLocalDate(timezone)
   const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month')
   const [referenceDate, setReferenceDate] = useState<string>(today)
+  const [addOpen, setAddOpen] = useState(false)
 
   const [searchParams] = useSearchParams()
   const highlightId = searchParams.get('highlight')
@@ -69,6 +70,16 @@ export function FinancePage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Header "+" tap: jump to the Activity tab (where the add form lives) and open it,
+  // regardless of which tab was active when it was tapped.
+  useEffect(() => {
+    if (headerAddTrigger > 0) {
+      setActive('transactions')
+      setAddOpen(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headerAddTrigger])
 
   const adjustPeriod = (direction: 'prev' | 'next') => {
     const d = new Date(referenceDate + 'T12:00:00')
@@ -124,7 +135,7 @@ export function FinancePage() {
   }, [referenceDate, period])
 
   return (
-    <div className="space-y-4 lg:max-w-5xl">
+    <div className="space-y-4 lg:max-w-5xl lg:mx-auto">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display text-text">{t('finance.title', 'Finance')}</h1>
@@ -214,7 +225,7 @@ export function FinancePage() {
         )}
         {active === 'accounts' && <AccountsTab currency={currency} />}
         {active === 'transactions' && (
-          <TransactionsTab currency={currency} from={dateRange.from} to={dateRange.to} today={today} highlightId={highlightId} />
+          <TransactionsTab currency={currency} from={dateRange.from} to={dateRange.to} today={today} highlightId={highlightId} addOpen={addOpen} onAddOpenChange={setAddOpen} />
         )}
         {active === 'budgets' && <BudgetsTab currency={currency} />}
       </div>

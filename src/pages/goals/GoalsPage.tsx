@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useGoalsQuery } from '../../hooks/useGoalsQuery'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { GoalItem } from '../../components/goals/GoalItem'
@@ -28,6 +28,8 @@ import {
   CheckCircle2,
   Archive,
 } from 'lucide-react'
+import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader'
+import { useAppStore } from '../../store/useAppStore'
 import clsx from 'clsx'
 
 type TrackerTypeFilter = 'all' | 'target' | 'habit' | 'average' | 'project'
@@ -62,13 +64,22 @@ const CATEGORY_CHIPS = [
 ]
 
 export function GoalsPage() {
+  const { sentinelRef, isCollapsed } = useCollapsibleHeader()
   const { t } = useTranslation()
   const [selectedType, setSelectedType] = useState<TrackerTypeFilter>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [stateFilter, setStateFilter] = useState<StateFilter>('active')
+  const [addOpen, setAddOpen] = useState(false)
+  const headerAddTrigger = useAppStore(s => s.headerAddTrigger)
 
   const { data: goals = [], isLoading } = useGoalsQuery(stateFilter)
   const { addGoal } = useGoalMutations()
+
+  // Opens whenever the header's contextual "+" is tapped
+  useEffect(() => {
+    if (headerAddTrigger > 0) setAddOpen(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headerAddTrigger])
 
   // Filter goals locally
   const filteredGoals = useMemo(() => {
@@ -81,13 +92,26 @@ export function GoalsPage() {
 
   return (
     <div className="space-y-5 lg:max-w-5xl">
-      <header className="flex items-center justify-between">
+      <header className={clsx(
+        "flex items-center justify-between pb-4 collapsible-header-container px-4 -mx-4 md:px-0 md:mx-0",
+        isCollapsed && "collapsed"
+      )}>
         <div>
-          <h1 className="text-2xl font-display text-text">{t('goals.title', 'Goals')}</h1>
-          <p className="text-xs text-text-muted mt-0.5">{t('goals.track_build_habits', 'Track, build habits, and complete milestones')}</p>
+          <h1 className={clsx(
+            "font-display text-text transition-all duration-200 ml-4 md:ml-0",
+            isCollapsed ? "text-lg font-semibold" : "text-2xl font-bold"
+          )}>
+            {t('goals.title', 'Goals')}
+          </h1>
+          <p className={clsx(
+            "text-xs text-text-secondary mt-0.5 transition-all duration-200 origin-left ml-4 md:ml-0",
+            isCollapsed ? "opacity-0 scale-90 h-0 overflow-hidden mt-0" : "opacity-100 scale-100 h-auto"
+          )}>
+            {t('goals.track_build_habits', 'Track, build habits, and complete milestones')}
+          </p>
         </div>
         {/* State filter chips — inline, replaces the dropdown */}
-        <div className="flex items-center gap-1 p-1 bg-surface-2 border border-border rounded-xl">
+        <div className="flex items-center gap-1 p-1 bg-surface-2 border border-border rounded-xl mr-4 md:mr-0">
           {STATE_FILTERS.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
@@ -105,6 +129,7 @@ export function GoalsPage() {
           ))}
         </div>
       </header>
+      <div ref={sentinelRef} className="h-0 w-full" />
 
       {/* ── Tracker Type Filter Bar ──────────────────────────────────────────────
           Grid with 5 columns: matches style of finance/task filters */}
@@ -158,7 +183,7 @@ export function GoalsPage() {
         })}
       </div>
 
-      <AddGoalModal />
+      <AddGoalModal open={addOpen} onOpenChange={setAddOpen} />
 
       {isLoading ? (
         <GoalGridSkeleton count={4} />

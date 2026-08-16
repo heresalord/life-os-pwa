@@ -41,6 +41,10 @@ export interface AppState {
   resetToToday: () => void
   locale: string
   setLocale: (locale: string) => void
+  /** Incremented whenever the header's contextual "+" is tapped — the current
+   *  page's add-modal listens for this to open itself. Not persisted. */
+  headerAddTrigger: number
+  triggerHeaderAdd: () => void
 }
 
 // Apply theme visually to <html> and the PWA theme-color meta tag.
@@ -163,4 +167,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.setItem('lifeos-locale', locale)
     set({ locale })
   },
+
+  headerAddTrigger: 0,
+  triggerHeaderAdd: () => set(s => ({ headerAddTrigger: s.headerAddTrigger + 1 })),
 }))
