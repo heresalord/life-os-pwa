@@ -101,7 +101,7 @@ export function GoalDetailPage() {
   const [editEndDate, setEditEndDate] = useState('')
   const [editHabitFreq, setEditHabitFreq] = useState<'daily' | 'weekly'>('daily')
   const [editHabitDays, setEditHabitDays] = useState<number[]>([])
-  const [editState, setEditState] = useState<'active' | 'paused' | 'completed' | 'abandoned'>('active')
+  const [editState, setEditState] = useState<'active' | 'paused' | 'completed' | 'abandoned' | 'archived'>('active')
   const [editProjectId, setEditProjectId] = useState('')
 
   const { data: projects } = useProjectsQuery()

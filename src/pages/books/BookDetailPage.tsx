@@ -1,15 +1,30 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ChevronLeft, Quote as QuoteIcon, X, Award, BookOpen, Smartphone, Headphones, Library } from 'lucide-react'
+import {
+  ChevronLeft, Quote as QuoteIcon, X, Award, BookOpen, Smartphone, Headphones, Library,
+  TrendingUp, Clock, Zap, BarChart2, Target,
+} from 'lucide-react'
 import { useBookQuery } from '../../hooks/useBooksQuery'
 import { useBookMutations } from '../../hooks/useBookMutations'
 import { useQuotesQuery } from '../../hooks/useQuotesQuery'
 import { useQuoteMutations } from '../../hooks/useQuoteMutations'
 import { Star } from 'lucide-react'
 import { haptic } from '../../lib/haptic'
+import { differenceInDays, format, parseISO } from 'date-fns'
 import clsx from 'clsx'
 
+// ─── Types ─────────────────────────────────────────────────────────────────
+interface ReadingSession {
+  id: string
+  date: string        // yyyy-MM-dd
+  start_page: number
+  end_page: number
+  duration_minutes: number | null
+  created_at: string
+}
+
+// ─── Constants ──────────────────────────────────────────────────────────────
 const SOURCE_LABELS: Record<'physical' | 'ebook' | 'audiobook' | 'library', { label: string; icon: React.ComponentType<any> }> = {
   physical:  { label: 'Physical',  icon: BookOpen },
   ebook:     { label: 'E-Book',    icon: Smartphone },
@@ -17,6 +32,7 @@ const SOURCE_LABELS: Record<'physical' | 'ebook' | 'audiobook' | 'library', { la
   library:   { label: 'Library',   icon: Library },
 }
 
+// ─── Sub-components ─────────────────────────────────────────────────────────
 function StarRating({ value, size = 16 }: { value: number | null; size?: number }) {
   if (!value) return null
   return (
@@ -31,6 +47,84 @@ function StarRating({ value, size = 16 }: { value: number | null; size?: number 
   )
 }
 
+/** Mini SVG bar-chart sparkline for pages-per-session */
+function SessionSparkline({ sessions }: { sessions: ReadingSession[] }) {
+  if (sessions.length === 0) return null
+  const values = sessions.map(s => s.end_page - s.start_page)
+  const max = Math.max(...values, 1)
+  const W = 180
+  const H = 40
+  const BAR_W = Math.min(20, Math.floor((W - 4) / values.length) - 2)
+  const gap = values.length > 1 ? (W - BAR_W * values.length) / (values.length - 1) : 0
+
+  return (
+    <svg width={W} height={H} className="overflow-visible">
+      {values.map((v, i) => {
+        const barH = Math.max(2, Math.round((v / max) * (H - 6)))
+        const x = i * (BAR_W + gap)
+        const y = H - barH
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={BAR_W} height={barH}
+              rx={3} fill="currentColor"
+              className="text-accent/70"
+            />
+            <title>{v} pages on {sessions[i].date}</title>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ─── Derived Stats ───────────────────────────────────────────────────────────
+function deriveReadingStats(
+  sessions: ReadingSession[],
+  startedAt: string | null,
+  finishedAt: string | null,
+  totalPages: number | null,
+  currentPage: number
+) {
+  if (sessions.length === 0) return null
+
+  const sortedSessions = [...sessions].sort((a, b) => a.date.localeCompare(b.date))
+  const firstDate = startedAt ? parseISO(startedAt) : parseISO(sortedSessions[0].date)
+  const lastDate  = finishedAt ? parseISO(finishedAt) : new Date()
+  const daysReading = Math.max(1, differenceInDays(lastDate, firstDate) + 1)
+
+  const totalPagesRead = sortedSessions.reduce((sum, s) => sum + (s.end_page - s.start_page), 0)
+  const avgPagesPerDay = Math.round(totalPagesRead / daysReading)
+
+  const sessionsWithDuration = sortedSessions.filter(s => s.duration_minutes && s.duration_minutes > 0)
+  const totalMinutes = sessionsWithDuration.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0)
+  const avgSpeed = sessionsWithDuration.length > 0 && totalMinutes > 0
+    ? Math.round((totalPagesRead / totalMinutes) * 60)
+    : null  // pages/hour
+
+  const longestSession = Math.max(...sortedSessions.map(s => s.end_page - s.start_page))
+
+  // Estimated finish
+  let estimatedFinish: string | null = null
+  if (totalPages && avgPagesPerDay > 0 && !finishedAt) {
+    const pagesLeft = totalPages - currentPage
+    const daysLeft  = Math.ceil(pagesLeft / avgPagesPerDay)
+    const finishDate = new Date()
+    finishDate.setDate(finishDate.getDate() + daysLeft)
+    estimatedFinish = format(finishDate, 'MMM d, yyyy')
+  }
+
+  // Achievement badges
+  const badges: { icon: string; label: string }[] = []
+  if (avgSpeed !== null && avgSpeed >= 50) badges.push({ icon: '🔥', label: 'Speed Reader' })
+  if (longestSession >= 100)              badges.push({ icon: '📚', label: 'Marathon' })
+  if (finishedAt && startedAt && differenceInDays(parseISO(finishedAt), parseISO(startedAt)) <= 7)
+    badges.push({ icon: '⚡', label: 'Lightning Finish' })
+  if (sessions.length >= 10)              badges.push({ icon: '🗓️', label: 'Consistent Reader' })
+
+  return { avgPagesPerDay, avgSpeed, daysReading, longestSession, estimatedFinish, totalPagesRead, badges, sortedSessions }
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
 export function BookDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -43,9 +137,18 @@ export function BookDetailPage() {
   const [quoteText, setQuoteText] = useState('')
   const [quotePage, setQuotePage] = useState('')
 
-  // Simple page-based progress log
+  // Progress log modal
   const [currentPageInput, setCurrentPageInput] = useState('')
-  const [showLogModal, setShowLogModal] = useState(false)
+  const [durationInput, setDurationInput]       = useState('')
+  const [showLogModal, setShowLogModal]         = useState(false)
+
+  const sessions: ReadingSession[] = useMemo(() => {
+    try {
+      const raw = book?.reading_sessions
+      if (!raw || !Array.isArray(raw)) return []
+      return raw as unknown as ReadingSession[]
+    } catch { return [] }
+  }, [book?.reading_sessions])
 
   if (isLoading) {
     return (
@@ -67,26 +170,57 @@ export function BookDetailPage() {
     )
   }
 
-  const pagesLeft  = book.total_pages ? Math.max(0, book.total_pages - (book.current_page || 0)) : null
+  const pagesLeft   = book.total_pages ? Math.max(0, book.total_pages - (book.current_page || 0)) : null
   const progressPct = book.total_pages
     ? Math.min(100, Math.round(((book.current_page || 0) / book.total_pages) * 100))
     : null
 
+  const stats = deriveReadingStats(sessions, book.started_at, book.finished_at, book.total_pages, book.current_page || 0)
+
   const handleLogSession = async (e: React.FormEvent) => {
     e.preventDefault()
-    const p = parseInt(currentPageInput)
-    if (isNaN(p) || p < 0) return
+    const newPage = parseInt(currentPageInput)
+    if (isNaN(newPage) || newPage < 0) return
+
+    const prevPage = book.current_page || 0
+    const startPage = Math.min(prevPage, newPage)
+    const endPage   = Math.max(prevPage, newPage)
+    const duration  = durationInput ? parseInt(durationInput) : null
+
+    // Build a new session entry
+    const newSession: ReadingSession = {
+      id: crypto.randomUUID(),
+      date: format(new Date(), 'yyyy-MM-dd'),
+      start_page: startPage,
+      end_page: endPage,
+      duration_minutes: (duration && duration > 0) ? duration : null,
+      created_at: new Date().toISOString(),
+    }
+
+    const updatedSessions = [...sessions, newSession]
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updates: any = { current_page: p }
+    const updates: any = {
+      current_page: newPage,
+      reading_sessions: updatedSessions,
+    }
 
-    if (book.total_pages && p >= book.total_pages && book.status !== 'finished') {
-      updates.status    = 'finished'
-      updates.finished_at = new Date().toISOString().split('T')[0]
+    // Auto set started_at if first update
+    if (!book.started_at && book.status !== 'finished') {
+      updates.started_at = format(new Date(), 'yyyy-MM-dd')
+    }
+    if (book.status === 'to-read' && newPage > 0) {
+      updates.status = 'reading'
+    }
+
+    if (book.total_pages && newPage >= book.total_pages && book.status !== 'finished') {
+      updates.status      = 'finished'
+      updates.finished_at = format(new Date(), 'yyyy-MM-dd')
     }
 
     await updateBook.mutateAsync({ id: book.id, updates })
     setCurrentPageInput('')
+    setDurationInput('')
     setShowLogModal(false)
     haptic('success')
   }
@@ -127,7 +261,7 @@ export function BookDetailPage() {
         <ChevronLeft size={16} /> Back to Library
       </button>
 
-      {/* ── Hero — always centered ──────────────────────────────────────── */}
+      {/* ── Hero ── */}
       <div className="bg-surface border border-border rounded-2xl p-6 shadow-[var(--shadow-card)] flex flex-col items-center text-center gap-3">
         <div className="w-28 h-40 rounded-xl overflow-hidden bg-surface-2 border border-border flex items-center justify-center flex-shrink-0 shadow-md">
           {book.cover_url
@@ -176,7 +310,7 @@ export function BookDetailPage() {
           </div>
         )}
 
-        {book.status === 'reading' && (
+        {(book.status === 'reading' || book.status === 'to-read') && (
           <button
             onClick={() => {
               setCurrentPageInput(String(book.current_page || ''))
@@ -190,13 +324,13 @@ export function BookDetailPage() {
         )}
       </div>
 
-      {/* ── Two-column detail layout ───────────────────────────────────── */}
+      {/* ── Two-column layout ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
         {/* Left / Main Column */}
         <div className="md:col-span-2 space-y-5">
 
-          {/* Progress */}
+          {/* Progress bar */}
           {book.total_pages ? (
             <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)] space-y-3">
               <div className="flex justify-between items-center">
@@ -223,6 +357,112 @@ export function BookDetailPage() {
                 </p>
               </div>
             )
+          )}
+
+          {/* ── Reading Stats panel ── */}
+          {stats && (
+            <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)] space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+                <BarChart2 size={14} className="text-accent" /> Reading Stats
+              </h3>
+
+              {/* Achievement badges */}
+              {stats.badges.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {stats.badges.map(b => (
+                    <span key={b.label} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent flex items-center gap-1">
+                      {b.icon} {b.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-surface-2 border border-border rounded-xl p-3 space-y-0.5">
+                  <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-wider font-semibold">
+                    <TrendingUp size={10} /> Avg pace
+                  </div>
+                  <p className="text-lg font-display font-bold text-text">
+                    {stats.avgPagesPerDay}
+                    <span className="text-[10px] text-text-muted font-normal ml-1">pages/day</span>
+                  </p>
+                </div>
+
+                {stats.avgSpeed !== null && (
+                  <div className="bg-surface-2 border border-border rounded-xl p-3 space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-wider font-semibold">
+                      <Zap size={10} /> Reading speed
+                    </div>
+                    <p className="text-lg font-display font-bold text-text">
+                      {stats.avgSpeed}
+                      <span className="text-[10px] text-text-muted font-normal ml-1">pages/hr</span>
+                    </p>
+                  </div>
+                )}
+
+                <div className="bg-surface-2 border border-border rounded-xl p-3 space-y-0.5">
+                  <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-wider font-semibold">
+                    <Clock size={10} /> Days reading
+                  </div>
+                  <p className="text-lg font-display font-bold text-text">
+                    {stats.daysReading}
+                    <span className="text-[10px] text-text-muted font-normal ml-1">days</span>
+                  </p>
+                </div>
+
+                <div className="bg-surface-2 border border-border rounded-xl p-3 space-y-0.5">
+                  <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-wider font-semibold">
+                    <Award size={10} /> Longest session
+                  </div>
+                  <p className="text-lg font-display font-bold text-text">
+                    {stats.longestSession}
+                    <span className="text-[10px] text-text-muted font-normal ml-1">pages</span>
+                  </p>
+                </div>
+
+                {stats.estimatedFinish && (
+                  <div className="col-span-2 bg-accent/5 border border-accent/20 rounded-xl p-3 space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] text-accent uppercase tracking-wider font-semibold">
+                      <Target size={10} /> Est. finish date
+                    </div>
+                    <p className="text-sm font-display font-bold text-accent">
+                      {stats.estimatedFinish}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Sessions sparkline */}
+              {stats.sortedSessions.length > 1 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">
+                    Pages per session ({stats.sortedSessions.length} sessions)
+                  </p>
+                  <SessionSparkline sessions={stats.sortedSessions} />
+                  <div className="flex justify-between text-[10px] text-text-muted">
+                    <span>{stats.sortedSessions[0]?.date}</span>
+                    <span>{stats.sortedSessions[stats.sortedSessions.length - 1]?.date}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Recent sessions list */}
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold sticky top-0 bg-surface pb-1">Recent sessions</p>
+                {[...stats.sortedSessions].reverse().slice(0, 8).map(s => (
+                  <div key={s.id} className="flex items-center justify-between text-[11px] text-text-secondary bg-surface-2 px-3 py-2 rounded-lg border border-border/60">
+                    <span className="text-text-muted">{s.date}</span>
+                    <span className="font-semibold text-text">{s.end_page - s.start_page} pages</span>
+                    {s.duration_minutes && (
+                      <span className="text-text-muted flex items-center gap-0.5">
+                        <Clock size={9} /> {s.duration_minutes}m
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Reflection */}
@@ -269,6 +509,7 @@ export function BookDetailPage() {
                 { label: 'Added on',  value: book.added_at },
                 { label: 'Started',   value: book.started_at },
                 { label: 'Finished',  value: book.finished_at },
+                { label: 'Sessions',  value: sessions.length > 0 ? `${sessions.length} logged` : null },
               ].filter(r => r.value).map(r => (
                 <div key={r.label} className="flex justify-between border-b border-border/40 pb-2 last:border-0 last:pb-0">
                   <span className="text-text-secondary">{r.label}</span>
@@ -333,7 +574,7 @@ export function BookDetailPage() {
         </div>
       </div>
 
-      {/* ── Update Progress Dialog ─────────────────────────────────────── */}
+      {/* ── Update Progress Dialog ── */}
       <Dialog.Root open={showLogModal} onOpenChange={setShowLogModal}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/85 backdrop-blur-sm" />
@@ -348,6 +589,7 @@ export function BookDetailPage() {
             </div>
 
             <form onSubmit={handleLogSession} className="space-y-4">
+              {/* Current page */}
               <div>
                 <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">
                   Current Page
@@ -368,6 +610,27 @@ export function BookDetailPage() {
                   </p>
                 ) : null}
               </div>
+
+              {/* Optional duration */}
+              <div>
+                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider flex items-center gap-1">
+                  <Clock size={10} /> Time spent (minutes)
+                  <span className="text-text-muted/60 normal-case tracking-normal ml-1">optional</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="600"
+                  value={durationInput}
+                  onChange={e => setDurationInput(e.target.value)}
+                  placeholder="e.g. 30"
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text text-lg font-semibold focus:border-accent focus:outline-none"
+                />
+                <p className="text-[11px] text-text-muted mt-1.5">
+                  Used to calculate your reading speed.
+                </p>
+              </div>
+
               <button
                 type="submit"
                 disabled={updateBook.isPending}

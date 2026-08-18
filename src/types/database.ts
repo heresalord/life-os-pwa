@@ -402,7 +402,7 @@ export interface Database {
           currency: string | null
           start_date: string | null
           end_date: string | null
-          state: 'active' | 'paused' | 'completed' | 'abandoned'
+          state: 'active' | 'paused' | 'completed' | 'abandoned' | 'archived'
           is_completed: boolean
           sub_goals: Json
           tracker_type: 'target' | 'habit' | 'average' | 'project'
@@ -424,7 +424,7 @@ export interface Database {
           currency?: string | null
           start_date?: string | null
           end_date?: string | null
-          state?: 'active' | 'paused' | 'completed' | 'abandoned'
+          state?: 'active' | 'paused' | 'completed' | 'abandoned' | 'archived'
           is_completed?: boolean
           sub_goals?: Json
           tracker_type?: 'target' | 'habit' | 'average' | 'project'
@@ -446,7 +446,7 @@ export interface Database {
           currency?: string | null
           start_date?: string | null
           end_date?: string | null
-          state?: 'active' | 'paused' | 'completed' | 'abandoned'
+          state?: 'active' | 'paused' | 'completed' | 'abandoned' | 'archived'
           is_completed?: boolean
           sub_goals?: Json
           tracker_type?: 'target' | 'habit' | 'average' | 'project'

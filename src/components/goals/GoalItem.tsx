@@ -20,7 +20,9 @@ import {
   Map,
   Target as TargetIcon,
   Milestone as MilestoneIcon,
-  ChevronRight
+  ChevronRight,
+  Clock,
+  RefreshCw,
 } from 'lucide-react'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { useHabitLogsQuery, useMilestonesQuery } from '../../hooks/useGoalsQuery'
@@ -171,6 +173,11 @@ export function GoalItem({ goal }: { goal: Goal }) {
     updateGoal.mutate({ id: goal.id, updates: { state: 'abandoned' } })
   }
 
+  const handleReactivate = () => {
+    haptic('success')
+    updateGoal.mutate({ id: goal.id, updates: { state: 'active', updated_at: new Date().toISOString() } })
+  }
+
   // Weekdays grid calculator for Habit (Mon -> Sun of current week)
   const renderWeeklyGrid = () => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 }) // Monday
@@ -219,10 +226,13 @@ export function GoalItem({ goal }: { goal: Goal }) {
     (goal.habit_streak ?? 0) > 0 &&
     !last3.some(d => habitLogs.find(l => l.date === d && l.value === 1))
 
+  const isArchived = goal.state === 'archived'
+
   return (
     <div className={clsx(
       'bg-surface border rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 shadow-[var(--shadow-card)] relative overflow-hidden group',
-      isComplete ? 'border-success/30 ring-1 ring-success/10'
+      isArchived ? 'border-border/50 opacity-70'
+      : isComplete ? 'border-success/30 ring-1 ring-success/10'
       : isAtRisk ? 'border-warning/50 animate-pulse'
       : 'border-border'
     )}>
@@ -236,12 +246,17 @@ export function GoalItem({ goal }: { goal: Goal }) {
             <CatIcon size={10} />
             {goal.category || 'General'}
           </span>
+          {isArchived && (
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-text-muted/30 bg-surface-2 text-text-muted flex items-center gap-1 flex-shrink-0">
+              <Clock size={9} /> Auto-archived
+            </span>
+          )}
           {linkedProject && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-accent/20 bg-accent/5 text-accent truncate max-w-[100px]" title={`Project: ${linkedProject.name}`}>
               {linkedProject.name}
             </span>
           )}
-          {isAtRisk && (
+          {isAtRisk && !isArchived && (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-danger/20 bg-danger/5 text-danger animate-pulse flex-shrink-0">
               At Risk
             </span>
@@ -382,8 +397,8 @@ export function GoalItem({ goal }: { goal: Goal }) {
         )}
       </div>
 
-      {/* Quick Add log panel for Target and Average */}
-      {(goal.tracker_type === 'target' || goal.tracker_type === 'average') && !isComplete && (
+      {/* Quick Add log panel for Target and Average (hidden when archived) */}
+      {(goal.tracker_type === 'target' || goal.tracker_type === 'average') && !isComplete && !isArchived && (
         <div className="absolute right-3 bottom-[48px]">
           <button
             onClick={() => setShowLog(v => !v)}
@@ -395,7 +410,7 @@ export function GoalItem({ goal }: { goal: Goal }) {
         </div>
       )}
 
-      {showLog && (
+      {showLog && !isArchived && (
         <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-200">
           <input
             type="number"
@@ -421,32 +436,15 @@ export function GoalItem({ goal }: { goal: Goal }) {
         </div>
       )}
 
-      {/* Expand controls for other actions */}
-      <div className="mt-2.5 flex justify-end">
-        <button
-          onClick={() => setExpanded(v => !v)}
-          className="text-[10px] font-semibold text-text-muted hover:text-text flex items-center gap-1 transition-colors"
-        >
-          {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          {expanded ? 'Hide actions' : 'More actions'}
-        </button>
-      </div>
-
-      {expanded && (
-        <div className="mt-2 pt-2 border-t border-border/40 flex items-center gap-2 animate-in fade-in duration-200">
-          {!isComplete && (
-            <button
-              onClick={handleMarkComplete}
-              className="flex-1 py-2 text-[10px] font-bold text-success bg-success/10 border border-success/20 rounded-xl hover:bg-success/20 transition-colors text-center"
-            >
-              ✓ Complete
-            </button>
-          )}
+      {/* Actions footer */}
+      {isArchived ? (
+        // Archived goals: only Reactivate + Delete
+        <div className="mt-3 pt-3 border-t border-border/40 flex items-center gap-2">
           <button
-            onClick={handleArchive}
-            className="flex-1 py-2 text-[10px] font-bold text-text-secondary bg-surface-2 border border-border rounded-xl hover:text-text hover:bg-muted transition-colors text-center"
+            onClick={handleReactivate}
+            className="flex-1 py-2 text-[10px] font-bold text-accent bg-accent/10 border border-accent/20 rounded-xl hover:bg-accent/20 transition-colors flex items-center justify-center gap-1"
           >
-            Archive
+            <RefreshCw size={10} /> Reactivate
           </button>
           <button
             onClick={() => {
@@ -460,6 +458,49 @@ export function GoalItem({ goal }: { goal: Goal }) {
             <Trash2 size={12} />
           </button>
         </div>
+      ) : (
+        <>
+          {/* Expand controls for other actions */}
+          <div className="mt-2.5 flex justify-end">
+            <button
+              onClick={() => setExpanded(v => !v)}
+              className="text-[10px] font-semibold text-text-muted hover:text-text flex items-center gap-1 transition-colors"
+            >
+              {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              {expanded ? 'Hide actions' : 'More actions'}
+            </button>
+          </div>
+
+          {expanded && (
+            <div className="mt-2 pt-2 border-t border-border/40 flex items-center gap-2 animate-in fade-in duration-200">
+              {!isComplete && (
+                <button
+                  onClick={handleMarkComplete}
+                  className="flex-1 py-2 text-[10px] font-bold text-success bg-success/10 border border-success/20 rounded-xl hover:bg-success/20 transition-colors text-center"
+                >
+                  ✓ Complete
+                </button>
+              )}
+              <button
+                onClick={handleArchive}
+                className="flex-1 py-2 text-[10px] font-bold text-text-secondary bg-surface-2 border border-border rounded-xl hover:text-text hover:bg-muted transition-colors text-center"
+              >
+                Archive
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm('Delete this goal permanently?')) {
+                    deleteGoal.mutate(goal.id)
+                  }
+                }}
+                className="p-2 text-danger bg-danger/10 border border-danger/20 rounded-xl hover:bg-danger/20 transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

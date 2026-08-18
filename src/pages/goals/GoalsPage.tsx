@@ -27,12 +27,12 @@ import {
   Layers,
   CheckCircle2,
   Archive,
+  Clock,
 } from 'lucide-react'
 import { useContextualAdd } from '../../hooks/useContextualAdd'
 import clsx from 'clsx'
 
 type TrackerTypeFilter = 'all' | 'target' | 'habit' | 'average' | 'project'
-type StateFilter = 'active' | 'completed' | 'abandoned'
 
 const TYPE_FILTERS = [
   { value: 'all', labelKey: 'goals.all', defaultLabel: 'All', icon: Layers },
@@ -42,10 +42,13 @@ const TYPE_FILTERS = [
   { value: 'project', labelKey: 'goals.projects', defaultLabel: 'Projects', icon: MilestoneIcon },
 ] as const
 
+type StateFilter = 'active' | 'completed' | 'abandoned' | 'archived'
+
 const STATE_FILTERS: { value: StateFilter; label: string; icon: React.ComponentType<any> }[] = [
-  { value: 'active',    label: 'Active',    icon: Target },
-  { value: 'completed', label: 'Done',      icon: CheckCircle2 },
-  { value: 'abandoned', label: 'Archived',  icon: Archive },
+  { value: 'active',    label: 'Active',       icon: Target },
+  { value: 'completed', label: 'Done',         icon: CheckCircle2 },
+  { value: 'abandoned', label: 'Abandoned',    icon: Archive },
+  { value: 'archived',  label: 'Auto-archived',icon: Clock },
 ]
 
 const CATEGORY_CHIPS = [
