@@ -14,7 +14,6 @@ import { TemplatePicker } from '../../components/notes/TemplatePicker'
 import { EmptyState } from '../../components/EmptyState'
 import { NoteCardSkeleton } from '../../components/Skeleton'
 import { extractTags, stripTags, applyTags, collectAllTags, cleanTaskTitle } from '../../lib/noteTagUtils'
-import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader'
 import { SheetSelect } from '../../components/SheetSelect'
 import {
   FileText, Plus, Search, X, Eye, Edit3,
@@ -248,7 +247,6 @@ function DesktopEditorPlaceholder() {
 }
 
 export function NotesPage() {
-  const { sentinelRef, isCollapsed } = useCollapsibleHeader()
   const { data: notes = [], isLoading } = useNotesQuery()
   const { deleteNote } = useNoteMutations()
   const [searchParams] = useSearchParams()
@@ -341,7 +339,6 @@ export function NotesPage() {
   // Opens whenever the header's contextual "+" is tapped
   useEffect(() => {
     if (headerAddTrigger > 0) handleCreateNew()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headerAddTrigger])
 
   const handleNoteCreated = (id: string) => {
@@ -458,26 +455,16 @@ export function NotesPage() {
       {/* ── List pane ── */}
       <div className="flex-shrink-0 lg:w-72 space-y-3">
         {/* Header */}
-        <header className={clsx(
-          "flex items-center justify-between pb-4 collapsible-header-container px-4 -mx-4 md:px-0 md:mx-0",
-          isCollapsed && "collapsed"
-        )}>
+        <header className="flex items-center justify-between pb-3">
           <div>
-            <h1 className={clsx(
-              "font-display text-text transition-all duration-200 ml-4 md:ml-0",
-              isCollapsed ? "text-lg font-semibold" : "text-2xl font-bold"
-            )}>
+            <h1 className="font-display text-2xl font-bold text-text">
               Notes
             </h1>
-            <p className={clsx(
-              "text-xs text-text-secondary mt-0.5 transition-all duration-200 origin-left ml-4 md:ml-0",
-              isCollapsed ? "opacity-0 scale-90 h-0 overflow-hidden mt-0" : "opacity-100 scale-100 h-auto"
-            )}>
+            <p className="text-xs text-text-secondary mt-0.5">
               {(notes as Note[]).length > 0 ? `${(notes as Note[]).length} note${(notes as Note[]).length > 1 ? 's' : ''}` : 'Freewrite, reflect, or draft.'}
             </p>
           </div>
         </header>
-        <div ref={sentinelRef} className="h-0 w-full" />
 
         {/* Mobile folder dropdown + new-folder action */}
         <div className="lg:hidden flex items-center gap-2">

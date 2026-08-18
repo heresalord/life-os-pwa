@@ -14,7 +14,7 @@ export function InstallBanner() {
       <>
         {/* Trigger button — bottom of screen above nav */}
         {!showIOSSteps && (
-          <div className="fixed bottom-20 left-4 right-4 z-40 flex items-center gap-3 bg-surface border border-accent/30 rounded-2xl px-4 py-3 shadow-xl shadow-black/40"
+          <div className="fixed bottom-[5.5rem] left-4 right-16 z-40 flex items-center gap-3 bg-surface border border-accent/30 rounded-2xl px-4 py-3 shadow-xl shadow-black/40"
             style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center flex-shrink-0">
               <Download size={18} className="text-accent" />

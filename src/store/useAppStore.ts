@@ -45,6 +45,10 @@ export interface AppState {
    *  page's add-modal listens for this to open itself. Not persisted. */
   headerAddTrigger: number
   triggerHeaderAdd: () => void
+  /** Forces the desktop sidebar to show full labels even at the md breakpoint
+   *  (768–1024px), where it would otherwise fall back to icon-only. Persisted. */
+  sidebarPinnedOpen: boolean
+  setSidebarPinnedOpen: (v: boolean) => void
 }
 
 // Apply theme visually to <html> and the PWA theme-color meta tag.
@@ -107,6 +111,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   navItems: loadNavItems(),
   quoteIntervalHours: loadQuoteInterval(),
   locale: localStorage.getItem('lifeos-locale') || 'en',
+  sidebarPinnedOpen: localStorage.getItem('lifeos-sidebar-pinned') === 'true',
 
   setSelectedDate: (date) => set({ selectedDate: date }),
   setDate: (date) => set({ selectedDate: date }),
@@ -170,4 +175,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   headerAddTrigger: 0,
   triggerHeaderAdd: () => set(s => ({ headerAddTrigger: s.headerAddTrigger + 1 })),
+
+  setSidebarPinnedOpen: (v) => {
+    localStorage.setItem('lifeos-sidebar-pinned', String(v))
+    set({ sidebarPinnedOpen: v })
+  },
 }))

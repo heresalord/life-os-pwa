@@ -10,7 +10,6 @@ import { EmptyState } from '../../components/EmptyState'
 import { PageSkeleton } from '../../components/Skeleton'
 import { useReadingGoalsQuery, useSaveReadingGoalMutation } from '../../hooks/useReadingGoalsQuery'
 import { haptic } from '../../lib/haptic'
-import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader'
 import { useAppStore } from '../../store/useAppStore'
 import { SheetSelect } from '../../components/SheetSelect'
 import clsx from 'clsx'
@@ -33,7 +32,6 @@ const EMPTY_MESSAGES: Record<Exclude<TabStatus, 'stats'>, string> = {
 }
 
 export function BooksPage() {
-  const { sentinelRef, isCollapsed } = useCollapsibleHeader()
   const [tab, setTab] = useState<TabStatus>('reading')
   const navigate = useNavigate()
   const { data: allBooks = [], isLoading } = useBooksQuery()
@@ -187,21 +185,12 @@ export function BooksPage() {
 
   return (
     <div className="space-y-4 lg:max-w-4xl">
-      <header className={clsx(
-        "flex items-center justify-between border-b border-border/40 pb-4 collapsible-header-container px-4 -mx-4 md:px-0 md:mx-0",
-        isCollapsed && "collapsed"
-      )}>
+      <header className="flex items-center justify-between border-b border-border/40 pb-4">
         <div>
-          <h1 className={clsx(
-            "font-display text-text transition-all duration-200",
-            isCollapsed ? "text-lg font-semibold ml-4 md:ml-0" : "text-2xl font-bold"
-          )}>
+          <h1 className="font-display text-2xl font-bold text-text">
             Library
           </h1>
-          <p className={clsx(
-            "text-xs text-text-secondary mt-0.5 transition-all duration-200 origin-left ml-4 md:ml-0",
-            isCollapsed ? "opacity-0 scale-90 h-0 overflow-hidden mt-0" : "opacity-100 scale-100 h-auto"
-          )}>
+          <p className="text-xs text-text-secondary mt-0.5">
             {allBooks.length} book{allBooks.length !== 1 ? 's' : ''} total
           </p>
         </div>
@@ -209,10 +198,7 @@ export function BooksPage() {
         {targetBooks > 0 ? (
           <button
             onClick={() => { haptic('light'); setShowGoalModal(true) }}
-            className={clsx(
-              "flex items-center gap-3 bg-surface border border-border px-3.5 py-2 rounded-xl hover:border-accent transition-all hover:shadow-sm mr-4 md:mr-0",
-              isCollapsed && "scale-90"
-            )}
+            className="flex items-center gap-3 bg-surface border border-border px-3.5 py-2 rounded-xl hover:border-accent transition-all hover:shadow-sm"
           >
             <div className="relative flex items-center justify-center">
               <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
@@ -236,13 +222,12 @@ export function BooksPage() {
         ) : (
           <button
             onClick={() => { haptic('light'); setShowGoalModal(true) }}
-            className="text-xs font-medium text-accent border border-accent/25 bg-accent/5 hover:bg-accent/10 hover:border-accent/40 transition-colors px-3 py-2 rounded-xl flex items-center gap-2 mr-4 md:mr-0"
+            className="text-xs font-medium text-accent border border-accent/25 bg-accent/5 hover:bg-accent/10 hover:border-accent/40 transition-colors px-3 py-2 rounded-xl flex items-center gap-2"
           >
             <Award size={14} /> Set Reading Goal
           </button>
         )}
       </header>
-      <div ref={sentinelRef} className="h-0 w-full" />
 
       {/* ── Tab switcher — matches "list / calendar / time block" style ── */}
       <div className="flex bg-surface-2 p-1 rounded-xl gap-1 overflow-x-auto">

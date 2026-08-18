@@ -31,6 +31,7 @@ import { WellbeingHeatmapWidget } from '../../components/dashboard/widgets/Wellb
 import { InboxWidget } from '../../components/dashboard/widgets/InboxWidget'
  import { WeeklyRecapModal } from '../../components/dashboard/WeeklyRecapModal'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { AddTaskModal } from '../../components/tasks/AddTaskModal'
 import { useTranslation } from '../../i18n'
 
 import 'react-grid-layout/css/styles.css'
@@ -177,8 +178,14 @@ export function DashboardPage() {
   const greeting = t(greetingKey)
   const { data: settings, isLoading: settingsLoading, upsert } = useUserSettings()
 
-  const { timezone } = useAppStore()
+  const { timezone, headerAddTrigger } = useAppStore()
   const today = getUserLocalDate(timezone)
+  const [addTaskOpen, setAddTaskOpen] = useState(false)
+
+  useEffect(() => {
+    if (headerAddTrigger > 0) setAddTaskOpen(true)
+  }, [headerAddTrigger])
+
   const { data: tasks = [] } = useTasksQuery(today)
   const completedTasksToday = tasks.filter(t => t.completed).length
   const totalTasksToday     = tasks.length
@@ -315,6 +322,8 @@ export function DashboardPage() {
     <div className={`space-y-4 ${isEditing ? 'is-editing' : ''}`}>
       {/* Weekly Recap modal — self-determines visibility */}
       <WeeklyRecapModal />
+
+      <AddTaskModal date={today} open={addTaskOpen} onOpenChange={setAddTaskOpen} />
 
       <ConfirmDialog
         open={showResetConfirm}

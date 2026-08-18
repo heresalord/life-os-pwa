@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAgendaQuery } from '../../hooks/useAgendaQuery'
 import { useAgendaMutations } from '../../hooks/useAgendaMutations'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
@@ -25,8 +25,13 @@ function toMins(t: string) {
 }
 
 export function AgendaPage() {
-  const { selectedDate } = useAppStore()
+  const { selectedDate, headerAddTrigger } = useAppStore()
+  const [addOpen, setAddOpen] = useState(false)
   const nowMins = useNowMinutes()
+
+  useEffect(() => {
+    if (headerAddTrigger > 0) setAddOpen(true)
+  }, [headerAddTrigger])
 
   // Queries
   const { data: blocks = [], isLoading: blocksLoading } = useAgendaQuery(selectedDate)
@@ -93,7 +98,7 @@ export function AgendaPage() {
         <p className="text-xs text-text-muted mt-0.5">Plan and execute your day side-by-side</p>
       </header>
 
-      <AddBlockModal date={selectedDate} />
+      <AddBlockModal date={selectedDate} open={addOpen} onOpenChange={setAddOpen} />
 
       {isLoading ? (
         <PageSkeleton />

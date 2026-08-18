@@ -3,12 +3,15 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Search, Clock, MoreHorizontal, Plus,
 } from 'lucide-react'
-import { SyncStatusDot, useHasSyncIssue } from '../SyncStatusDot'
+import { SyncStatusDot } from '../SyncStatusDot'
+import { useHasSyncIssue } from '../../hooks/useHasSyncIssue'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { displayDate } from '../../lib/dateUtils'
 import { hapticLight } from '../../lib/haptics'
-import { InboxFAB } from '../inbox/InboxFAB'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import { ContextualFAB } from './ContextualFAB'
+import { QuickCaptureModal } from '../inbox/QuickCaptureModal'
 import { InstallBanner } from './InstallBanner'
 import { DesktopSidebar } from './DesktopSidebar'
 import { DesktopTopbar } from './DesktopTopbar'
@@ -19,7 +22,7 @@ import { useTranslation } from '../../i18n'
 import { ErrorBoundary } from '../ErrorBoundary'
 import clsx from 'clsx'
 
-import { ALL_NAV_OPTIONS, ROUTES_WITH_ADD_ACTION } from '../../lib/constants'
+import { ALL_NAV_OPTIONS } from '../../lib/constants'
 
 const HOME_NAV = { key: 'home', to: '/', icon: LayoutDashboard, label: 'Home' }
 
@@ -42,6 +45,10 @@ export function AppShell({ children }: AppShellProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
+  const isOnline = useOnlineStatus()
+  const [quickCaptureOpen, setQuickCaptureOpen] = React.useState(false)
+  // Offline banner is ~32px tall; header must sit below it
+  const offlineBannerH = isOnline ? 0 : 32
 
   // Track previous pathname to determine slide direction
   const prevPathnameRef = React.useRef(location.pathname)
@@ -100,8 +107,11 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* ── Mobile header ─────────────────────────────────────────────── */}
         <header
-          className="md:hidden sticky top-0 z-30 bg-bg border-b border-border"
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          className="md:hidden sticky z-30 bg-bg border-b border-border"
+          style={{ 
+            paddingTop: 'env(safe-area-inset-top)',
+            top: offlineBannerH,
+          }}
         >
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
 
@@ -119,7 +129,7 @@ export function AppShell({ children }: AppShellProps) {
             </div>
 
             {/* Right: actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
               {hasSyncIssue && <SyncStatusDot />}
 
               <ErrorBoundary inline>
@@ -128,38 +138,40 @@ export function AppShell({ children }: AppShellProps) {
 
               <button
                 onClick={() => navigate('/search')}
-                className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-text transition-colors"
                 aria-label="Search"
               >
-                <Search size={18} />
+                <Search size={20} />
               </button>
 
-              {ROUTES_WITH_ADD_ACTION.has(location.pathname) && (
-                <button
-                  onClick={() => { hapticLight(); useAppStore.getState().triggerHeaderAdd() }}
-                  className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors"
-                  aria-label="Add"
-                >
-                  <Plus size={18} />
-                </button>
-              )}
+              {/* Quick capture button */}
+              <button
+                onClick={() => { hapticLight(); setQuickCaptureOpen(true) }}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-text transition-colors"
+                aria-label="Quick capture"
+                title="Quick capture"
+              >
+                <Plus size={20} />
+              </button>
 
               {/* Avatar → Profile */}
               <button
                 onClick={() => navigate('/profile')}
-                className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label="Profile"
               >
-                {initials}
+                <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors">
+                  {initials}
+                </div>
               </button>
 
               {/* More → /more page */}
               <button
                 onClick={() => navigate('/more')}
-                className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
                 aria-label="More"
               >
-                <MoreHorizontal size={18} />
+                <MoreHorizontal size={20} />
               </button>
             </div>
           </div>
@@ -183,7 +195,7 @@ export function AppShell({ children }: AppShellProps) {
         )}
 
         <main className={clsx(
-          'flex-1 w-full px-4 py-4 pb-28 overflow-x-hidden',
+          'flex-1 w-full px-4 py-4 pb-24 overflow-x-hidden',
           'max-w-2xl mx-auto',
           'md:max-w-none md:mx-0 md:pb-6 md:px-6 md:py-6',
         )}>
@@ -194,8 +206,10 @@ export function AppShell({ children }: AppShellProps) {
       </div>
 
       <div className="md:hidden">
-        <InboxFAB />
+        <ContextualFAB />
       </div>
+
+      <QuickCaptureModal open={quickCaptureOpen} onOpenChange={setQuickCaptureOpen} />
 
       <InstallBanner />
 
@@ -213,7 +227,7 @@ export function AppShell({ children }: AppShellProps) {
               onClick={() => void hapticLight()}
               className={({ isActive }) =>
                 clsx(
-                  'flex flex-col items-center gap-1 py-1 transition-all',
+                  'flex flex-col items-center gap-1 py-1 min-h-[44px] min-w-[48px] justify-center transition-all',
                   /* 6.6: active tab gets pill background */
                   isActive
                     ? 'nav-pill-active text-accent'
@@ -224,7 +238,7 @@ export function AppShell({ children }: AppShellProps) {
               {({ isActive }) => (
                 <>
                   <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
-                  <span className={clsx('text-[10px] font-medium', isActive ? 'text-accent' : '')}>
+                  <span className={clsx('text-[11px] font-medium', isActive ? 'text-accent' : '')}>
                     {navLabel(key, label)}
                   </span>
                 </>

@@ -28,7 +28,6 @@ import {
   CheckCircle2,
   Archive,
 } from 'lucide-react'
-import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader'
 import { useAppStore } from '../../store/useAppStore'
 import clsx from 'clsx'
 
@@ -64,7 +63,6 @@ const CATEGORY_CHIPS = [
 ]
 
 export function GoalsPage() {
-  const { sentinelRef, isCollapsed } = useCollapsibleHeader()
   const { t } = useTranslation()
   const [selectedType, setSelectedType] = useState<TrackerTypeFilter>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
@@ -78,7 +76,6 @@ export function GoalsPage() {
   // Opens whenever the header's contextual "+" is tapped
   useEffect(() => {
     if (headerAddTrigger > 0) setAddOpen(true)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headerAddTrigger])
 
   // Filter goals locally
@@ -92,26 +89,17 @@ export function GoalsPage() {
 
   return (
     <div className="space-y-5 lg:max-w-5xl">
-      <header className={clsx(
-        "flex items-center justify-between pb-4 collapsible-header-container px-4 -mx-4 md:px-0 md:mx-0",
-        isCollapsed && "collapsed"
-      )}>
+      <header className="flex items-center justify-between pb-4">
         <div>
-          <h1 className={clsx(
-            "font-display text-text transition-all duration-200 ml-4 md:ml-0",
-            isCollapsed ? "text-lg font-semibold" : "text-2xl font-bold"
-          )}>
+          <h1 className="font-display text-2xl font-bold text-text">
             {t('goals.title', 'Goals')}
           </h1>
-          <p className={clsx(
-            "text-xs text-text-secondary mt-0.5 transition-all duration-200 origin-left ml-4 md:ml-0",
-            isCollapsed ? "opacity-0 scale-90 h-0 overflow-hidden mt-0" : "opacity-100 scale-100 h-auto"
-          )}>
+          <p className="text-xs text-text-secondary mt-0.5">
             {t('goals.track_build_habits', 'Track, build habits, and complete milestones')}
           </p>
         </div>
-        {/* State filter chips — inline, replaces the dropdown */}
-        <div className="flex items-center gap-1 p-1 bg-surface-2 border border-border rounded-xl mr-4 md:mr-0">
+        {/* State filter chips — pinned, always visible */}
+        <div className="flex items-center gap-1 p-1 bg-surface-2 border border-border rounded-xl">
           {STATE_FILTERS.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
@@ -129,39 +117,31 @@ export function GoalsPage() {
           ))}
         </div>
       </header>
-      <div ref={sentinelRef} className="h-0 w-full" />
 
-      {/* ── Tracker Type Filter Bar ──────────────────────────────────────────────
-          Grid with 5 columns: matches style of finance/task filters */}
-      <div className="grid grid-cols-5 gap-1 p-1 bg-surface-2 border border-border rounded-2xl shadow-sm">
+      {/* Type + Category filter — merged into one scrollable row, separated by a divider */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
         {TYPE_FILTERS.map(filter => {
           const Icon = filter.icon
-          const isActive = selectedType === filter.value
+          const isSelected = selectedType === filter.value
           return (
             <button
               key={filter.value}
               onClick={() => setSelectedType(filter.value)}
               className={clsx(
-                'flex items-center justify-center gap-2 py-2 px-1 rounded-xl transition-all duration-200 font-semibold w-full text-xs',
-                isActive
-                  ? 'bg-surface text-text shadow-sm'
-                  : 'text-text-secondary hover:text-text'
+                'flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium border transition-all flex-shrink-0 snap-start',
+                isSelected
+                  ? 'border-accent text-accent bg-accent/10 shadow-sm'
+                  : 'border-border text-text-secondary bg-surface hover:text-text hover:border-text-secondary'
               )}
             >
-              <Icon size={14} strokeWidth={isActive ? 2.5 : 1.75} />
-              <span className={clsx(
-                'text-[11px] sm:text-xs',
-                isActive ? 'inline' : 'hidden md:inline'
-              )}>
-                {t(filter.labelKey, filter.defaultLabel)}
-              </span>
+              <Icon size={12} />
+              <span>{t(filter.labelKey, filter.defaultLabel)}</span>
             </button>
           )
         })}
-      </div>
 
-      {/* ── Category Horizontal Scroller ── */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="w-px h-6 bg-border flex-shrink-0 mx-1" />
+
         {CATEGORY_CHIPS.map(cat => {
           const Icon = cat.icon
           const isSelected = selectedCategory === cat.name

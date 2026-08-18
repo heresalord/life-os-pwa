@@ -10,6 +10,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../i18n'
 import { WeeklyRecapModal } from '../../components/dashboard/WeeklyRecapModal'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 
 // All modules — order determines display order in the grid
 const ALL_MODULES = [
@@ -35,6 +36,7 @@ export function MorePage() {
 
   const displayName = profile?.display_name || 'You'
   const initials    = displayName.slice(0, 2).toUpperCase()
+  const [signOutOpen, setSignOutOpen] = useState(false)
 
   // Split into pinned (in bottom nav) and others
   const pinned = ALL_MODULES.filter(m => navItems.includes(m.key) || m.key === 'home')
@@ -165,9 +167,7 @@ export function MorePage() {
             <ChevronRight size={15} className="text-text-muted" />
           </button>
           <button
-            onClick={async () => {
-              if (window.confirm('Sign out?')) await signOut()
-            }}
+            onClick={() => setSignOutOpen(true)}
             className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-danger/5 press-row transition-colors text-left"
           >
             <LogOut size={17} className="text-danger flex-shrink-0" />
@@ -176,6 +176,14 @@ export function MorePage() {
         </div>
       </section>
       {recapOpen && <WeeklyRecapModal forceOpen onClose={() => setRecapOpen(false)} />}
+      <ConfirmDialog
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        title="Sign out?"
+        description="You'll be signed out of your account. Your data is safely synced."
+        confirmLabel="Sign Out"
+        onConfirm={signOut}
+      />
     </div>
   )
 }

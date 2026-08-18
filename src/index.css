@@ -180,8 +180,9 @@ button:active, a:active {
   opacity: 0.92;
 }
 
-/* Re-enable selection in inputs */
-input, textarea, [contenteditable], .selectable {
+/* Re-enable selection in inputs and readable content */
+input, textarea, [contenteditable], .selectable,
+p, h1, h2, h3, h4, h5, h6, li, td, th, span.selectable-text {
   user-select: auto;
   -webkit-user-select: auto;
 }
@@ -367,30 +368,8 @@ input, textarea, [contenteditable], .selectable {
   border-bottom: 1px solid var(--theme-border);
 }
 
-/* ── Collapsible dynamic header ── */
+/* ── Page headers ── */
 .collapsible-header-container {
-  position: sticky;
-  top: 56px;
-  z-index: 20;
-  background-color: var(--theme-bg);
-  transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-@supports (padding-top: env(safe-area-inset-top)) {
-  .collapsible-header-container {
-    top: calc(3.5rem + env(safe-area-inset-top, 0px));
-  }
-}
-@media (min-width: 768px) {
-  .collapsible-header-container {
-    top: 64px;
-  }
-}
-
-.collapsible-header-container.collapsed {
-  padding-top: 0.65rem;
-  padding-bottom: 0.65rem;
-  border-bottom: 1px solid var(--theme-border);
-  box-shadow: var(--theme-shadow-card);
-  backdrop-filter: blur(20px);
-  background-color: var(--theme-bg-translucent);
+  background-color: transparent;
+  transition: opacity 150ms ease;
 }

@@ -16,9 +16,14 @@ export const ALL_NAV_OPTIONS = [
   { key: 'search',   to: '/search',   icon: Search,       label: 'Search'    },
 ]
 
-/**
- * Routes whose module has a primary "add new" action, surfaced as a single
- * header icon (next to Search) instead of a per-module floating button or
- * inline dashed button. Extend as each module migrates.
- */
-export const ROUTES_WITH_ADD_ACTION = new Set(['/tasks', '/finance', '/notes', '/goals', '/books'])
+export const ROUTES_WITH_ADD_ACTION = new Set([
+  '/',
+  '/day',
+  '/tasks',
+  '/finance',
+  '/goals',
+  '/projects',
+  '/books',
+  '/agenda',
+  '/notes',
+])

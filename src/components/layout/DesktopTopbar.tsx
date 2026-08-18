@@ -4,12 +4,13 @@ import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
 import { displayDate } from '../../lib/dateUtils'
-import { SyncStatusDot, useHasSyncIssue } from '../SyncStatusDot'
+import { SyncStatusDot } from '../SyncStatusDot'
+import { useHasSyncIssue } from '../../hooks/useHasSyncIssue'
 import { NavLink } from 'react-router-dom'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { CalendarDays, Inbox, FileText } from 'lucide-react'
 import { ErrorBoundary } from '../ErrorBoundary'
-import { ROUTES_WITH_ADD_ACTION } from '../../lib/constants'
+import { QuickCaptureModal } from '../inbox/QuickCaptureModal'
 
 const pathTitleMap: Record<string, string> = {
   '/':         'Dashboard',
@@ -38,6 +39,7 @@ export function DesktopTopbar() {
   const { selectedDate } = useAppStore()
   const { profile, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false)
   const hasSyncIssue = useHasSyncIssue()
 
   const title = pathTitleMap[location.pathname] || 'Life OS'
@@ -108,15 +110,15 @@ export function DesktopTopbar() {
           <Search size={17} />
         </button>
 
-        {ROUTES_WITH_ADD_ACTION.has(location.pathname) && (
-          <button
-            onClick={() => useAppStore.getState().triggerHeaderAdd()}
-            className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
-            aria-label="Add"
-          >
-            <Plus size={17} />
-          </button>
-        )}
+        {/* Quick capture button */}
+        <button
+          onClick={() => setQuickCaptureOpen(true)}
+          className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
+          aria-label="Quick capture"
+          title="Quick capture"
+        >
+          <Plus size={17} />
+        </button>
 
         {/* Avatar + dropdown */}
         <div className="relative">
@@ -163,6 +165,7 @@ export function DesktopTopbar() {
           )}
         </div>
       </div>
+      <QuickCaptureModal open={quickCaptureOpen} onOpenChange={setQuickCaptureOpen} />
     </header>
   )
 }

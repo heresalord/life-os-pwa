@@ -1,15 +1,20 @@
 import { useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useAuth } from '../../hooks/useAuth'
 import { enqueueSync } from '../../db/syncQueue'
 import { useDb } from '../../db/DbContext'
+import { hapticLight } from '../../lib/haptics'
 
 const TYPES = ['thought', 'idea', 'worry', 'todo', 'other'] as const
 
-export function InboxFAB() {
+interface QuickCaptureModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function QuickCaptureModal({ open, onOpenChange }: QuickCaptureModalProps) {
   const db = useDb()
-  const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [type, setType] = useState<typeof TYPES[number]>('thought')
   const [saving, setSaving] = useState(false)
@@ -33,26 +38,16 @@ export function InboxFAB() {
 
     await db.inbox_items.add(item as Parameters<typeof db.inbox_items.add>[0])
     await enqueueSync('inbox_items', 'insert', item)
+    hapticLight()
 
     setText('')
     setType('thought')
     setSaving(false)
-    setOpen(false)
+    onOpenChange(false)
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
-        <button
-          id="inbox-fab"
-          aria-label="Quick capture"
-          className="fixed bottom-[5.5rem] right-4 z-40 w-14 h-14 rounded-full bg-accent text-bg shadow-lg shadow-accent/30 flex items-center justify-center hover:bg-accent-dim active:scale-95 transition-all"
-          style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
-        >
-          <Plus size={26} strokeWidth={2.5} />
-        </button>
-      </Dialog.Trigger>
-
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content

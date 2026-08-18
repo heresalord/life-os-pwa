@@ -78,7 +78,6 @@ export function FinancePage() {
       setActive('transactions')
       setAddOpen(true)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headerAddTrigger])
 
   const adjustPeriod = (direction: 'prev' | 'next') => {

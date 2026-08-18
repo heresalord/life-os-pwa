@@ -3,8 +3,17 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Plus, X } from 'lucide-react'
 import { useAgendaMutations } from '../../hooks/useAgendaMutations'
 
-export function AddBlockModal({ date }: { date: string }) {
-  const [open, setOpen] = useState(false)
+interface AddBlockModalProps {
+  date: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function AddBlockModal({ date, open: controlledOpen, onOpenChange: controlledOnOpenChange }: AddBlockModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = isControlled ? (controlledOnOpenChange ?? (() => {})) : setInternalOpen
   const [description, setDescription] = useState('')
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')

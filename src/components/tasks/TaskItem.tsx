@@ -29,6 +29,9 @@ export function TaskItem({
   const [expanded, setExpanded]       = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [fillCheckbox, setFillCheckbox] = useState(false)
+  // Pending-delete state: swipe-left shows undo instead of deleting immediately
+  const [pendingDelete, setPendingDelete] = useState(false)
+  const pendingDeleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartX = useRef<number | null>(null)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -73,16 +76,28 @@ export function TaskItem({
     setDragging(false)
     touchStartX.current = null
 
-    if (dragX < -60) {
+    if (dragX < -100) {
+      // Enter pending-delete state — user has 3s to undo before permanent delete
       haptic('medium')
-      onDelete(task.id)
+      setPendingDelete(true)
       setDragX(0)
+      if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current)
+      pendingDeleteTimer.current = setTimeout(() => {
+        setPendingDelete(false)
+        onDelete(task.id)
+      }, 3000)
     } else if (dragX > 80) {
       handleCheckClick()
       setDragX(0)
     } else {
       setDragX(0)
     }
+  }
+
+  const handleUndoDelete = () => {
+    if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current)
+    setPendingDelete(false)
+    haptic('light')
   }
 
   const handleCheckClick = () => {
@@ -132,7 +147,8 @@ export function TaskItem({
     <div className={clsx(
       'relative overflow-hidden rounded-xl bg-surface border border-border group shadow-[var(--shadow-card)]',
       task.completed || task.skipped ? 'border-l-[3px] border-l-border opacity-75' : (priorityBorder || 'border-l-[3px] border-l-border'),
-      isOverdue && !task.completed && 'border-danger/30'
+      isOverdue && !task.completed && 'border-danger/30',
+      pendingDelete && 'ring-1 ring-danger/40'
     )}>
       {/* Background slide right action: Complete Task */}
       <div className="absolute inset-y-0 left-0 flex items-center justify-start bg-success/15 px-4 w-full">
@@ -142,24 +158,40 @@ export function TaskItem({
         </div>
       </div>
 
-      {/* Swipe delete zone */}
-      <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
-        <button onClick={() => onDelete(task.id)} className="p-2 text-danger hover:bg-danger/10 rounded-full">
-          <Trash2 size={18} />
-        </button>
-      </div>
+      {/* Swipe delete zone — shows pending state with Undo */}
+      {pendingDelete ? (
+        <div className="absolute inset-0 flex items-center justify-between bg-danger/10 px-4">
+          <span className="text-xs text-danger font-medium flex items-center gap-1.5">
+            <Trash2 size={13} /> Task deleted
+          </span>
+          <button
+            onClick={handleUndoDelete}
+            className="text-xs font-semibold text-danger border border-danger/40 px-3 py-1.5 rounded-lg hover:bg-danger/10 transition-colors"
+          >
+            Undo
+          </button>
+        </div>
+      ) : (
+        <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
+          <div className="flex items-center gap-2 text-danger font-semibold text-xs">
+            <Trash2 size={16} />
+            <span>Delete</span>
+          </div>
+        </div>
+      )}
 
       {/* Main row */}
       <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={!pendingDelete ? handleTouchStart : undefined}
+        onTouchMove={!pendingDelete ? handleTouchMove : undefined}
+        onTouchEnd={!pendingDelete ? handleTouchEnd : undefined}
         style={{
           transform: `translateX(${dragging ? dragX : 0}px)`
         }}
         className={clsx(
           'relative flex items-center gap-2 p-3 bg-surface hover:bg-surface-2',
-          !dragging && 'transition-transform duration-200 ease-out'
+          !dragging && 'transition-transform duration-200 ease-out',
+          pendingDelete && 'opacity-40 pointer-events-none'
         )}
       >
         {/* Drag handle */}
@@ -191,7 +223,7 @@ export function TaskItem({
 
         {/* Content */}
         <div className="flex flex-col min-w-0 flex-1 gap-1">
-          <span onDoubleClick={isPending ? () => setEditSheetOpen(true) : undefined}
+          <span
             className={clsx('text-sm truncate select-none transition-all duration-200', (task.completed || fillCheckbox || task.skipped) ? 'text-text-muted line-through opacity-60' : 'text-text')}>
             {task.title}
           </span>
@@ -238,10 +270,14 @@ export function TaskItem({
           </button>
         )}
 
-        {/* Edit button */}
+        {/* Edit button — always visible on mobile (no hover-gate), subtle on desktop */}
         {isPending && (
-          <button onClick={() => setEditSheetOpen(true)} className="text-text-muted hover:text-accent p-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all">
-            <Pencil size={13} />
+          <button
+            onClick={() => setEditSheetOpen(true)}
+            className="text-text-muted hover:text-accent p-1.5 flex-shrink-0 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100"
+            aria-label="Edit task"
+          >
+            <Pencil size={14} />
           </button>
         )}
 

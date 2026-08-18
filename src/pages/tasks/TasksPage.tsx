@@ -8,7 +8,6 @@ import { AddTaskModal } from '../../components/tasks/AddTaskModal'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../i18n'
-import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader'
 import clsx from 'clsx'
 
 type View = 'list' | 'calendar' | 'timeblocks'
@@ -20,7 +19,6 @@ const VIEWS = [
 ] as const
 
 export function TasksPage() {
-  const { sentinelRef, isCollapsed } = useCollapsibleHeader()
   const { t } = useTranslation()
   const [view, setView] = useState<View>('list')
   const [searchParams, setSearchParams] = useSearchParams()
@@ -28,10 +26,9 @@ export function TasksPage() {
   const [addOpen, setAddOpen] = useState(false)
   const highlight = searchParams.get('highlight')
 
-  // Opens whenever the header's contextual "+" is tapped while on the list view
+  // Opens whenever the contextual add button is tapped
   useEffect(() => {
-    if (headerAddTrigger > 0 && view === 'list') setAddOpen(true)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (headerAddTrigger > 0) setAddOpen(true)
   }, [headerAddTrigger])
 
   // Completion ratio
@@ -54,21 +51,12 @@ export function TasksPage() {
 
   return (
     <div className="space-y-4 lg:max-w-5xl">
-      <header className={clsx(
-        "flex flex-col justify-start pb-4 collapsible-header-container px-4 -mx-4 md:px-0 md:mx-0",
-        isCollapsed && "collapsed"
-      )}>
-        <h1 className={clsx(
-          "font-display text-text transition-all duration-200 ml-4 md:ml-0",
-          isCollapsed ? "text-lg font-semibold" : "text-2xl font-bold"
-        )}>
+      <header className="flex flex-col justify-start pb-2">
+        <h1 className="font-display text-2xl font-bold text-text">
           {t('tasks.title', 'Tasks')}
         </h1>
         {totalCount > 0 && (
-          <div className={clsx(
-            "mt-2 w-full max-w-xs space-y-1 transition-all duration-200 origin-left ml-4 md:ml-0",
-            isCollapsed ? "opacity-0 scale-90 h-0 overflow-hidden mt-0" : "opacity-100 scale-100 h-auto"
-          )}>
+          <div className="mt-2 w-full max-w-xs space-y-1">
             <p className="text-xs text-text-muted">{completedCount} of {totalCount} done today</p>
             <div className="h-1 bg-border rounded-full overflow-hidden">
               <div
@@ -79,7 +67,6 @@ export function TasksPage() {
           </div>
         )}
       </header>
-      <div ref={sentinelRef} className="h-0 w-full" />
 
       {/* View switcher */}
       <div className="grid grid-cols-3 gap-1 p-1 bg-surface-2 border border-border rounded-2xl">
