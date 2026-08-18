@@ -16,6 +16,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
 import { useAppStore } from '../../store/useAppStore'
+import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { getUserLocalDate } from '../../lib/dateUtils'
 import { haptic } from '../../lib/haptic'
 import { YearProgressWidget } from '../../components/dashboard/widgets/YearProgressWidget'
@@ -178,13 +179,11 @@ export function DashboardPage() {
   const greeting = t(greetingKey)
   const { data: settings, isLoading: settingsLoading, upsert } = useUserSettings()
 
-  const { timezone, headerAddTrigger } = useAppStore()
+  const { timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
   const [addTaskOpen, setAddTaskOpen] = useState(false)
 
-  useEffect(() => {
-    if (headerAddTrigger > 0) setAddTaskOpen(true)
-  }, [headerAddTrigger])
+  useContextualAdd(() => setAddTaskOpen(true))
 
   const { data: tasks = [] } = useTasksQuery(today)
   const completedTasksToday = tasks.filter(t => t.completed).length

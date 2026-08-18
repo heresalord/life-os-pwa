@@ -7,6 +7,7 @@ import { TimeBlocksTab } from './components/TimeBlocksTab'
 import { AddTaskModal } from '../../components/tasks/AddTaskModal'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
 import { useAppStore } from '../../store/useAppStore'
+import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { useTranslation } from '../../i18n'
 import clsx from 'clsx'
 
@@ -22,14 +23,12 @@ export function TasksPage() {
   const { t } = useTranslation()
   const [view, setView] = useState<View>('list')
   const [searchParams, setSearchParams] = useSearchParams()
-  const { setSelectedDate, selectedDate, headerAddTrigger } = useAppStore()
+  const { setSelectedDate, selectedDate } = useAppStore()
   const [addOpen, setAddOpen] = useState(false)
   const highlight = searchParams.get('highlight')
 
-  // Opens whenever the contextual add button is tapped
-  useEffect(() => {
-    if (headerAddTrigger > 0) setAddOpen(true)
-  }, [headerAddTrigger])
+  // Opens only when the contextual add button is actively tapped while on this page
+  useContextualAdd(() => setAddOpen(true))
 
   // Completion ratio
   const { data: tasks = [] } = useTasksQuery(selectedDate)

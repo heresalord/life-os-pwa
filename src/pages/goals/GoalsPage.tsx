@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useGoalsQuery } from '../../hooks/useGoalsQuery'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { GoalItem } from '../../components/goals/GoalItem'
@@ -28,7 +28,7 @@ import {
   CheckCircle2,
   Archive,
 } from 'lucide-react'
-import { useAppStore } from '../../store/useAppStore'
+import { useContextualAdd } from '../../hooks/useContextualAdd'
 import clsx from 'clsx'
 
 type TrackerTypeFilter = 'all' | 'target' | 'habit' | 'average' | 'project'
@@ -68,15 +68,12 @@ export function GoalsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [stateFilter, setStateFilter] = useState<StateFilter>('active')
   const [addOpen, setAddOpen] = useState(false)
-  const headerAddTrigger = useAppStore(s => s.headerAddTrigger)
 
   const { data: goals = [], isLoading } = useGoalsQuery(stateFilter)
   const { addGoal } = useGoalMutations()
 
-  // Opens whenever the header's contextual "+" is tapped
-  useEffect(() => {
-    if (headerAddTrigger > 0) setAddOpen(true)
-  }, [headerAddTrigger])
+  // Opens only when contextual add button is actively clicked
+  useContextualAdd(() => setAddOpen(true))
 
   // Filter goals locally
   const filteredGoals = useMemo(() => {

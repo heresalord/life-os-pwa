@@ -1,7 +1,7 @@
 import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard, Search, Clock, MoreHorizontal, Plus,
+  LayoutDashboard, Search, Clock, Plus,
 } from 'lucide-react'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useHasSyncIssue } from '../../hooks/useHasSyncIssue'
@@ -154,24 +154,15 @@ export function AppShell({ children }: AppShellProps) {
                 <Plus size={20} />
               </button>
 
-              {/* Avatar → Profile */}
+              {/* Avatar → /more (Profile, Settings, Routines, and Modules) */}
               <button
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/more')}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label="Profile"
+                aria-label="Profile and More"
               >
                 <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors">
                   {initials}
                 </div>
-              </button>
-
-              {/* More → /more page */}
-              <button
-                onClick={() => navigate('/more')}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
-                aria-label="More"
-              >
-                <MoreHorizontal size={20} />
               </button>
             </div>
           </div>

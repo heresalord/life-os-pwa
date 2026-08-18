@@ -10,7 +10,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { PageSkeleton } from '../../components/Skeleton'
 import { useReadingGoalsQuery, useSaveReadingGoalMutation } from '../../hooks/useReadingGoalsQuery'
 import { haptic } from '../../lib/haptic'
-import { useAppStore } from '../../store/useAppStore'
+import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { SheetSelect } from '../../components/SheetSelect'
 import clsx from 'clsx'
 
@@ -64,16 +64,12 @@ export function BooksPage() {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [showFilters, setShowFilters] = useState<boolean>(false)
   const [addOpen, setAddOpen] = useState(false)
-  const headerAddTrigger = useAppStore(s => s.headerAddTrigger)
 
-  // Opens whenever the header's contextual "+" is tapped — switches off Stats first if needed
-  useEffect(() => {
-    if (headerAddTrigger > 0) {
-      if (tab === 'stats') setTab('to-read')
-      setAddOpen(true)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [headerAddTrigger])
+  // Opens only when contextual add is tapped
+  useContextualAdd(() => {
+    if (tab === 'stats') setTab('to-read')
+    setAddOpen(true)
+  })
 
   const completedThisYear = useMemo(() =>
     allBooks.filter(b => b.status === 'finished' && b.finished_at?.startsWith(String(currentYear))).length,

@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useAppStore } from '../../store/useAppStore'
+import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { useQuery } from '@tanstack/react-query'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
@@ -40,11 +40,8 @@ export function ProjectsPage() {
   const { user } = useAuth()
   const [filter, setFilter] = useState<ProjectFilter>('active')
   const [open, setOpen] = useState(false)
-  const headerAddTrigger = useAppStore(s => s.headerAddTrigger)
 
-  useEffect(() => {
-    if (headerAddTrigger > 0) setOpen(true)
-  }, [headerAddTrigger])
+  useContextualAdd(() => setOpen(true))
 
   // Form State
   const [name, setName] = useState('')

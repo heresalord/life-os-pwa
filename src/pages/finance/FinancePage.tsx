@@ -9,6 +9,7 @@ import { AccountsTab }     from './components/AccountsTab'
 import { TransactionsTab } from './components/TransactionsTab'
 import { BudgetsTab }      from './components/BudgetsTab'
 import { useAppStore } from '../../store/useAppStore'
+import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { useTranslation } from '../../i18n'
 import { getUserLocalDate } from '../../lib/dateUtils'
 import {
@@ -36,7 +37,7 @@ export function FinancePage() {
   const currency = settings?.currency ?? 'USD'
   const [active, setActive] = useState<TabValue>('overview')
 
-  const { timezone, headerAddTrigger } = useAppStore()
+  const { timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
   const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month')
   const [referenceDate, setReferenceDate] = useState<string>(today)
@@ -71,14 +72,11 @@ export function FinancePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Header "+" tap: jump to the Activity tab (where the add form lives) and open it,
-  // regardless of which tab was active when it was tapped.
-  useEffect(() => {
-    if (headerAddTrigger > 0) {
-      setActive('transactions')
-      setAddOpen(true)
-    }
-  }, [headerAddTrigger])
+  // Contextual "+" tap: jump to Activity tab and open add transaction form
+  useContextualAdd(() => {
+    setActive('transactions')
+    setAddOpen(true)
+  })
 
   const adjustPeriod = (direction: 'prev' | 'next') => {
     const d = new Date(referenceDate + 'T12:00:00')

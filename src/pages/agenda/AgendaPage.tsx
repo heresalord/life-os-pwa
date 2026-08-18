@@ -1,9 +1,10 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { useAgendaQuery } from '../../hooks/useAgendaQuery'
 import { useAgendaMutations } from '../../hooks/useAgendaMutations'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import { useAppStore } from '../../store/useAppStore'
+import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { useNowMinutes } from '../../hooks/useNowMinutes'
 import { AgendaBlock } from '../../components/agenda/AgendaBlock'
 import { AgendaTaskBlock } from '../../components/agenda/AgendaTaskBlock'
@@ -25,13 +26,11 @@ function toMins(t: string) {
 }
 
 export function AgendaPage() {
-  const { selectedDate, headerAddTrigger } = useAppStore()
+  const { selectedDate } = useAppStore()
   const [addOpen, setAddOpen] = useState(false)
   const nowMins = useNowMinutes()
 
-  useEffect(() => {
-    if (headerAddTrigger > 0) setAddOpen(true)
-  }, [headerAddTrigger])
+  useContextualAdd(() => setAddOpen(true))
 
   // Queries
   const { data: blocks = [], isLoading: blocksLoading } = useAgendaQuery(selectedDate)

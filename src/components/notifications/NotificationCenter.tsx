@@ -125,6 +125,11 @@ export function NotificationCenter() {
     return acc
   }, {} as Record<string, typeof notifications>)
 
+  // Only render when there are new/unread notifications (or if open)
+  if (unreadCount === 0 && !isOpen) {
+    return null
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Bell Button */}

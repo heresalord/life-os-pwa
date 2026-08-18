@@ -4,6 +4,7 @@ import { useNotesQuery } from '../../hooks/useNotesQuery'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import { useAppStore } from '../../store/useAppStore'
+import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { getUserLocalDate } from '../../lib/dateUtils'
 import { useScrollToHighlight } from '../../hooks/useScrollToHighlight'
 import { NoteCard } from '../../components/notes/NoteCard'
@@ -265,7 +266,6 @@ export function NotesPage() {
   const [newFolderInput, setNewFolderInput] = useState('')
   const [showNewFolder, setShowNewFolder]   = useState(false)
   const [folderSidebarOpen, setFolderSidebarOpen] = useState(true)
-  const headerAddTrigger = useAppStore(s => s.headerAddTrigger)
 
   const activeNote = (notes as Note[]).find(n => n.id === activeNoteId) || null
   const allFolders = [...SYSTEM_FOLDERS, ...customFolders]
@@ -336,10 +336,8 @@ export function NotesPage() {
     setTemplatePickerOpen(true)
   }
 
-  // Opens whenever the header's contextual "+" is tapped
-  useEffect(() => {
-    if (headerAddTrigger > 0) handleCreateNew()
-  }, [headerAddTrigger])
+  // Opens only when contextual add is tapped
+  useContextualAdd(handleCreateNew)
 
   const handleNoteCreated = (id: string) => {
     setActiveNoteId(id)
