@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react'
-import { Trash2, Pin, MoreHorizontal, Download, Copy, FolderInput } from 'lucide-react'
+import { Trash2, Pin, MoreHorizontal, Download, Copy, FolderInput, Files } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { Note } from '../../db/schema'
 import { extractTags, stripTags } from '../../lib/noteTagUtils'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
+import { useAppStore } from '../../store/useAppStore'
+import { getUserLocalDate } from '../../lib/dateUtils'
 import clsx from 'clsx'
 
 const SYSTEM_FOLDERS = ['All', 'Pinned', 'Journal', 'Templates']
@@ -62,7 +64,9 @@ export function NoteCard({
   const [swiped, setSwiped] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const touchStartX = useRef<number | null>(null)
-  const { pinNote, moveToFolder } = useNoteMutations()
+  const { pinNote, moveToFolder, addNote } = useNoteMutations()
+  const { timezone } = useAppStore()
+  const today = getUserLocalDate(timezone)
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
   const handleTouchMove  = (e: React.TouchEvent) => {
@@ -137,10 +141,11 @@ export function NoteCard({
                 onClick={handlePin}
                 title={(note as any).pinned ? 'Unpin' : 'Pin'}
                 className={clsx(
-                  'p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100',
+                  'p-1 rounded-md transition-colors',
+                  // Always visible on mobile (no hover), fade-in on desktop hover
                   (note as any).pinned
                     ? 'opacity-100 text-amber-400 hover:text-amber-300'
-                    : 'text-text-muted hover:text-text'
+                    : 'text-text-muted hover:text-text opacity-60 md:opacity-0 md:group-hover:opacity-100'
                 )}
               >
                 <Pin size={12} className={clsx((note as any).pinned && 'fill-amber-400')} />
@@ -150,7 +155,7 @@ export function NoteCard({
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
-                    className="p-1 rounded-md text-text-muted hover:text-text transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-1 rounded-md text-text-muted hover:text-text transition-colors opacity-60 md:opacity-0 md:group-hover:opacity-100"
                     onClick={e => e.stopPropagation()}
                   >
                     <MoreHorizontal size={14} />
@@ -162,6 +167,24 @@ export function NoteCard({
                     sideOffset={4}
                     align="end"
                   >
+                    {/* Duplicate */}
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-2 cursor-pointer outline-none"
+                      onSelect={() => {
+                        addNote.mutate({
+                          title: `Copy of ${note.title}`,
+                          content: note.content,
+                          date: today,
+                          folder: (note as any).folder ?? 'All',
+                          pinned: false,
+                          is_template: (note as any).is_template ?? false,
+                        })
+                      }}
+                    >
+                      <Files size={13} className="text-text-muted" />
+                      Duplicate
+                    </DropdownMenu.Item>
+
                     {/* Move to folder */}
                     {allFolders.length > 0 && (
                       <DropdownMenu.Sub>

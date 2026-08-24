@@ -34,7 +34,21 @@ async function searchOpenLibrary(query: string): Promise<OLBook[]> {
   }))
 }
 
-export function AddBookModal({ defaultStatus = 'to-read', open: openProp, onOpenChange }: { defaultStatus?: BookStatus; open?: boolean; onOpenChange?: (open: boolean) => void }) {
+export function AddBookModal({
+  defaultStatus = 'to-read',
+  open: openProp,
+  onOpenChange,
+  prefillTitle,
+  prefillAuthor,
+  prefillCoverUrl,
+}: {
+  defaultStatus?: BookStatus
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  prefillTitle?: string
+  prefillAuthor?: string
+  prefillCoverUrl?: string
+}) {
   const [openState, setOpenState] = useState(false)
   const isControlled = openProp !== undefined
   const open = isControlled ? openProp : openState
@@ -42,13 +56,21 @@ export function AddBookModal({ defaultStatus = 'to-read', open: openProp, onOpen
     if (isControlled) onOpenChange?.(v)
     else setOpenState(v)
   }
-  const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
+  const [title, setTitle] = useState(prefillTitle || '')
+  const [author, setAuthor] = useState(prefillAuthor || '')
   const [pages, setPages] = useState('')
   const [status, setStatus] = useState<BookStatus>(defaultStatus)
-  const [coverUrl, setCoverUrl] = useState<string | undefined>()
+  const [coverUrl, setCoverUrl] = useState<string | undefined>(prefillCoverUrl)
   const [duplicateError, setDuplicateError] = useState(false)
   const [justAdded, setJustAdded] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      if (prefillTitle !== undefined) setTitle(prefillTitle)
+      if (prefillAuthor !== undefined) setAuthor(prefillAuthor)
+      if (prefillCoverUrl !== undefined) setCoverUrl(prefillCoverUrl)
+    }
+  }, [open, prefillTitle, prefillAuthor, prefillCoverUrl])
 
   const [genre, setGenre] = useState('')
   const [isbn, setIsbn] = useState('')

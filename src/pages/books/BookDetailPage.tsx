@@ -275,7 +275,15 @@ export function BookDetailPage() {
             {book.title}
           </h1>
           {book.author && (
-            <p className="text-sm text-text-secondary">by {book.author}</p>
+            <p className="text-sm text-text-secondary">
+              by{' '}
+              <button
+                onClick={() => navigate(`/books/author/${encodeURIComponent(book.author!)}`)}
+                className="font-medium text-text hover:text-accent transition-colors"
+              >
+                {book.author}
+              </button>
+            </p>
           )}
         </div>
 

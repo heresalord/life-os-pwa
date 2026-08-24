@@ -568,7 +568,17 @@ export function BookItem({
               >
                 {book.title}
               </button>
-              {book.author && <p className="text-sm text-text-secondary">by <span className="font-medium text-text">{book.author}</span></p>}
+              {book.author && (
+                <p className="text-sm text-text-secondary">
+                  by{' '}
+                  <button
+                    onClick={e => { e.stopPropagation(); navigate(`/books/author/${encodeURIComponent(book.author!)}`) }}
+                    className="font-medium text-text hover:text-accent transition-colors"
+                  >
+                    {book.author}
+                  </button>
+                </p>
+              )}
               {book.genre && (
                 <span className="inline-block text-[10px] bg-surface-2 border border-border text-text-muted px-2 py-0.5 rounded-md font-medium">
                   {book.genre}
@@ -705,7 +715,14 @@ export function BookItem({
             >
               {book.title}
             </button>
-            {book.author && <p className="text-xs text-text-secondary truncate">{book.author}</p>}
+            {book.author && (
+              <button
+                onClick={e => { e.stopPropagation(); navigate(`/books/author/${encodeURIComponent(book.author!)}`) }}
+                className="text-xs text-text-secondary truncate hover:text-accent transition-colors text-left"
+              >
+                {book.author}
+              </button>
+            )}
             
             {/* Star rating (finished books) */}
             {book.status === 'finished' && book.rating && (

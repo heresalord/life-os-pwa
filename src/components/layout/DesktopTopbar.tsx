@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Sun, Moon, Search, Settings, LogOut, Plus } from 'lucide-react'
+import { Sun, Moon, Search, Settings, LogOut, Plus, Zap } from 'lucide-react'
 import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
@@ -11,6 +11,7 @@ import { NotificationCenter } from '../notifications/NotificationCenter'
 import { CalendarDays, Inbox, FileText } from 'lucide-react'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { QuickCaptureModal } from '../inbox/QuickCaptureModal'
+import { ROUTES_WITH_ADD_ACTION } from '../../lib/constants'
 
 const pathTitleMap: Record<string, string> = {
   '/':         'Dashboard',
@@ -42,7 +43,16 @@ export function DesktopTopbar() {
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false)
   const hasSyncIssue = useHasSyncIssue()
 
-  const title = pathTitleMap[location.pathname] || 'Life OS'
+  let title = pathTitleMap[location.pathname]
+  if (!title) {
+    if (location.pathname.startsWith('/books/author/')) {
+      title = 'Author Profile'
+    } else if (location.pathname.startsWith('/books/')) {
+      title = 'Book Details'
+    } else {
+      title = 'Life OS'
+    }
+  }
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening'
@@ -110,14 +120,26 @@ export function DesktopTopbar() {
           <Search size={17} />
         </button>
 
-        {/* Quick capture button */}
+        {/* Contextual add — triggers the current page's add modal */}
+        {ROUTES_WITH_ADD_ACTION.has(location.pathname) && (
+          <button
+            onClick={() => useAppStore.getState().triggerHeaderAdd()}
+            className="w-8 h-8 flex items-center justify-center bg-accent/10 text-accent hover:bg-accent/20 transition-colors rounded-lg border border-accent/20"
+            aria-label="Add item"
+            title="Add item"
+          >
+            <Plus size={17} />
+          </button>
+        )}
+
+        {/* Quick capture — always available, opens inbox modal */}
         <button
           onClick={() => setQuickCaptureOpen(true)}
           className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
-          aria-label="Quick capture"
-          title="Quick capture"
+          aria-label="Quick capture (inbox)"
+          title="Quick capture to inbox"
         >
-          <Plus size={17} />
+          <Zap size={16} />
         </button>
 
         {/* Avatar + dropdown */}
