@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { displayDate } from '../../lib/dateUtils'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useHasSyncIssue } from '../../hooks/useHasSyncIssue'
+import { useRecoveryKeyStatus } from '../../hooks/useRecoveryKeyStatus'
 import { NavLink } from 'react-router-dom'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { CalendarDays, Inbox, FileText } from 'lucide-react'
@@ -60,6 +61,8 @@ export function DesktopTopbar() {
   const displayName = profile?.display_name || 'You'
   const initials = displayName.slice(0, 2).toUpperCase()
 
+  const { isVerified: isRecoveryVerified } = useRecoveryKeyStatus()
+
   return (
     <header className="hidden md:flex h-16 items-center justify-between px-6 bg-bg border-b border-border sticky top-0 z-30 flex-shrink-0">
 
@@ -98,24 +101,25 @@ export function DesktopTopbar() {
 
         {/* Selected date chip — abbreviated from md, full from lg */}
         <div className="flex items-center gap-2 text-xs text-text-muted font-medium bg-surface px-2 lg:px-3 py-2 rounded-lg border border-border whitespace-nowrap">
-          <CalendarDays size={14} />
-          <span className="text-text lg:hidden">{displayDate(selectedDate, 'MMM d')}</span>
-          <span className="text-text hidden lg:inline">{displayDate(selectedDate, 'EEE, MMM d')}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block flex-shrink-0" />
+          <span className="hidden lg:inline">{displayDate(selectedDate, 'EEEE, MMM d')}</span>
+          <span className="lg:hidden">{displayDate(selectedDate, 'MMM d')}</span>
         </div>
 
-        {/* Sync status — only shown when there's something to report */}
+        {/* Sync status indicator */}
         {hasSyncIssue && <SyncStatusDot />}
 
-        {/* Notifications */}
+        {/* Notification center */}
         <ErrorBoundary inline>
           <NotificationCenter />
         </ErrorBoundary>
 
-        {/* Search */}
+        {/* Search button */}
         <button
           onClick={() => navigate('/search')}
           className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
           aria-label="Search"
+          title="Search workspace (Cmd+K)"
         >
           <Search size={17} />
         </button>
@@ -146,20 +150,33 @@ export function DesktopTopbar() {
         <div className="relative">
           <button
             onClick={() => setMenuOpen(v => !v)}
-            className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
+            className="relative w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors"
             aria-label="Account menu"
           >
             {initials}
+            {!isRecoveryVerified && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-warning ring-2 ring-bg animate-pulse" />
+            )}
           </button>
 
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-10 z-50 w-52 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
+              <div className="absolute right-0 top-10 z-50 w-56 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-border">
                   <p className="text-sm text-text font-medium truncate">{displayName}</p>
                   <p className="text-xs text-text-muted truncate">{profile?.timezone}</p>
                 </div>
+                {!isRecoveryVerified && (
+                  <NavLink
+                    to="/settings"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-3 py-2 mx-2 my-1.5 bg-warning/10 border border-warning/25 rounded-lg text-xs text-warning hover:bg-warning/20 transition-colors"
+                  >
+                    <p className="font-bold">⚠️ Backup Recovery Key</p>
+                    <p className="text-[10px] text-text-muted mt-0.5">Protect your account</p>
+                  </NavLink>
+                )}
                 <nav className="py-1">
                   {secondaryNav.map(({ to, icon: Icon, label }) => (
                     <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}
@@ -169,10 +186,20 @@ export function DesktopTopbar() {
                     </NavLink>
                   ))}
                   <div className="border-t border-border my-1" />
-                  <NavLink to="/settings" onClick={() => setMenuOpen(false)}
+                  <NavLink to="/profile" onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
-                    <Settings size={15} />
-                    Settings
+                    <User size={15} />
+                    Profile
+                  </NavLink>
+                  <NavLink to="/settings" onClick={() => setMenuOpen(false)}
+                    className="flex items-center justify-between px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <Settings size={15} />
+                      Settings
+                    </div>
+                    {!isRecoveryVerified && (
+                      <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
+                    )}
                   </NavLink>
                   <button
                     onClick={() => { signOut(); setMenuOpen(false) }}

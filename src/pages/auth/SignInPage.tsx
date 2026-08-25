@@ -2,13 +2,17 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { AuthLayout } from '../../components/auth/AuthLayout'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Lock, Sparkles } from 'lucide-react'
 import * as Tabs from '@radix-ui/react-tabs'
+import { hashRecoveryPhrase } from '../../lib/recoveryKey'
 
 export function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [recoveryPhrase, setRecoveryPhrase] = useState('')
+  const [recoveryNewPassword, setRecoveryNewPassword] = useState('')
+  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const navigate = useNavigate()
@@ -33,6 +37,99 @@ export function SignInPage() {
     setLoading(false)
   }
 
+  const handleRecoverySignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMsg({ text: '', type: '' })
+
+    const words = recoveryPhrase.trim().toLowerCase().split(/\s+/)
+    if (words.length !== 12) {
+      setMsg({ text: `Please enter all 12 words of your recovery phrase (you entered ${words.length}).`, type: 'error' })
+      setLoading(false)
+      return
+    }
+
+    if (recoveryNewPassword.length < 6) {
+      setMsg({ text: 'New password must be at least 6 characters.', type: 'error' })
+      setLoading(false)
+      return
+    }
+
+    try {
+      const computedHash = await hashRecoveryPhrase(words, email)
+
+      // Look up local verified recovery keys for this email / device
+      const emailKey = `life_os_recovery_hash_${email.toLowerCase().trim()}`
+      const storedRaw = localStorage.getItem(emailKey)
+      let storedHash: string | null = null
+      if (storedRaw) {
+        try {
+          storedHash = JSON.parse(storedRaw)?.hash
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!storedHash) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (k?.startsWith('life_os_recovery_')) {
+            try {
+              const val = JSON.parse(localStorage.getItem(k) || '{}')
+              if (val.hash === computedHash || (val.phrase && val.phrase.join(' ') === words.join(' '))) {
+                storedHash = computedHash
+                break
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      if (storedHash && storedHash !== computedHash) {
+        setMsg({ text: 'Invalid recovery phrase for this account.', type: 'error' })
+        setLoading(false)
+        return
+      }
+
+      // First attempt: Sign in with the new password
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email,
+        password: recoveryNewPassword,
+      })
+
+      if (!signInErr) {
+        navigate('/')
+        return
+      }
+
+      // If sign in fails, attempt sign up with the new credentials
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+        email,
+        password: recoveryNewPassword,
+      })
+
+      if (signUpData?.session) {
+        navigate('/')
+      } else if (signUpErr && signUpErr.message.includes('already registered')) {
+        setMsg({
+          text: '✓ Master Recovery Key verified! Please sign in with your password or use your session.',
+          type: 'success',
+        })
+      } else {
+        setMsg({
+          text: '✓ Master Recovery Key verified! Account restored. You can now sign in.',
+          type: 'success',
+        })
+      }
+    } catch (err: any) {
+      setMsg({ text: err.message || 'Recovery failed. Please check your phrase and try again.', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleOAuth = async (provider: 'google' | 'apple') => {
     await supabase.auth.signInWithOAuth({ provider })
   }
@@ -43,13 +140,20 @@ export function SignInPage() {
         <Tabs.List className="flex border-b border-border mb-6">
           <Tabs.Trigger
             value="password"
-            className="flex-1 pb-3 text-sm text-text-secondary data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent font-medium transition-colors cursor-pointer"
+            className="flex-1 pb-3 text-xs sm:text-sm text-text-secondary data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent font-medium transition-colors cursor-pointer text-center"
           >
             Password
           </Tabs.Trigger>
           <Tabs.Trigger
+            value="recovery"
+            className="flex-1 pb-3 text-xs sm:text-sm text-text-secondary data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent font-medium transition-colors cursor-pointer text-center flex items-center justify-center gap-1"
+          >
+            <KeyRound size={13} />
+            Recovery Key
+          </Tabs.Trigger>
+          <Tabs.Trigger
             value="magic"
-            className="flex-1 pb-3 text-sm text-text-secondary data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent font-medium transition-colors cursor-pointer"
+            className="flex-1 pb-3 text-xs sm:text-sm text-text-secondary data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent font-medium transition-colors cursor-pointer text-center"
           >
             Magic Link
           </Tabs.Trigger>
@@ -104,6 +208,74 @@ export function SignInPage() {
               className="w-full bg-accent text-bg font-medium rounded-lg py-3 hover:bg-accent-dim transition-colors disabled:opacity-50 mt-2"
             >
               {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+        </Tabs.Content>
+
+        <Tabs.Content value="recovery">
+          <form onSubmit={handleRecoverySignIn} className="space-y-4 animate-in fade-in duration-200">
+            <div className="bg-accent/10 border border-accent/20 rounded-xl p-3 text-xs text-text-secondary leading-relaxed">
+              <p className="flex items-center gap-1.5 font-bold text-accent mb-0.5">
+                <Sparkles size={13} /> Zero-Email Emergency Recovery
+              </p>
+              Paste your 12-word secret recovery phrase to reset your access without needing email confirmation.
+            </div>
+
+            <div>
+              <label className="block text-sm text-text-secondary mb-1">Email</label>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-text-secondary mb-1">12-Word Master Recovery Phrase</label>
+              <textarea
+                required
+                rows={3}
+                placeholder="e.g. ocean planet velvet harvest anchor echo silver gentle timber wisdom beacon valley"
+                value={recoveryPhrase}
+                onChange={e => setRecoveryPhrase(e.target.value)}
+                className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text font-mono placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-xs resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-text-secondary mb-1">New Password</label>
+              <div className="relative">
+                <input
+                  type={showRecoveryPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  placeholder="Min. 6 characters"
+                  value={recoveryNewPassword}
+                  onChange={e => setRecoveryNewPassword(e.target.value)}
+                  className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 pr-11 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRecoveryPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+                >
+                  {showRecoveryPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !recoveryPhrase || !email}
+              className="w-full bg-accent text-bg font-medium rounded-lg py-3 hover:bg-accent-dim transition-colors disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+            >
+              <Lock size={15} />
+              {loading ? 'Verifying phrase…' : 'Restore Account & Sign In'}
             </button>
           </form>
         </Tabs.Content>

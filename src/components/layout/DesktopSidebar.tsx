@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
+import { useRecoveryKeyStatus } from '../../hooks/useRecoveryKeyStatus'
 import { displayDate } from '../../lib/dateUtils'
 import { SyncStatusDot } from '../SyncStatusDot'
 import clsx from 'clsx'
@@ -47,6 +48,8 @@ export function DesktopSidebar() {
   const flexLabelClass = pinned ? 'flex' : 'hidden lg:flex'
   const inlineLabelClass = pinned ? 'inline' : 'hidden lg:inline'
   const tooltipClass = pinned ? 'lg:hidden hidden' : 'lg:hidden'
+
+  const { isVerified: isRecoveryVerified } = useRecoveryKeyStatus()
 
   return (
     <aside className={clsx(
@@ -153,10 +156,20 @@ export function DesktopSidebar() {
             }
             title="Settings"
           >
-            <Settings size={18} />
+            <div className="relative">
+              <Settings size={18} />
+              {!isRecoveryVerified && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-warning animate-pulse" />
+              )}
+            </div>
             <span className={clsx(labelClass, 'text-sm')}>Settings</span>
+            {!isRecoveryVerified && (
+              <span className={clsx(labelClass, 'ml-auto text-[9px] bg-warning/15 text-warning font-bold px-1.5 py-0.5 rounded-full')}>
+                !
+              </span>
+            )}
             <span className={clsx(tooltipClass, 'absolute left-14 bg-surface border border-border text-text text-xs rounded-md px-2 py-1 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 shadow-md whitespace-nowrap z-50')}>
-              Settings
+              Settings {!isRecoveryVerified ? '(Backup Key)' : ''}
             </span>
           </NavLink>
         </div>
@@ -165,8 +178,11 @@ export function DesktopSidebar() {
       {/* Footer Profile Area */}
       <div className={clsx('p-4 border-t border-border bg-surface-2/30 flex items-center justify-between gap-3 flex-col', pinned ? 'lg:flex-row' : 'lg:flex-row')}>
         <NavLink to="/profile" className="flex items-center gap-3 group/profile-footer flex-1 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold flex-shrink-0 group-hover/profile-footer:bg-accent/30 group-hover/profile-footer:border-accent/60 transition-colors">
+          <div className="relative w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold flex-shrink-0 group-hover/profile-footer:bg-accent/30 group-hover/profile-footer:border-accent/60 transition-colors">
             {initials}
+            {!isRecoveryVerified && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-warning ring-2 ring-bg animate-pulse" />
+            )}
           </div>
           <div className={clsx(flexLabelClass, 'flex-col min-w-0')}>
             <span className="text-xs text-text font-medium truncate w-28 group-hover/profile-footer:text-accent transition-colors">{displayName}</span>

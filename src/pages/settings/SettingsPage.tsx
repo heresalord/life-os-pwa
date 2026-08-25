@@ -14,13 +14,15 @@ import {
   CheckCircle, XCircle, Loader, Moon, Sun,
   X, Plus, Layout, Quote, Check, Pipette,
   CalendarCheck, Flame, Wallet, PartyPopper, PiggyBank, BarChart3,
-  Monitor, Globe,
+  Monitor, Globe, Shield, ShieldCheck, Key, Lock,
 } from 'lucide-react'
 import { ACCENT_PRESETS, type AccentPreset } from '../../lib/colorUtils'
 import {
   pushSupported, isPushSubscribed, subscribeToPush, unsubscribeFromPush
 } from '../../lib/pushNotifications'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { RecoveryKeyModal } from '../../components/auth/RecoveryKeyModal'
+import { useRecoveryKeyStatus } from '../../hooks/useRecoveryKeyStatus'
 import clsx from 'clsx'
 
 const Toggle = ({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) => {
@@ -209,6 +211,42 @@ export function SettingsPage() {
     goal_milestone: true, savings_goal_reached: true, weekly_review: true,
   })
 
+  // ── Recovery Key & Password
+  const { isVerified: isRecoveryVerified, refreshStatus: refreshRecoveryStatus } = useRecoveryKeyStatus()
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [updatingPassword, setUpdatingPassword] = useState(false)
+  const [passwordMsg, setPasswordMsg] = useState<{ text: string; type: 'error' | 'success' } | null>(null)
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newPassword.length < 6) {
+      setPasswordMsg({ text: 'Password must be at least 6 characters', type: 'error' })
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ text: 'Passwords do not match', type: 'error' })
+      return
+    }
+    setUpdatingPassword(true)
+    setPasswordMsg(null)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) {
+        setPasswordMsg({ text: error.message, type: 'error' })
+      } else {
+        setPasswordMsg({ text: '✓ Password updated successfully!', type: 'success' })
+        setNewPassword('')
+        setConfirmPassword('')
+      }
+    } catch (err: any) {
+      setPasswordMsg({ text: err.message || 'Failed to update password', type: 'error' })
+    } finally {
+      setUpdatingPassword(false)
+    }
+  }
+
   // ── Data
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importing,    setImporting]    = useState(false)
@@ -367,6 +405,7 @@ export function SettingsPage() {
   // ─── Tab content ──────────────────────────────────────────────────────────
   const renderProfile = () => (
     <div className="space-y-4 animate-in fade-in duration-200">
+      {/* Account Basics */}
       <SectionCard title="Account" icon={User}>
         <SettingRow label="Display Name">
           <input
@@ -382,6 +421,107 @@ export function SettingsPage() {
             <LogOut size={13} /> Sign Out
           </button>
         </SettingRow>
+      </SectionCard>
+
+      {/* Master Recovery Key (Bitwarden / Trust Wallet style) */}
+      <SectionCard title="Master Recovery Key" icon={Shield}>
+        <div className="py-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Key size={16} className="text-accent" />
+              <div>
+                <p className="text-sm font-semibold text-text">12-Word Secret Phrase</p>
+                <p className="text-xs text-text-muted">Zero-email emergency account recovery</p>
+              </div>
+            </div>
+            <span className={clsx(
+              'text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border',
+              isRecoveryVerified
+                ? 'bg-success/10 text-success border-success/25'
+                : 'bg-warning/10 text-warning border-warning/25 animate-pulse'
+            )}>
+              {isRecoveryVerified ? 'Verified ✓' : 'Action Required'}
+            </span>
+          </div>
+
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Your 12-word recovery key allows you to reset your password and restore account access at any time without receiving or relying on email verification.
+          </p>
+
+          <button
+            onClick={() => setShowRecoveryModal(true)}
+            className={clsx(
+              'w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all',
+              isRecoveryVerified
+                ? 'bg-surface-2 hover:bg-muted border border-border text-text'
+                : 'bg-warning/15 hover:bg-warning/25 text-warning border border-warning/30 font-bold'
+            )}
+          >
+            {isRecoveryVerified ? (
+              <>
+                <ShieldCheck size={14} className="text-success" /> View Recovery Key
+              </>
+            ) : (
+              <>
+                <AlertTriangle size={14} className="text-warning" /> Backup & Verify Recovery Key
+              </>
+            )}
+          </button>
+        </div>
+      </SectionCard>
+
+      {/* In-App Password Update (Zero email needed) */}
+      <SectionCard title="Change Password" icon={Lock}>
+        <form onSubmit={handleUpdatePassword} className="py-2 space-y-3">
+          {passwordMsg && (
+            <div className={clsx(
+              'p-3 rounded-xl text-xs border flex items-center gap-2 animate-in fade-in',
+              passwordMsg.type === 'error'
+                ? 'bg-danger/10 border-danger/30 text-danger'
+                : 'bg-success/10 border-success/30 text-success'
+            )}>
+              {passwordMsg.type === 'error' ? <AlertTriangle size={13} /> : <CheckCircle size={13} />}
+              {passwordMsg.text}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+              New Password
+            </label>
+            <input
+              type="password"
+              minLength={6}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Min. 6 characters"
+              className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              minLength={6}
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter new password"
+              className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={!newPassword || !confirmPassword || updatingPassword}
+            className="w-full py-2.5 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 mt-1"
+          >
+            {updatingPassword && <Loader size={12} className="animate-spin" />}
+            {updatingPassword ? 'Updating…' : 'Update Password (No Email Needed)'}
+          </button>
+        </form>
       </SectionCard>
     </div>
   )
@@ -796,6 +936,27 @@ export function SettingsPage() {
         <h1 className="text-2xl font-display text-text">Settings</h1>
       </header>
 
+      {/* Unverified Recovery Key Alert Banner */}
+      {!isRecoveryVerified && (
+        <div className="bg-warning/10 border border-warning/30 rounded-2xl p-4 flex items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-warning/20 flex items-center justify-center text-warning flex-shrink-0">
+              <Key size={16} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-text">Action Required: Master Recovery Key</p>
+              <p className="text-[11px] text-text-muted">Backup your 12-word phrase to protect account access.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowRecoveryModal(true)}
+            className="px-3 py-1.5 bg-warning text-bg font-bold text-xs rounded-lg hover:bg-warning/90 transition-colors whitespace-nowrap"
+          >
+            Backup Now
+          </button>
+        </div>
+      )}
+
       {/* ── Tab bar — matches Finance/Tasks pattern exactly ── */}
       <div className={clsx(
         'grid gap-1 p-1 bg-surface-2 border border-border rounded-2xl',
@@ -804,12 +965,13 @@ export function SettingsPage() {
         {TABS.map(tab => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
+          const showDot = tab.id === 'profile' && !isRecoveryVerified
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                'flex items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all duration-200 font-medium w-full',
+                'relative flex items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all duration-200 font-medium w-full',
                 isActive ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
               )}
             >
@@ -817,6 +979,9 @@ export function SettingsPage() {
               <span className={clsx('text-xs', isActive ? 'inline' : 'hidden sm:inline')}>
                 {tab.label}
               </span>
+              {showDot && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-warning ring-2 ring-surface animate-pulse" />
+              )}
             </button>
           )
         })}
@@ -868,6 +1033,16 @@ export function SettingsPage() {
         variant="danger"
         onConfirm={handleClearCache}
       />
+
+      {user && (
+        <RecoveryKeyModal
+          userId={user.id}
+          email={user.email || ''}
+          open={showRecoveryModal}
+          onOpenChange={setShowRecoveryModal}
+          onVerified={refreshRecoveryStatus}
+        />
+      )}
     </div>
   )
 }

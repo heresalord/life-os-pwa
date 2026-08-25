@@ -12,6 +12,8 @@ import {
   Globe, Mail, LogOut, ChevronRight, Shield, Users, Share2, Key,
 } from 'lucide-react'
 import { redeemShareCode, fetchMySharedItems, type SharedItem } from '../../lib/share'
+import { RecoveryKeyModal } from '../../components/auth/RecoveryKeyModal'
+import { useRecoveryKeyStatus } from '../../hooks/useRecoveryKeyStatus'
 import clsx from 'clsx'
 
 // ── Image resize helper ─────────────────────────────────────────────────────
@@ -200,6 +202,9 @@ export function ProfilePage() {
   const joinDate = user?.created_at
     ? format(parseISO(user.created_at), 'MMMM yyyy')
     : '—'
+
+  const { isVerified: isRecoveryVerified, refreshStatus: refreshRecoveryStatus } = useRecoveryKeyStatus()
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false)
 
   // Save display name
   const handleSaveName = async () => {
@@ -461,6 +466,31 @@ export function ProfilePage() {
           </div>
         </div>
 
+        {/* Master Recovery Key row */}
+        <div
+          onClick={() => setShowRecoveryModal(true)}
+          className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2/50 transition-colors cursor-pointer"
+        >
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+            <Key size={15} className="text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-text">Master Recovery Key</p>
+              <span className={clsx(
+                'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border',
+                isRecoveryVerified
+                  ? 'bg-success/10 text-success border-success/20'
+                  : 'bg-warning/10 text-warning border-warning/20 animate-pulse'
+              )}>
+                {isRecoveryVerified ? 'Verified' : 'Action Required'}
+              </span>
+            </div>
+            <p className="text-xs text-text-muted">12-word zero-email backup phrase</p>
+          </div>
+          <ChevronRight size={16} className="text-text-muted" />
+        </div>
+
         {/* Settings link */}
         <a
           href="/settings"
@@ -485,6 +515,16 @@ export function ProfilePage() {
         <LogOut size={15} />
         Sign Out
       </button>
+
+      {user && (
+        <RecoveryKeyModal
+          userId={user.id}
+          email={user.email || ''}
+          open={showRecoveryModal}
+          onOpenChange={setShowRecoveryModal}
+          onVerified={refreshRecoveryStatus}
+        />
+      )}
     </div>
   )
 }

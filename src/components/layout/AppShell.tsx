@@ -7,6 +7,7 @@ import { SyncStatusDot } from '../SyncStatusDot'
 import { useHasSyncIssue } from '../../hooks/useHasSyncIssue'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
+import { useRecoveryKeyStatus } from '../../hooks/useRecoveryKeyStatus'
 import { displayDate } from '../../lib/dateUtils'
 import { hapticLight } from '../../lib/haptics'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
@@ -93,6 +94,7 @@ export function AppShell({ children }: AppShellProps) {
   const displayName = profile?.display_name || 'You'
   const initials = displayName.slice(0, 2).toUpperCase()
   const hasSyncIssue = useHasSyncIssue()
+  const { isVerified: isRecoveryVerified } = useRecoveryKeyStatus()
 
   // Translate nav label using JSON keys; fall back to the English label
   const navLabel = (key: string, fallback: string) =>
@@ -160,8 +162,11 @@ export function AppShell({ children }: AppShellProps) {
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label="Profile and More"
               >
-                <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors">
+                <div className="relative w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-semibold hover:bg-accent/30 transition-colors">
                   {initials}
+                  {!isRecoveryVerified && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-warning ring-2 ring-bg animate-pulse" />
+                  )}
                 </div>
               </button>
             </div>
