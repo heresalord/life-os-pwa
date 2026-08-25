@@ -16,6 +16,7 @@ interface OLBook {
   isbn?: string
   language?: string
   genre?: string
+  subjects?: string[]
 }
 
 async function searchOpenLibrary(query: string): Promise<OLBook[]> {
@@ -31,7 +32,41 @@ async function searchOpenLibrary(query: string): Promise<OLBook[]> {
     isbn: Array.isArray(d.isbn) ? d.isbn[0] : undefined,
     language: Array.isArray(d.language) ? d.language[0] : undefined,
     genre: Array.isArray(d.subject) ? d.subject[0] : undefined,
+    subjects: Array.isArray(d.subject) ? (d.subject as string[]).slice(0, 20) : [],
   }))
+}
+
+// ── Genre → Shelf mapping ──────────────────────────────────────────────
+const SHELF_MAP: Array<{ keywords: string[]; shelf: string }> = [
+  { keywords: ['science fiction', 'sci-fi', 'dystopia', 'space opera', 'cyberpunk', 'hard science fiction'], shelf: 'Sci-Fi' },
+  { keywords: ['fantasy', 'epic fantasy', 'dark fantasy', 'sword', 'sorcery', 'magic'], shelf: 'Fantasy' },
+  { keywords: ['romance', 'love stories', 'romantic fiction', 'contemporary romance'], shelf: 'Romance' },
+  { keywords: ['mystery', 'detective', 'crime fiction', 'thriller', 'suspense', 'whodunit'], shelf: 'Mystery & Thriller' },
+  { keywords: ['biography', 'autobiography', 'memoir', 'personal memoirs'], shelf: 'Biography & Memoir' },
+  { keywords: ['history', 'historical', 'world war', 'ancient', 'civilization'], shelf: 'History' },
+  { keywords: ['self-help', 'self help', 'personal development', 'motivation', 'productivity', 'leadership'], shelf: 'Self-Help' },
+  { keywords: ['philosophy', 'ethics', 'stoicism', 'existentialism'], shelf: 'Philosophy' },
+  { keywords: ['psychology', 'cognitive', 'behavioral', 'neuroscience', 'psychiatry'], shelf: 'Psychology' },
+  { keywords: ['horror', 'ghost stories', 'supernatural fiction', 'occult'], shelf: 'Horror' },
+  { keywords: ['graphic novel', 'comics', 'manga'], shelf: 'Comics & Manga' },
+  { keywords: ['economics', 'finance', 'business', 'entrepreneurship', 'investing'], shelf: 'Business & Finance' },
+  { keywords: ['science', 'popular science', 'physics', 'biology', 'chemistry', 'mathematics'], shelf: 'Science & Nature' },
+  { keywords: ['travel', 'adventure', 'exploration'], shelf: 'Travel & Adventure' },
+  { keywords: ['poetry', 'poems', 'verse'], shelf: 'Poetry' },
+  { keywords: ['children', "children's fiction", 'juvenile fiction', 'young adult', 'ya fiction'], shelf: 'Young Adult & Children' },
+  { keywords: ['classics', 'classic literature', 'literary fiction', 'fiction'], shelf: 'Classics & Literary' },
+]
+
+function inferShelves(subjects: string[]): string[] {
+  const lower = subjects.map(s => s.toLowerCase())
+  const matched: string[] = []
+  for (const { keywords, shelf } of SHELF_MAP) {
+    if (keywords.some(kw => lower.some(s => s.includes(kw)))) {
+      matched.push(shelf)
+      if (matched.length === 2) break // max 2 auto-shelves
+    }
+  }
+  return matched
 }
 
 export function AddBookModal({
@@ -110,6 +145,11 @@ export function AddBookModal({
     if (book.isbn) setIsbn(book.isbn)
     if (book.language) setLanguage(book.language)
     if (book.genre) setGenre(book.genre)
+    // Auto-suggest shelves from subject list
+    if (book.subjects && book.subjects.length > 0) {
+      const inferred = inferShelves(book.subjects)
+      if (inferred.length > 0) setShelves(inferred.join(', '))
+    }
     setSuggestions([])
     setSearchQ('')
     setDuplicateError(false)

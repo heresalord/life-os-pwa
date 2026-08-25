@@ -610,32 +610,42 @@ export function BookItem({
               </div>
             </div>
 
-            {/* Actions row */}
-            <div className="flex items-center gap-2 pt-3 border-t border-border/40">
+            {/* Actions row — icon-only on mobile, icon+label on sm+ */}
+            <div className="flex items-center gap-1.5 pt-3 border-t border-border/40">
               <button
                 onClick={() => setShowFinish(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-success/15 hover:bg-success/25 text-success text-xs font-bold rounded-xl transition-all"
+                title="Mark as Finished"
+                className="flex items-center gap-1.5 p-2 sm:px-3.5 sm:py-2 bg-success/15 hover:bg-success/25 text-success text-xs font-bold rounded-xl transition-all"
               >
-                <CheckCheck size={14} /> Mark Finished
+                <CheckCheck size={15} />
+                <span className="hidden sm:inline">Finished</span>
               </button>
               <button
                 onClick={() => setShowAbandon(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-warning/15 hover:bg-warning/25 text-warning text-xs font-bold rounded-xl transition-all"
+                title="Abandon book"
+                className="flex items-center gap-1.5 p-2 sm:px-3.5 sm:py-2 bg-warning/15 hover:bg-warning/25 text-warning text-xs font-bold rounded-xl transition-all"
               >
-                <BookX size={14} /> Abandon
+                <BookX size={15} />
+                <span className="hidden sm:inline">Abandon</span>
               </button>
-              <button
-                onClick={() => setShowQuotes(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all ml-auto"
-              >
-                <Quote size={13} /> Quotes
-              </button>
-              <button
-                onClick={() => setShowEdit(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
-              >
-                <Pencil size={13} /> Edit
-              </button>
+              <div className="flex items-center gap-1.5 ml-auto">
+                <button
+                  onClick={() => setShowQuotes(true)}
+                  title="Quotes"
+                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
+                >
+                  <Quote size={14} />
+                  <span className="hidden sm:inline">Quotes</span>
+                </button>
+                <button
+                  onClick={() => setShowEdit(true)}
+                  title="Edit"
+                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
+                >
+                  <Pencil size={14} />
+                  <span className="hidden sm:inline">Edit</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -158,7 +158,43 @@ export function BooksPage() {
         return { ...b, pct }
       })
 
-    return { byStatus, totalPagesFinished, avgRating, currentlyReading }
+    // ── Reading speed & time stats ─────────────────────────────────────
+    type FinishedWithDays = { id: string; title: string; total_pages: number; days: number }
+    const finishedWithDays: FinishedWithDays[] = allBooks
+      .filter(b => b.status === 'finished' && b.total_pages && b.started_at && b.finished_at)
+      .map(b => {
+        const start = new Date(b.started_at!).getTime()
+        const end   = new Date(b.finished_at!).getTime()
+        const days  = Math.max(1, Math.round((end - start) / 86_400_000))
+        return { id: b.id, title: b.title, total_pages: b.total_pages!, days }
+      })
+
+    const totalDays  = finishedWithDays.reduce((s, b) => s + b.days, 0)
+    const totalPages = finishedWithDays.reduce((s, b) => s + b.total_pages, 0)
+
+    // Avg pages per day across all finished books that have date data
+    const avgPagesPerDay = finishedWithDays.length > 0 && totalDays > 0
+      ? Math.round(totalPages / totalDays)
+      : null
+
+    // Average days to finish a book
+    const avgDaysPerBook = finishedWithDays.length > 0
+      ? Math.round(totalDays / finishedWithDays.length)
+      : null
+
+    // Longest book read (most pages among finished)
+    const longestBook = allBooks
+      .filter(b => b.status === 'finished' && b.total_pages)
+      .reduce<{ title: string; total_pages: number } | null>((best, b) =>
+        !best || (b.total_pages || 0) > best.total_pages ? { title: b.title, total_pages: b.total_pages! } : best
+      , null)
+
+    // Fastest finish (fewest days for a book with date data)
+    const fastestBook = finishedWithDays.length > 0
+      ? finishedWithDays.reduce((best, b) => b.days < best.days ? b : best)
+      : null
+
+    return { byStatus, totalPagesFinished, avgRating, currentlyReading, avgPagesPerDay, avgDaysPerBook, longestBook, fastestBook }
   }, [allBooks])
 
   const handleSaveGoal = (e: React.FormEvent) => {
@@ -497,6 +533,40 @@ export function BooksPage() {
               </div>
             ))}
           </div>
+
+          {/* Reading Speed & Time Stats */}
+          {(stats.avgPagesPerDay || stats.avgDaysPerBook || stats.longestBook || stats.fastestBook) && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {stats.avgPagesPerDay !== null && (
+                <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex flex-col gap-1">
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Reading Speed</p>
+                  <p className="text-2xl font-display font-bold text-accent mt-1">{stats.avgPagesPerDay}</p>
+                  <p className="text-[10px] text-text-secondary">pages / day (avg)</p>
+                </div>
+              )}
+              {stats.avgDaysPerBook !== null && (
+                <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex flex-col gap-1">
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Avg Finish Time</p>
+                  <p className="text-2xl font-display font-bold text-info mt-1">{stats.avgDaysPerBook}</p>
+                  <p className="text-[10px] text-text-secondary">days per book</p>
+                </div>
+              )}
+              {stats.longestBook && (
+                <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex flex-col gap-1">
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Longest Read</p>
+                  <p className="text-2xl font-display font-bold text-warning mt-1">{stats.longestBook.total_pages.toLocaleString()}</p>
+                  <p className="text-[10px] text-text-secondary truncate" title={stats.longestBook.title}>{stats.longestBook.title}</p>
+                </div>
+              )}
+              {stats.fastestBook && (
+                <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex flex-col gap-1">
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Fastest Finish</p>
+                  <p className="text-2xl font-display font-bold text-success mt-1">{stats.fastestBook.days}d</p>
+                  <p className="text-[10px] text-text-secondary truncate" title={stats.fastestBook.title}>{stats.fastestBook.title}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Currently reading progress */}
           {stats.currentlyReading.length > 0 && (

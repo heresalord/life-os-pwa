@@ -352,26 +352,30 @@ export function AccountsTab({ currency }: { currency: string }) {
         {list.map((w: Wallet) => {
           const TypeIcon = WALLET_TYPES.find(t => t.value === w.type)?.icon ?? WalletIcon
           const walletCurrency = w.currency || currency
+          const balance = Number(w.balance)
+          // Compact format for large numbers so they fit in the card
+          const formattedBalance = Math.abs(balance) >= 10_000
+            ? balance.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+            : balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           return (
             <div key={w.id} onClick={() => { setEditingWallet(w); setSheet('edit_account') }}
-              className="relative p-5 rounded-2xl border border-border overflow-hidden shadow-card group transition-all duration-300 hover:scale-[1.02] cursor-pointer select-none aspect-[1.5/1] flex flex-col justify-between"
+              className="relative p-4 rounded-2xl border border-border overflow-hidden shadow-card group transition-all duration-300 hover:scale-[1.02] cursor-pointer select-none aspect-[1.5/1] flex flex-col justify-between"
               style={{ background: `linear-gradient(135deg, ${w.color ?? '#6366f1'}22, ${w.color ?? '#6366f1'}08)` }}
             >
               <div className="flex justify-between items-start w-full">
-                <TypeIcon size={18} className="mb-3" style={{ color: w.color ?? 'var(--color-accent)' }} />
+                <TypeIcon size={16} className="mb-2" style={{ color: w.color ?? 'var(--color-accent)' }} />
                 <button onClick={(e) => {
                   e.stopPropagation()
                   setArchivingWallet(w)
                 }}
                   title="Archive account"
-                  className="p-1 text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-accent/10">
-                  <Archive size={14} />
-                </button>
+                  className="p-1 text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-accent/10"><Archive size={13} /></button>
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-end">
-                <p className="text-xs text-text-muted mb-1 truncate">{w.name}</p>
-                <p className="font-display text-2xl font-bold text-text leading-tight truncate">
-                  {walletCurrency} {Number(w.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mb-0.5 font-semibold">{walletCurrency}</p>
+                <p className="text-xs text-text-muted mb-0.5 truncate">{w.name}</p>
+                <p className="font-display text-xl font-bold text-text leading-tight truncate">
+                  {formattedBalance}
                 </p>
               </div>
             </div>
