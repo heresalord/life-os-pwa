@@ -142,7 +142,7 @@ function CategoryEditor({ label, categories, onChange }: {
       <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">{label}</label>
       <div className="flex flex-wrap gap-2 mb-2 min-h-[36px]">
         {categories.map(cat => (
-          <span key={cat} className="flex items-center gap-1 px-2.5 py-1 bg-surface-2 border border-border rounded-full text-xs text-text capitalize">
+          <span key={cat} className="flex items-center gap-1 px-3 py-1 bg-surface-2 border border-border rounded-full text-xs text-text capitalize">
             {cat}
             <button onClick={() => remove(cat)} className="text-text-muted hover:text-danger transition-colors ml-0.5">
               <X size={11} />
@@ -383,7 +383,7 @@ export function SettingsPage() {
 
   // ─── Render helpers ────────────────────────────────────────────────────────
   const SettingRow = ({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) => (
-    <div className="flex items-center justify-between gap-4 py-3.5 border-b border-border/50 last:border-0">
+    <div className="flex items-center justify-between gap-4 py-4 border-b border-border/50 last:border-0">
       <div className="min-w-0">
         <p className="text-sm font-medium text-text">{label}</p>
         {sub && <p className="text-xs text-text-muted mt-0.5">{sub}</p>}
@@ -435,7 +435,7 @@ export function SettingsPage() {
               </div>
             </div>
             <span className={clsx(
-              'text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border',
+              'text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border',
               isRecoveryVerified
                 ? 'bg-success/10 text-success border-success/25'
                 : 'bg-warning/10 text-warning border-warning/25 animate-pulse'
@@ -451,7 +451,7 @@ export function SettingsPage() {
           <button
             onClick={() => setShowRecoveryModal(true)}
             className={clsx(
-              'w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all',
+              'w-full py-2 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all',
               isRecoveryVerified
                 ? 'bg-surface-2 hover:bg-muted border border-border text-text'
                 : 'bg-warning/15 hover:bg-warning/25 text-warning border border-warning/30 font-bold'
@@ -516,7 +516,7 @@ export function SettingsPage() {
           <button
             type="submit"
             disabled={!newPassword || !confirmPassword || updatingPassword}
-            className="w-full py-2.5 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 mt-1"
+            className="w-full py-2 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
           >
             {updatingPassword && <Loader size={12} className="animate-spin" />}
             {updatingPassword ? 'Updating…' : 'Update Password (No Email Needed)'}
@@ -563,7 +563,7 @@ export function SettingsPage() {
           ] as const).map(opt => (
             <label key={opt.value}
               className={clsx(
-                'flex items-center gap-3 px-3.5 py-3 rounded-xl border cursor-pointer transition-all',
+                'flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all',
                 autoTheme === opt.value
                   ? 'bg-accent/5 border-accent/25'
                   : 'bg-surface-2 border-border hover:border-text-muted/40'
@@ -601,7 +601,7 @@ export function SettingsPage() {
                 onClick={() => { haptic('light'); setAccentColor(preset.value) }}
                 title={preset.name}
                 className={clsx(
-                  'flex flex-col items-center gap-2 py-2.5 rounded-xl border transition-all',
+                  'flex flex-col items-center gap-2 py-2 rounded-xl border transition-all',
                   selected ? 'border-accent bg-surface-2' : 'border-border hover:border-text-muted/40'
                 )}
               >
@@ -664,7 +664,7 @@ export function SettingsPage() {
                   }
                 }}
                 className={clsx(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all',
+                  'flex items-center gap-3 px-3 py-2 rounded-xl border text-sm font-medium transition-all',
                   selected
                     ? 'bg-accent/10 border-accent text-accent'
                     : 'bg-surface-2 border-border text-text-muted hover:text-text hover:border-text-muted'
@@ -692,7 +692,7 @@ export function SettingsPage() {
               key={h}
               onClick={() => setQuoteIntervalHours(h)}
               className={clsx(
-                'py-2.5 rounded-xl border text-sm font-medium transition-all',
+                'py-2 rounded-xl border text-sm font-medium transition-all',
                 quoteIntervalHours === h
                   ? 'bg-accent/10 border-accent text-accent'
                   : 'bg-surface-2 border-border text-text-muted hover:text-text'
@@ -906,7 +906,7 @@ export function SettingsPage() {
         )}
         {importResult?.ok && (
           <button onClick={() => window.location.reload()}
-            className="w-full py-2.5 mt-2 bg-accent text-bg font-medium text-sm rounded-xl hover:bg-accent-dim transition-colors"
+            className="w-full py-2 mt-2 bg-accent text-bg font-medium text-sm rounded-xl hover:bg-accent-dim transition-colors"
           >
             Reload to see imported data
           </button>
@@ -950,7 +950,7 @@ export function SettingsPage() {
           </div>
           <button
             onClick={() => setShowRecoveryModal(true)}
-            className="px-3 py-1.5 bg-warning text-bg font-bold text-xs rounded-lg hover:bg-warning/90 transition-colors whitespace-nowrap"
+            className="px-3 py-2 bg-warning text-bg font-bold text-xs rounded-lg hover:bg-warning/90 transition-colors whitespace-nowrap"
           >
             Backup Now
           </button>
@@ -1002,7 +1002,7 @@ export function SettingsPage() {
           onClick={handleSave}
           disabled={saving}
           className={clsx(
-            'w-full py-3.5 font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-2 text-sm',
+            'w-full py-4 font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-2 text-sm',
             saveSuccess
               ? 'bg-success text-bg'
               : 'bg-accent text-bg hover:bg-accent-dim disabled:opacity-50'

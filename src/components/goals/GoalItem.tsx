@@ -348,7 +348,7 @@ export function GoalItem({ goal }: { goal: Goal }) {
 
       {/* Top 3 Milestones check-off for projects */}
       {goal.tracker_type === 'project' && milestones.length > 0 && (
-        <div className="mt-3.5 space-y-1 bg-surface-2/40 border border-border/40 p-2.5 rounded-xl">
+        <div className="mt-4 space-y-1 bg-surface-2/40 border border-border/40 p-3 rounded-xl">
           <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-2 flex items-center gap-1">
             <MilestoneIcon size={9} /> Milestones Quick Checklist
           </p>
@@ -384,7 +384,7 @@ export function GoalItem({ goal }: { goal: Goal }) {
       )}
 
       {/* SMART Info block ( measurable target + deadline ) */}
-      <div className="mt-4 pt-3.5 border-t border-border/50 flex items-center justify-between text-[11px] text-text-muted">
+      <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-[11px] text-text-muted">
         <span className="flex items-center gap-2 truncate max-w-[60%]">
           <TargetIcon size={12} className="text-text-muted flex-shrink-0" /> <span className="truncate">Target: {targetVal} {goal.measurement_type !== 'binary' ? unitLabel : ''}</span>
         </span>
@@ -418,18 +418,18 @@ export function GoalItem({ goal }: { goal: Goal }) {
             step="any"
             value={logValue}
             onChange={e => setLogValue(e.target.value)}
-            className="flex-1 min-w-0 bg-surface-2 border border-border rounded-lg px-2.5 py-2 text-xs text-text focus:border-accent focus:outline-none text-center"
+            className="flex-1 min-w-0 bg-surface-2 border border-border rounded-lg px-3 py-2 text-xs text-text focus:border-accent focus:outline-none text-center"
           />
           <span className="text-[10px] text-text-muted">{unitLabel}</span>
           <button
             onClick={() => handleLog('subtract')}
-            className="px-2.5 py-2 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
+            className="px-3 py-2 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
           >
             Minus
           </button>
           <button
             onClick={() => handleLog('add')}
-            className="px-2.5 py-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-semibold"
+            className="px-3 py-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-semibold"
           >
             Add
           </button>
@@ -461,7 +461,7 @@ export function GoalItem({ goal }: { goal: Goal }) {
       ) : (
         <>
           {/* Expand controls for other actions */}
-          <div className="mt-2.5 flex justify-end">
+          <div className="mt-3 flex justify-end">
             <button
               onClick={() => setExpanded(v => !v)}
               className="text-[10px] font-semibold text-text-muted hover:text-text flex items-center gap-1 transition-colors"

@@ -44,7 +44,7 @@ export function ConfirmDialog({
           <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
 
           <div className="flex items-start justify-between gap-3 mb-2">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               {isDanger && (
                 <span className="w-8 h-8 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center flex-shrink-0">
                   <AlertTriangle size={15} className="text-danger" />
@@ -63,7 +63,7 @@ export function ConfirmDialog({
             {description}
           </Dialog.Description>
 
-          <div className="flex gap-2.5">
+          <div className="flex gap-2">
             <Dialog.Close asChild>
               <button className="flex-1 py-3 bg-surface-2 border border-border text-text-secondary hover:text-text font-medium text-sm rounded-xl transition-colors">
                 {cancelLabel}

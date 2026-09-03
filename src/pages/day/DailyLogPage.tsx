@@ -475,7 +475,7 @@ export function DailyLogPage() {
           </div>
 
           {/* Priorities linked to tasks */}
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Top 3 Priorities (linked to Tasks)</label>
             
             {/* List priorities */}
@@ -484,7 +484,7 @@ export function DailyLogPage() {
             ) : (
               <ul className="space-y-2">
                 {priorities.map(t => (
-                  <li key={t.id} className="flex items-center justify-between p-2.5 bg-surface-2 border border-border rounded-xl">
+                  <li key={t.id} className="flex items-center justify-between p-3 bg-surface-2 border border-border rounded-xl">
                     <div className="flex items-center gap-3 min-w-0">
                       <button 
                         onClick={() => toggleTaskCompletion(t.id, t.completed)}
@@ -530,9 +530,9 @@ export function DailyLogPage() {
             {otherTasks.length > 0 && (
               <div className="pt-2">
                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Promote existing task</p>
-                <div className="max-h-24 overflow-y-auto space-y-1.5 pr-1.5">
+                <div className="max-h-24 overflow-y-auto space-y-2 pr-2">
                   {otherTasks.map(t => (
-                    <div key={t.id} className="flex items-center justify-between text-xs text-text-secondary bg-surface-2/40 px-2.5 py-2 rounded-lg border border-border/50">
+                    <div key={t.id} className="flex items-center justify-between text-xs text-text-secondary bg-surface-2/40 px-3 py-2 rounded-lg border border-border/50">
                       <span className="truncate pr-2">{t.title}</span>
                       <button
                         onClick={() => toggleTaskPriority(t.id, t.priority)}
@@ -674,7 +674,7 @@ export function DailyLogPage() {
               <button
                 type="button"
                 onClick={() => setIsPreviewMode(!isPreviewMode)}
-                className="text-xs font-semibold py-1 px-2.5 bg-accent/10 border border-accent/20 text-accent rounded-lg hover:bg-accent/20 transition-colors flex items-center gap-2"
+                className="text-xs font-semibold py-1 px-3 bg-accent/10 border border-accent/20 text-accent rounded-lg hover:bg-accent/20 transition-colors flex items-center gap-2"
               >
                 {isPreviewMode ? (
                   <><Edit2 size={12} /> Write</>
@@ -696,7 +696,7 @@ export function DailyLogPage() {
               <button
                 key={key}
                 onClick={() => applyTemplate(key)}
-                className={`flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
+                className={`flex-shrink-0 px-3 py-2 text-xs font-semibold rounded-full border transition-all ${
                   selectedTemplate === key
                     ? 'bg-accent/15 border-accent/40 text-accent'
                     : 'bg-surface-2 border-border text-text-secondary hover:text-text hover:border-text-secondary'
@@ -785,7 +785,7 @@ export function DailyLogPage() {
           </div>
 
           {/* Component Score breakdown */}
-          <div className="flex-1 space-y-2.5 text-xs w-full">
+          <div className="flex-1 space-y-3 text-xs w-full">
             <div className="flex justify-between items-center">
               <span className="text-text-muted">Task Completion</span>
               <span className="font-semibold text-text">
@@ -1000,7 +1000,7 @@ export function DailyLogPage() {
                         value={newTaskTitle}
                         onChange={e => setNewTaskTitle(e.target.value)}
                         placeholder="Add priority task…"
-                        className={`flex-1 bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm outline-none`}
+                        className={`flex-1 bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2 text-white placeholder-white/30 text-sm outline-none`}
                       />
                       <button type="submit" className={`px-3 ${accentBg} text-gray-900 rounded-xl font-bold hover:opacity-90 transition-opacity`}>
                         <Plus size={14} />
@@ -1068,19 +1068,19 @@ export function DailyLogPage() {
                         <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-2 font-bold">What went well?</label>
                         <textarea value={wentWell} onChange={e => setWentWell(e.target.value)}
                           placeholder="Wins, good habits, smooth moments…" rows={2}
-                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
+                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
                       </div>
                       <div>
                         <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-2 font-bold">What I'd do differently?</label>
                         <textarea value={doDifferently} onChange={e => setDoDifferently(e.target.value)}
                           placeholder="Challenges, errors to improve…" rows={2}
-                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
+                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
                       </div>
                       <div>
                         <label className="block text-[10px] text-white/50 uppercase tracking-wider mb-2 font-bold">Tomorrow's Focus</label>
                         <textarea value={tomorrowFocus} onChange={e => setTomorrowFocus(e.target.value)}
                           placeholder="What's your key direction tomorrow?" rows={2}
-                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
+                          className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-3 py-2 text-white placeholder-white/30 text-xs outline-none resize-none transition-colors`} />
                       </div>
                     </div>
                   </div>

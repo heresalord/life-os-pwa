@@ -74,7 +74,7 @@ export function DailyLogQuickWidget() {
         ) : (
           <>
             {/* Mood Picker */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="block text-[10px] text-text-muted uppercase tracking-wider font-semibold pl-0.5">
                 How is your mood?
               </label>
@@ -90,7 +90,7 @@ export function DailyLogQuickWidget() {
                         handleMoodSelect(m.value)
                       }}
                       className={clsx(
-                        "flex flex-col items-center justify-center py-2.5 rounded-xl border text-xl transition-all duration-200 aspect-square hover:scale-105 active:scale-95",
+                        "flex flex-col items-center justify-center py-2 rounded-xl border text-xl transition-all duration-200 aspect-square hover:scale-105 active:scale-95",
                         isSelected
                           ? "bg-accent/10 border-accent/60 shadow-inner scale-105"
                           : "bg-surface-2 border-border/80 text-text-muted hover:border-text-secondary"
@@ -105,7 +105,7 @@ export function DailyLogQuickWidget() {
             </div>
 
             {/* Daily Intent */}
-            <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
               <label className="block text-[10px] text-text-muted uppercase tracking-wider font-semibold pl-0.5 flex items-center gap-1">
                 <PenTool size={10} /> Today's Intent
               </label>

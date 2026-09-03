@@ -86,7 +86,7 @@ export function AddBlockModal({ date, open: controlledOpen, onOpenChange: contro
                 <select
                   value={repeatOption}
                   onChange={(e) => setRepeatOption(e.target.value as any)}
-                  className="bg-surface border border-border rounded-lg px-2.5 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer"
+                  className="bg-surface border border-border rounded-lg px-3 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer"
                 >
                   <option value="none">No repeat</option>
                   <option value="daily">Daily</option>

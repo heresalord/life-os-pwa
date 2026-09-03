@@ -118,7 +118,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
               type="text" 
               value={title} 
               onChange={e => setTitle(e.target.value)}
-              className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text focus:border-accent outline-none font-medium"
+              className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2 text-sm text-text focus:border-accent outline-none font-medium"
               placeholder="Task title"
             />
           </div>
@@ -131,7 +131,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
             <textarea 
               value={description} 
               onChange={e => setDescription(e.target.value)}
-              className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2 text-sm text-text focus:border-accent outline-none min-h-[80px]"
+              className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2 text-sm text-text focus:border-accent outline-none min-h-[80px]"
               placeholder="Add details, notes, or lists..."
             />
           </div>
@@ -170,7 +170,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
                 type="date" 
                 value={dueDate} 
                 onChange={e => setDueDate(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-xs text-text focus:border-accent outline-none"
+                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2 text-xs text-text focus:border-accent outline-none"
               />
             </div>
 
@@ -181,7 +181,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
               <select
                 value={projectId}
                 onChange={e => setProjectId(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-xs text-text focus:border-accent outline-none"
+                className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-xs text-text focus:border-accent outline-none"
               >
                 <option value="">No Project</option>
                 {projects.map(p => (
@@ -203,14 +203,14 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
                 type="time" 
                 value={timeStart} 
                 onChange={e => setTimeStart(e.target.value)}
-                className="flex-1 bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-xs text-text focus:border-accent outline-none"
+                className="flex-1 bg-surface-2 border border-border rounded-xl px-4 py-2 text-xs text-text focus:border-accent outline-none"
               />
               <span className="text-text-muted text-xs font-semibold">to</span>
               <input 
                 type="time" 
                 value={timeEnd} 
                 onChange={e => setTimeEnd(e.target.value)}
-                className="flex-1 bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-xs text-text focus:border-accent outline-none"
+                className="flex-1 bg-surface-2 border border-border rounded-xl px-4 py-2 text-xs text-text focus:border-accent outline-none"
               />
             </div>
           </div>
@@ -224,7 +224,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
               type="text" 
               value={tagsInput} 
               onChange={e => setTagsInput(e.target.value)}
-              className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-xs text-text focus:border-accent outline-none"
+              className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2 text-xs text-text focus:border-accent outline-none"
               placeholder="personal, work, fitness..."
             />
           </div>
@@ -235,7 +235,7 @@ export function TaskEditSheet({ task, open, onClose }: TaskEditSheetProps) {
           <button 
             type="button"
             onClick={() => setShareOpen(true)}
-            className="w-full py-2.5 bg-surface-2 border border-border text-text font-semibold rounded-xl text-xs hover:bg-surface-3 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2 bg-surface-2 border border-border text-text font-semibold rounded-xl text-xs hover:bg-surface-3 transition-colors flex items-center justify-center gap-2"
           >
             <Share2 size={13} /> Share Task
           </button>

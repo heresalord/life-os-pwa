@@ -87,11 +87,11 @@ export function InboxItemCard({ item, onDelete }: { item: InboxItem, onDelete: (
             !dragging && "transition-transform duration-200 ease-out"
           )}
         >
-          <div className="flex items-center justify-between mb-1.5 w-full">
+          <div className="flex items-center justify-between mb-2 w-full">
             <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded bg-surface-2 text-text-muted border border-border">
               {item.type}
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="text-[10px] text-text-muted">
                 {new Date(item.captured_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>

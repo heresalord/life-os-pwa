@@ -256,7 +256,7 @@ export function AddTransactionModal({
             </div>
 
             <button type="submit" disabled={!amount || addTransaction.isPending || justSaved}
-              className={clsx('w-full py-3.5 text-bg font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50',
+              className={clsx('w-full py-4 text-bg font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50',
                 justSaved ? 'bg-success' : type === 'income' ? 'bg-success hover:bg-success/90' : 'bg-accent hover:bg-accent-dim')}>
               {justSaved && <Check size={16} />}
               {justSaved ? 'Saved!' : addTransaction.isPending ? 'Saving…' : 'Save Transaction'}

@@ -112,10 +112,10 @@ export function TaskHistory() {
           </div>
 
           {/* Read-only task list */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {tasks.map(t => (
               <div key={t.id}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${
                   t.completed ? 'bg-surface border-border/50 opacity-60'
                   : t.skipped  ? 'bg-surface border-border/40 opacity-40'
                   : 'bg-surface-2/50 border-border'

@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Sun, Moon, Search, Settings, LogOut, Plus, Zap } from 'lucide-react'
+import { Sun, Moon, Search, Settings, LogOut, Plus, Zap, User } from 'lucide-react'
 import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
@@ -171,7 +171,7 @@ export function DesktopTopbar() {
                   <NavLink
                     to="/settings"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-2 mx-2 my-1.5 bg-warning/10 border border-warning/25 rounded-lg text-xs text-warning hover:bg-warning/20 transition-colors"
+                    className="block px-3 py-2 mx-2 my-2 bg-warning/10 border border-warning/25 rounded-lg text-xs text-warning hover:bg-warning/20 transition-colors"
                   >
                     <p className="font-bold">⚠️ Backup Recovery Key</p>
                     <p className="text-[10px] text-text-muted mt-0.5">Protect your account</p>
@@ -180,19 +180,19 @@ export function DesktopTopbar() {
                 <nav className="py-1">
                   {secondaryNav.map(({ to, icon: Icon, label }) => (
                     <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
                       <Icon size={15} />
                       {label}
                     </NavLink>
                   ))}
                   <div className="border-t border-border my-1" />
                   <NavLink to="/profile" onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
                     <User size={15} />
                     Profile
                   </NavLink>
                   <NavLink to="/settings" onClick={() => setMenuOpen(false)}
-                    className="flex items-center justify-between px-4 py-2.5 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+                    className="flex items-center justify-between px-4 py-2 text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
                     <div className="flex items-center gap-3">
                       <Settings size={15} />
                       Settings
@@ -203,7 +203,7 @@ export function DesktopTopbar() {
                   </NavLink>
                   <button
                     onClick={() => { signOut(); setMenuOpen(false) }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-danger hover:bg-danger/10 transition-colors"
                   >
                     <LogOut size={15} />
                     Sign Out

@@ -161,12 +161,12 @@ export function TaskItem({
       {/* Swipe delete zone — shows pending state with Undo */}
       {pendingDelete ? (
         <div className="absolute inset-0 flex items-center justify-between bg-danger/10 px-4">
-          <span className="text-xs text-danger font-medium flex items-center gap-1.5">
+          <span className="text-xs text-danger font-medium flex items-center gap-2">
             <Trash2 size={13} /> Task deleted
           </span>
           <button
             onClick={handleUndoDelete}
-            className="text-xs font-semibold text-danger border border-danger/40 px-3 py-1.5 rounded-lg hover:bg-danger/10 transition-colors"
+            className="text-xs font-semibold text-danger border border-danger/40 px-3 py-2 rounded-lg hover:bg-danger/10 transition-colors"
           >
             Undo
           </button>
@@ -274,7 +274,7 @@ export function TaskItem({
         {isPending && (
           <button
             onClick={() => setEditSheetOpen(true)}
-            className="text-text-muted hover:text-accent p-1.5 flex-shrink-0 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100"
+            className="text-text-muted hover:text-accent p-2 flex-shrink-0 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100"
             aria-label="Edit task"
           >
             <Pencil size={14} />

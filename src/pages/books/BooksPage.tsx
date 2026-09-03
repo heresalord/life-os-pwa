@@ -230,7 +230,7 @@ export function BooksPage() {
         {targetBooks > 0 ? (
           <button
             onClick={() => { haptic('light'); setShowGoalModal(true) }}
-            className="flex items-center gap-3 bg-surface border border-border px-3.5 py-2 rounded-xl hover:border-accent transition-all hover:shadow-sm"
+            className="flex items-center gap-3 bg-surface border border-border px-4 py-2 rounded-xl hover:border-accent transition-all hover:shadow-sm"
           >
             <div className="relative flex items-center justify-center">
               <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
@@ -270,7 +270,7 @@ export function BooksPage() {
               key={t.value}
               onClick={() => { haptic('light'); setTab(t.value) }}
               className={clsx(
-                'flex-1 min-w-fit py-2 px-2.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all',
+                'flex-1 min-w-fit py-2 px-3 text-xs font-semibold rounded-lg whitespace-nowrap transition-all',
                 tab === t.value
                   ? 'bg-surface text-text shadow-sm'
                   : 'text-text-muted hover:text-text-secondary'
@@ -445,7 +445,7 @@ export function BooksPage() {
             {/* Hero Progress Ring Card */}
             <div className="md:col-span-2 bg-surface border border-border rounded-3xl p-6 shadow-[var(--shadow-card)] flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="flex-1 space-y-3">
-                <span className="text-[10px] bg-success/10 text-success border border-success/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                <span className="text-[10px] bg-success/10 text-success border border-success/20 px-3 py-0.5 rounded-full font-bold uppercase tracking-wider">
                   Annual Reading Goal
                 </span>
                 <h3 className="text-xl font-display font-bold text-text">
@@ -626,7 +626,7 @@ export function BooksPage() {
                                 <div className="w-full h-full flex items-center justify-center text-2xl font-bold bg-surface-2 opacity-50">📘</div>
                               )}
                             </div>
-                            <span className="text-[10px] text-text-secondary mt-1.5 font-medium truncate w-full text-center">
+                            <span className="text-[10px] text-text-secondary mt-2 font-medium truncate w-full text-center">
                               {book.title}
                             </span>
                           </div>

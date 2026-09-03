@@ -105,7 +105,7 @@ export function GoalsPage() {
               key={value}
               onClick={() => setStateFilter(value)}
               className={clsx(
-                'flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all',
+                'flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] font-semibold transition-all',
                 stateFilter === value
                   ? 'bg-surface text-text shadow-sm'
                   : 'text-text-muted hover:text-text'

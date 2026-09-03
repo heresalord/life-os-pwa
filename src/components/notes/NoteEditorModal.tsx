@@ -205,7 +205,7 @@ export function NoteEditorModal({
                 onCreateTask={handleCreateTask}
               />
               {taskFeedback && (
-                <div className="absolute top-full right-3 mt-2 z-10 flex items-center gap-2 px-2.5 py-2 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="absolute top-full right-3 mt-2 z-10 flex items-center gap-2 px-3 py-2 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
                   <ListTodo size={12} className="text-accent flex-shrink-0" />
                   <span className="truncate max-w-[200px]">Added “{taskFeedback}” to Tasks</span>
                 </div>
@@ -254,7 +254,7 @@ export function NoteEditorModal({
           </div>
 
           {/* Footer: word count + tags */}
-          <div className="flex-shrink-0 border-t border-border px-4 py-2.5 bg-surface">
+          <div className="flex-shrink-0 border-t border-border px-4 py-2 bg-surface">
             <div className="flex items-center gap-3">
               {/* Word count */}
               <span className="text-[11px] text-text-muted flex-shrink-0 tabular-nums">
@@ -332,7 +332,7 @@ export function NoteEditorModal({
                 Task Date
               </label>
               <div className="space-y-2">
-                <label className="flex items-center gap-3 p-2.5 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl cursor-pointer transition-colors text-xs font-medium text-text">
+                <label className="flex items-center gap-3 p-3 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl cursor-pointer transition-colors text-xs font-medium text-text">
                   <input
                     type="radio"
                     name="taskDateOption"
@@ -347,7 +347,7 @@ export function NoteEditorModal({
                 </label>
 
                 {note.date && note.date !== today && (
-                  <label className="flex items-center gap-3 p-2.5 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl cursor-pointer transition-colors text-xs font-medium text-text">
+                  <label className="flex items-center gap-3 p-3 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl cursor-pointer transition-colors text-xs font-medium text-text">
                     <input
                       type="radio"
                       name="taskDateOption"
@@ -362,7 +362,7 @@ export function NoteEditorModal({
                   </label>
                 )}
 
-                <div className="flex flex-col gap-2 p-2.5 bg-surface-2 border border-border rounded-xl">
+                <div className="flex flex-col gap-2 p-3 bg-surface-2 border border-border rounded-xl">
                   <label className="flex items-center gap-3 cursor-pointer text-xs font-medium text-text">
                     <input
                       type="radio"
@@ -378,7 +378,7 @@ export function NoteEditorModal({
                       type="date"
                       value={customDateVal}
                       onChange={e => setCustomDateVal(e.target.value)}
-                      className="selectable mt-1 w-full bg-surface border border-border rounded-lg px-2.5 py-2 text-xs text-text focus:border-accent focus:outline-none"
+                      className="selectable mt-1 w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-text focus:border-accent focus:outline-none"
                     />
                   )}
                 </div>

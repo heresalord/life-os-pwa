@@ -28,7 +28,7 @@ export function FinanceSnapshotWidget() {
       className="bg-surface border border-border rounded-2xl p-4.5 flex flex-col justify-between h-full cursor-pointer hover:border-accent/40 hover:shadow-sm transition-all group"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-2.5 flex-shrink-0">
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <div className="flex items-center gap-2">
           <DollarSign size={15} className="text-accent group-hover:scale-110 transition-transform" />
           <span className="font-semibold text-text uppercase tracking-wider text-[11px]">Finance Snapshot</span>
@@ -57,7 +57,7 @@ export function FinanceSnapshotWidget() {
             </div>
 
             {/* Budget % Progress */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex justify-between text-[10px] text-text-muted font-medium">
                 <span>Daily Budget ({fmt(dailyBudget)} {currency})</span>
                 <span className={clsx(

@@ -68,7 +68,7 @@ export function SheetSelect({ value, onChange, options, label, placeholder, clas
                   type="button"
                   onClick={() => { onChange(o.value); setOpen(false) }}
                   className={clsx(
-                    'w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors',
+                    'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors',
                     capitalize && 'capitalize',
                     isSelected ? 'bg-accent/10 text-accent font-medium' : 'text-text hover:bg-surface-2'
                   )}

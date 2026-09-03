@@ -32,7 +32,7 @@ export function GoalProgressWidget() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto space-y-3.5">
+      <div className="flex-1 overflow-y-auto space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full py-4">
             <div className="w-5 h-5 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />

@@ -50,7 +50,7 @@ export function HabitStreakWidget() {
       </div>
 
       {/* Habits */}
-      <div className="flex-1 overflow-y-auto space-y-3.5">
+      <div className="flex-1 overflow-y-auto space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full py-4">
             <div className="w-5 h-5 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
@@ -63,7 +63,7 @@ export function HabitStreakWidget() {
         ) : (
           <div className="space-y-3">
             {habits.map(h => (
-              <div key={h.id} className="space-y-1.5 border-b border-border/20 last:border-0 pb-2 last:pb-0">
+              <div key={h.id} className="space-y-2 border-b border-border/20 last:border-0 pb-2 last:pb-0">
                 <div className="flex items-baseline justify-between text-xs">
                   <span className="text-text-secondary font-medium truncate max-w-[70%]">{h.name}</span>
                   <span className="text-[10px] text-warning font-semibold flex items-center gap-1 flex-shrink-0">

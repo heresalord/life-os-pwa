@@ -60,7 +60,7 @@ export function DailyLogWidget() {
         </div>
         
         {/* Streak Badge */}
-        <div className="flex items-center gap-1 bg-warning/10 border border-warning/20 text-warning px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+        <div className="flex items-center gap-1 bg-warning/10 border border-warning/20 text-warning px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
           <Flame size={12} className="fill-warning" />
           <span>{streak} Day Streak</span>
         </div>

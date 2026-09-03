@@ -433,7 +433,7 @@ export function GoalDetailPage() {
           <div className="overflow-x-auto pb-1 scrollbar-none flex justify-start">
             <div className="flex gap-2 flex-row">
               {/* Day Labels on left side */}
-              <div className="flex flex-col gap-2 text-[9px] text-text-secondary pr-1.5 justify-between py-1">
+              <div className="flex flex-col gap-2 text-[9px] text-text-secondary pr-2 justify-between py-1">
                 <span>Mon</span>
                 <span>Wed</span>
                 <span>Fri</span>
@@ -629,22 +629,22 @@ export function GoalDetailPage() {
 
           <div className="flex flex-wrap gap-2 items-center">
             <span className={clsx(
-              'flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider',
+              'flex items-center gap-1 text-[10px] font-bold px-3 py-0.5 rounded-full border uppercase tracking-wider',
               catColor
             )}>
               <CatIcon size={11} />
               {goal.category || 'General'}
             </span>
-            <span className="text-[10px] font-bold text-text-secondary bg-surface-2 border border-border/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-text-secondary bg-surface-2 border border-border/80 px-3 py-0.5 rounded-full uppercase tracking-wider">
               {goal.tracker_type} Tracker
             </span>
             {linkedProject && (
-              <span className="text-[10px] font-bold text-accent bg-accent/10 border border-accent/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-accent bg-accent/10 border border-accent/20 px-3 py-0.5 rounded-full uppercase tracking-wider">
                 Project: {linkedProject.name}
               </span>
             )}
             <span className={clsx(
-              'text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ml-auto',
+              'text-[10px] font-bold px-3 py-0.5 rounded-full border uppercase tracking-wider ml-auto',
               goal.state === 'active' ? 'bg-success/10 border-success/20 text-success'
               : goal.state === 'completed' ? 'bg-info/10 border-info/20 text-info'
               : 'bg-muted border-border text-text-muted'
@@ -898,7 +898,7 @@ export function GoalDetailPage() {
                   step="any"
                   value={logVal}
                   onChange={e => setLogVal(e.target.value)}
-                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-3.5 py-2 text-sm text-text focus:outline-none"
+                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text focus:outline-none"
                 />
               </div>
               <div>
@@ -908,7 +908,7 @@ export function GoalDetailPage() {
                   placeholder="e.g. Worked out for 2 hours today"
                   value={logNote}
                   onChange={e => setLogNote(e.target.value)}
-                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-3.5 py-2 text-sm text-text focus:outline-none"
+                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text focus:outline-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -950,7 +950,7 @@ export function GoalDetailPage() {
                 placeholder="e.g. Design app screens"
                 value={newMilestoneTitle}
                 onChange={e => setNewMilestoneTitle(e.target.value)}
-                className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-3.5 py-2 text-sm text-text focus:outline-none"
+                className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text focus:outline-none"
               />
             </div>
             <div>
@@ -959,13 +959,13 @@ export function GoalDetailPage() {
                 type="date"
                 value={newMilestoneDueDate}
                 onChange={e => setNewMilestoneDueDate(e.target.value)}
-                className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-3.5 py-2 text-sm text-text focus:outline-none"
+                className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text focus:outline-none"
               />
             </div>
           </div>
           <button
             type="submit"
-            className="w-full bg-accent text-bg font-semibold py-2.5 rounded-xl text-xs hover:bg-accent-dim transition-colors"
+            className="w-full bg-accent text-bg font-semibold py-2 rounded-xl text-xs hover:bg-accent-dim transition-colors"
           >
             Create Milestone
           </button>

@@ -186,7 +186,7 @@ export function FinancePage() {
                 key={p}
                 onClick={() => { setPeriod(p); setReferenceDate(today) }}
                 className={clsx(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors capitalize',
+                  'px-3 py-2 rounded-lg text-xs font-semibold transition-colors capitalize',
                   period === p ? 'bg-bg text-text shadow-sm' : 'text-text-muted hover:text-text'
                 )}
               >

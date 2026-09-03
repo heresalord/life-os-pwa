@@ -167,7 +167,7 @@ export function RecurringTasksManager() {
                       <button key={o.value} type="button"
                         onClick={() => setRepeat(o.value)}
                         className={clsx(
-                          'py-2.5 text-xs font-medium rounded-xl border transition-colors text-left px-3',
+                          'py-2 text-xs font-medium rounded-xl border transition-colors text-left px-3',
                           repeat === o.value
                             ? 'bg-accent/15 border-accent/40 text-accent'
                             : 'bg-surface-2 border-border text-text-muted hover:text-text'
@@ -211,12 +211,12 @@ export function RecurringTasksManager() {
                         type="number" min={1} max={31}
                         value={dayOfMonth}
                         onChange={e => setDayOfMonth(Math.min(31, Math.max(1, Number(e.target.value))))}
-                        className="w-24 bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-text focus:border-accent focus:outline-none text-center"
+                        className="w-24 bg-surface-2 border border-border rounded-xl px-3 py-2 text-text focus:border-accent focus:outline-none text-center"
                       />
                       <button type="button"
                         onClick={() => setDayOfMonth(-1)}
                         className={clsx(
-                          'px-4 py-2.5 text-xs font-medium rounded-xl border transition-colors',
+                          'px-4 py-2 text-xs font-medium rounded-xl border transition-colors',
                           dayOfMonth === -1
                             ? 'bg-accent/15 border-accent/40 text-accent'
                             : 'bg-surface-2 border-border text-text-muted hover:text-text'

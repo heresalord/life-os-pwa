@@ -70,7 +70,7 @@ function CategoryList({
   const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1])
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {sorted.map(([cat, amt]) => (
         <div key={cat}>
           <div className="flex justify-between text-sm mb-1">

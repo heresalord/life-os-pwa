@@ -12,19 +12,21 @@ import { useTranslation } from '../../i18n'
 import { WeeklyRecapModal } from '../../components/dashboard/WeeklyRecapModal'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 
-// All modules — order determines display order in the grid
+// All modules — order determines display order in the grid.
+// Each module carries its own accent color (Phase 17) so the icon tiles
+// in the "More Modules" / "Pinned in Nav" lists are visually distinct.
 const ALL_MODULES = [
-  { key: 'home',     to: '/',         icon: LayoutDashboard, label: 'Home'      },
-  { key: 'day',      to: '/day',      icon: Heart,           label: 'Daily Log' },
-  { key: 'tasks',    to: '/tasks',    icon: CheckSquare,     label: 'Tasks'     },
-  { key: 'finance',  to: '/finance',  icon: DollarSign,      label: 'Finance'   },
-  { key: 'goals',    to: '/goals',    icon: Target,          label: 'Goals'     },
-  { key: 'projects', to: '/projects', icon: Briefcase,       label: 'Projects'  },
-  { key: 'books',    to: '/books',    icon: BookOpen,        label: 'Books'     },
-  { key: 'agenda',   to: '/agenda',   icon: CalendarDays,    label: 'Agenda'    },
-  { key: 'inbox',    to: '/inbox',    icon: Inbox,           label: 'Inbox'     },
-  { key: 'notes',    to: '/notes',    icon: FileText,        label: 'Notes'     },
-  { key: 'search',   to: '/search',   icon: Search,          label: 'Search'    },
+  { key: 'home',     to: '/',         icon: LayoutDashboard, label: 'Home',      color: '#6366f1' },
+  { key: 'day',      to: '/day',      icon: Heart,           label: 'Daily Log', color: '#f59e0b' },
+  { key: 'tasks',    to: '/tasks',    icon: CheckSquare,     label: 'Tasks',     color: '#10b981' },
+  { key: 'finance',  to: '/finance',  icon: DollarSign,      label: 'Finance',   color: '#3b82f6' },
+  { key: 'goals',    to: '/goals',    icon: Target,          label: 'Goals',     color: '#8b5cf6' },
+  { key: 'projects', to: '/projects', icon: Briefcase,       label: 'Projects',  color: '#f97316' },
+  { key: 'books',    to: '/books',    icon: BookOpen,        label: 'Books',     color: '#ec4899' },
+  { key: 'agenda',   to: '/agenda',   icon: CalendarDays,    label: 'Agenda',    color: '#14b8a6' },
+  { key: 'inbox',    to: '/inbox',    icon: Inbox,           label: 'Inbox',     color: '#ef4444' },
+  { key: 'notes',    to: '/notes',    icon: FileText,        label: 'Notes',     color: '#84cc16' },
+  { key: 'search',   to: '/search',   icon: Search,          label: 'Search',    color: '#64748b' },
 ]
 
 export function MorePage() {
@@ -113,14 +115,14 @@ export function MorePage() {
             {t('more.more_modules', 'More Modules')}
           </h2>
           <div className="bg-surface border border-border rounded-2xl overflow-hidden divide-y divide-border">
-            {others.map(({ key, to, icon: Icon, label }) => (
+            {others.map(({ key, to, icon: Icon, label, color }) => (
               <button
                 key={key}
                 onClick={() => go(to)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2 press-row transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-4 hover:bg-surface-2 press-row transition-colors text-left"
               >
-                <div className="w-8 h-8 rounded-xl bg-surface-2 border border-border flex items-center justify-center flex-shrink-0">
-                  <Icon size={16} className="text-text-secondary" />
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>
+                  <Icon size={18} className="text-white" />
                 </div>
                 <span className="text-sm font-medium text-text flex-1">{t(`nav.${key}`, label)}</span>
                 <ChevronRight size={15} className="text-text-muted" />
@@ -136,14 +138,14 @@ export function MorePage() {
           {t('more.pinned', 'Pinned in Nav')}
         </h2>
         <div className="bg-surface border border-accent/20 rounded-2xl overflow-hidden divide-y divide-border">
-          {pinned.map(({ key, to, icon: Icon, label }) => (
+          {pinned.map(({ key, to, icon: Icon, label, color }) => (
             <button
               key={key}
               onClick={() => go(to)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/5 press-row transition-colors text-left"
+              className="w-full flex items-center gap-3 px-4 py-4 hover:bg-accent/5 press-row transition-colors text-left"
             >
-              <div className="w-8 h-8 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
-                <Icon size={16} className="text-accent" />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>
+                <Icon size={18} className="text-white" />
               </div>
               <span className="text-sm font-medium text-text flex-1">{t(`nav.${key}`, label)}</span>
               <ChevronRight size={15} className="text-accent/60" />
@@ -160,7 +162,7 @@ export function MorePage() {
         <div className="bg-surface border border-border rounded-2xl overflow-hidden divide-y divide-border">
           <button
             onClick={() => go('/settings')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2 press-row transition-colors text-left"
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-surface-2 press-row transition-colors text-left"
           >
             <Settings size={17} className="text-text-secondary flex-shrink-0" />
             <span className="text-sm font-medium text-text flex-1">{t('settings.title', 'Settings')}</span>
@@ -168,7 +170,7 @@ export function MorePage() {
           </button>
           <button
             onClick={() => setSignOutOpen(true)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-danger/5 press-row transition-colors text-left"
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-danger/5 press-row transition-colors text-left"
           >
             <LogOut size={17} className="text-danger flex-shrink-0" />
             <span className="text-sm font-medium text-danger flex-1">{t('more.sign_out', 'Sign Out')}</span>

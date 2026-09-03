@@ -117,7 +117,7 @@ export function TimeBlocksTab() {
               </h3>
               <div className="space-y-2">
                 {unscheduledTasks.map(t => (
-                  <div key={t.id} className="flex items-center gap-2 p-2.5 bg-surface border border-border rounded-xl text-sm">
+                  <div key={t.id} className="flex items-center gap-2 p-3 bg-surface border border-border rounded-xl text-sm">
                     <div className="w-2 h-2 rounded-full bg-text-muted/30 flex-shrink-0" />
                     <span className="text-text-secondary flex-1 truncate">{t.title}</span>
                   </div>

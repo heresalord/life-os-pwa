@@ -155,9 +155,9 @@ export function NotificationCenter() {
           {/* Mobile Overlay backdrop */}
           <div className="fixed inset-0 z-40 md:hidden bg-black/40 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
           
-          <div className="absolute right-0 mt-2.5 w-[calc(100vw-32px)] sm:w-96 max-w-md bg-surface/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-3 duration-200 origin-top-right fixed md:absolute left-4 md:left-auto right-4 md:right-0">
+          <div className="absolute right-0 mt-3 w-[calc(100vw-32px)] sm:w-96 max-w-md bg-surface/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-3 duration-200 origin-top-right fixed md:absolute left-4 md:left-auto right-4 md:right-0">
             {/* Header */}
-            <div className="px-4 py-3.5 border-b border-border flex items-center justify-between bg-surface-2/50">
+            <div className="px-4 py-4 border-b border-border flex items-center justify-between bg-surface-2/50">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-sm text-text">Notifications</span>
                 {unreadCount > 0 && (
@@ -226,7 +226,7 @@ export function NotificationCenter() {
                               <button
                                 onClick={() => handleNotificationClick(notif.id, notif.action_url)}
                                 className={clsx(
-                                  "flex-1 px-4 py-3.5 flex items-start gap-3 text-left transition-all",
+                                  "flex-1 px-4 py-4 flex items-start gap-3 text-left transition-all",
                                   !notif.read ? "bg-accent/[0.02]" : "opacity-85"
                                 )}
                               >

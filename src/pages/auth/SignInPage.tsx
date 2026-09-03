@@ -215,7 +215,7 @@ export function SignInPage() {
         <Tabs.Content value="recovery">
           <form onSubmit={handleRecoverySignIn} className="space-y-4 animate-in fade-in duration-200">
             <div className="bg-accent/10 border border-accent/20 rounded-xl p-3 text-xs text-text-secondary leading-relaxed">
-              <p className="flex items-center gap-1.5 font-bold text-accent mb-0.5">
+              <p className="flex items-center gap-2 font-bold text-accent mb-0.5">
                 <Sparkles size={13} /> Zero-Email Emergency Recovery
               </p>
               Paste your 12-word secret recovery phrase to reset your access without needing email confirmation.
@@ -230,7 +230,7 @@ export function SignInPage() {
                 placeholder="your@email.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-sm"
+                className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-sm"
               />
             </div>
 
@@ -242,7 +242,7 @@ export function SignInPage() {
                 placeholder="e.g. ocean planet velvet harvest anchor echo silver gentle timber wisdom beacon valley"
                 value={recoveryPhrase}
                 onChange={e => setRecoveryPhrase(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text font-mono placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-xs resize-none"
+                className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2 text-text font-mono placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-xs resize-none"
               />
             </div>
 
@@ -257,7 +257,7 @@ export function SignInPage() {
                   placeholder="Min. 6 characters"
                   value={recoveryNewPassword}
                   onChange={e => setRecoveryNewPassword(e.target.value)}
-                  className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 pr-11 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-sm"
+                  className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2 pr-11 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors text-sm"
                 />
                 <button
                   type="button"
@@ -318,7 +318,7 @@ export function SignInPage() {
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
             onClick={() => handleOAuth('google')}
-            className="flex justify-center items-center gap-2 bg-surface-2 border border-border rounded-lg py-2.5 text-sm text-text hover:bg-muted transition-colors"
+            className="flex justify-center items-center gap-2 bg-surface-2 border border-border rounded-lg py-2 text-sm text-text hover:bg-muted transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1Z" />
@@ -327,7 +327,7 @@ export function SignInPage() {
           </button>
           <button
             onClick={() => handleOAuth('apple')}
-            className="flex justify-center items-center gap-2 bg-surface-2 border border-border rounded-lg py-2.5 text-sm text-text hover:bg-muted transition-colors"
+            className="flex justify-center items-center gap-2 bg-surface-2 border border-border rounded-lg py-2 text-sm text-text hover:bg-muted transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="currentColor" d="M14.24,5.42C14.39,4.1 15.34,3.09 16.59,2.83C16.84,4.2 16.03,5.4 14.88,6.31C14.61,6.54 14.3,6.7 13.97,6.81C13.85,5.55 14.24,5.42 14.24,5.42M19.12,14.41C19.12,18 16.54,21 14.5,21C13.19,21 12.44,20.35 11.23,20.35C9.97,20.35 9,21 7.84,21C5.7,21 3.26,17.84 3.26,13.68C3.26,10.15 5.5,8.12 7.87,8.12C9.09,8.12 10,8.71 10.96,8.71C11.96,8.71 13.1,8 14.47,8C15.93,8 17.15,8.68 17.87,9.75C14.73,11.59 15.42,15.65 19.12,14.41Z" />

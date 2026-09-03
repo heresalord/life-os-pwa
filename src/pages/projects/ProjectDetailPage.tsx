@@ -262,20 +262,20 @@ export function ProjectDetailPage() {
           />
 
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-[10px] font-bold text-text-secondary bg-surface-2 border border-border/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-text-secondary bg-surface-2 border border-border/80 px-3 py-0.5 rounded-full uppercase tracking-wider">
               Project Area
             </span>
             {project.archived && (
-              <span className="text-[10px] font-bold bg-muted border border-border text-text-muted px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] font-bold bg-muted border border-border text-text-muted px-3 py-0.5 rounded-full uppercase tracking-wider">
                 Archived
               </span>
             )}
-            <span className="text-[10px] font-bold bg-accent/10 border border-accent/20 text-accent px-2.5 py-0.5 rounded-full uppercase tracking-wider ml-auto">
+            <span className="text-[10px] font-bold bg-accent/10 border border-accent/20 text-accent px-3 py-0.5 rounded-full uppercase tracking-wider ml-auto">
               {progress}% Done
             </span>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <h2 className="text-xl font-display text-text leading-tight">{project.name}</h2>
             {project.description && (
               <p className="text-xs text-text-secondary leading-relaxed max-w-2xl">
@@ -285,7 +285,7 @@ export function ProjectDetailPage() {
           </div>
 
           {/* Overall progress bar */}
-          <div className="space-y-1.5 pt-2">
+          <div className="space-y-2 pt-2">
             <div className="w-full bg-surface-2 rounded-full h-2 overflow-hidden border border-border/50">
               <div
                 className="h-full rounded-full transition-all duration-500"
@@ -366,7 +366,7 @@ export function ProjectDetailPage() {
                 type="button"
                 onClick={handleSaveProject}
                 disabled={updateProject.isPending}
-                className="flex-1 bg-accent text-bg font-semibold rounded-xl py-2.5 hover:bg-accent-dim text-xs transition-colors shadow-sm"
+                className="flex-1 bg-accent text-bg font-semibold rounded-xl py-2 hover:bg-accent-dim text-xs transition-colors shadow-sm"
               >
                 <Save size={13} className="inline mr-1" /> Save Changes
               </button>
@@ -395,7 +395,7 @@ export function ProjectDetailPage() {
               <select
                 value={selectedGoalToLink}
                 onChange={e => setSelectedGoalToLink(e.target.value)}
-                className="bg-surface border border-border rounded-xl px-2.5 py-2 text-xs text-text focus:outline-none focus:border-accent cursor-pointer"
+                className="bg-surface border border-border rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:border-accent cursor-pointer"
               >
                 <option value="">Choose Goal to Link...</option>
                 {unlinkedGoals.map(g => (
@@ -457,7 +457,7 @@ export function ProjectDetailPage() {
             placeholder="Add task to this project..."
             value={newTaskTitle}
             onChange={e => setNewTaskTitle(e.target.value)}
-            className="flex-1 bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-xs text-text placeholder-text-muted focus:outline-none transition-colors"
+            className="flex-1 bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-xs text-text placeholder-text-muted focus:outline-none transition-colors"
           />
           <button
             type="submit"

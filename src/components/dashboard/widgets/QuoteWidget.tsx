@@ -37,7 +37,7 @@ export function QuoteWidget() {
       className="bg-surface border border-border rounded-2xl p-4.5 flex flex-col justify-between h-full cursor-pointer hover:border-accent/40 hover:shadow-sm transition-all group"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-2.5 flex-shrink-0">
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Quote size={14} className="text-accent group-hover:scale-110 transition-transform" />
           <span className="font-semibold text-text uppercase tracking-wider text-[11px]">Quote of the Day</span>
@@ -55,13 +55,13 @@ export function QuoteWidget() {
           </p>
         ) : (
           <>
-            <blockquote className="text-xs text-text-secondary leading-relaxed italic my-auto font-medium pl-2.5 border-l-2 border-accent/30">
+            <blockquote className="text-xs text-text-secondary leading-relaxed italic my-auto font-medium pl-3 border-l-2 border-accent/30">
               "{quote.text}"
             </blockquote>
             
             {/* Attribution */}
             {(quote.book_title || quote.book_author) && (
-              <p className="text-[10px] text-text-muted pl-2.5">
+              <p className="text-[10px] text-text-muted pl-3">
                 — {quote.book_author ? `${quote.book_author}` : ''}{quote.book_author && quote.book_title ? ', ' : ''}{quote.book_title ? <em>{quote.book_title}</em> : ''}
                 {quote.page ? ` · p. ${quote.page}` : ''}
               </p>
@@ -69,7 +69,7 @@ export function QuoteWidget() {
 
             {/* Navigation (Only show if multiple quotes) */}
             {quotes.length > 1 && (
-              <div className="flex items-center justify-between pt-2.5 border-t border-border/40 flex-shrink-0">
+              <div className="flex items-center justify-between pt-3 border-t border-border/40 flex-shrink-0">
                 <button
                   onClick={handlePrev}
                   className="p-1 text-text-muted hover:text-accent transition-colors rounded-lg hover:bg-accent/10"

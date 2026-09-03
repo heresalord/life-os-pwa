@@ -390,7 +390,7 @@ export function ProfilePage() {
 
         {/* List of Shared Items */}
         {(sharedItems.sent.length > 0 || sharedItems.received.length > 0) && (
-          <div className="space-y-3.5 pt-2 border-t border-border/60">
+          <div className="space-y-4 pt-2 border-t border-border/60">
             <h4 className="text-xs font-bold text-text flex items-center gap-2">
               <Users size={14} className="text-text-muted" />
               Active Collaborations
@@ -398,7 +398,7 @@ export function ProfilePage() {
             
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {sharedItems.received.map(item => (
-                <div key={item.id} className="flex items-center justify-between text-xs p-2.5 bg-surface-2 border border-border rounded-xl">
+                <div key={item.id} className="flex items-center justify-between text-xs p-3 bg-surface-2 border border-border rounded-xl">
                   <div>
                     <span className="font-semibold text-text capitalize">{item.item_type}</span> share received from
                     <span className="block text-[10px] text-text-muted mt-0.5 font-medium">{item.shared_with_email}</span>
@@ -409,7 +409,7 @@ export function ProfilePage() {
                 </div>
               ))}
               {sharedItems.sent.map(item => (
-                <div key={item.id} className="flex items-center justify-between text-xs p-2.5 bg-surface-2 border border-border rounded-xl">
+                <div key={item.id} className="flex items-center justify-between text-xs p-3 bg-surface-2 border border-border rounded-xl">
                   <div>
                     <span className="font-semibold text-text capitalize">{item.item_type}</span> shared by you with
                     <span className="block text-[10px] text-text-muted mt-0.5 font-medium">{item.shared_with_email}</span>
@@ -432,7 +432,7 @@ export function ProfilePage() {
       {/* Info Rows */}
       <div className="bg-surface border border-border rounded-2xl shadow-[var(--shadow-card)] overflow-hidden divide-y divide-border/60">
         {/* Email row */}
-        <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="flex items-center gap-3 px-4 py-4">
           <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center">
             <Mail size={15} className="text-text-muted" />
           </div>
@@ -443,7 +443,7 @@ export function ProfilePage() {
         </div>
 
         {/* Timezone row */}
-        <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="flex items-center gap-3 px-4 py-4">
           <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center">
             <Globe size={15} className="text-text-muted" />
           </div>
@@ -454,7 +454,7 @@ export function ProfilePage() {
         </div>
 
         {/* Auth provider */}
-        <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="flex items-center gap-3 px-4 py-4">
           <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center">
             <Shield size={15} className="text-text-muted" />
           </div>
@@ -469,7 +469,7 @@ export function ProfilePage() {
         {/* Master Recovery Key row */}
         <div
           onClick={() => setShowRecoveryModal(true)}
-          className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2/50 transition-colors cursor-pointer"
+          className="flex items-center gap-3 px-4 py-4 hover:bg-surface-2/50 transition-colors cursor-pointer"
         >
           <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
             <Key size={15} className="text-accent" />
@@ -494,7 +494,7 @@ export function ProfilePage() {
         {/* Settings link */}
         <a
           href="/settings"
-          className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2/50 transition-colors"
+          className="flex items-center gap-3 px-4 py-4 hover:bg-surface-2/50 transition-colors"
         >
           <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center">
             <Globe size={15} className="text-text-muted" />
@@ -510,7 +510,7 @@ export function ProfilePage() {
       {/* Sign Out */}
       <button
         onClick={signOut}
-        className="w-full flex items-center justify-center gap-2 py-3.5 bg-surface border border-border rounded-2xl text-sm font-medium text-danger hover:bg-danger/5 hover:border-danger/30 transition-all shadow-sm"
+        className="w-full flex items-center justify-center gap-2 py-4 bg-surface border border-border rounded-2xl text-sm font-medium text-danger hover:bg-danger/5 hover:border-danger/30 transition-all shadow-sm"
       >
         <LogOut size={15} />
         Sign Out

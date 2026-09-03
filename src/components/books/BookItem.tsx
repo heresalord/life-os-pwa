@@ -551,7 +551,7 @@ export function BookItem({
             >
               <Trash2 size={14} />
             </button>
-            <span className={clsx('absolute bottom-3 left-3 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full backdrop-blur-md bg-surface/90 border border-border/50', statusColor)}>
+            <span className={clsx('absolute bottom-3 left-3 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-md bg-surface/90 border border-border/50', statusColor)}>
               {statusLabel}
             </span>
           </div>
@@ -559,7 +559,7 @@ export function BookItem({
           {/* Details on right */}
           <div className="p-6 flex-1 flex flex-col justify-between gap-4">
             <div className="space-y-2">
-              <span className="text-[10px] bg-accent/10 text-accent border border-accent/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+              <span className="text-[10px] bg-accent/10 text-accent border border-accent/20 px-3 py-0.5 rounded-full font-bold uppercase tracking-wider">
                 Hero Reading
               </span>
               <button
@@ -611,11 +611,11 @@ export function BookItem({
             </div>
 
             {/* Actions row — icon-only on mobile, icon+label on sm+ */}
-            <div className="flex items-center gap-1.5 pt-3 border-t border-border/40">
+            <div className="flex items-center gap-2 pt-3 border-t border-border/40">
               <button
                 onClick={() => setShowFinish(true)}
                 title="Mark as Finished"
-                className="flex items-center gap-1.5 p-2 sm:px-3.5 sm:py-2 bg-success/15 hover:bg-success/25 text-success text-xs font-bold rounded-xl transition-all"
+                className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 bg-success/15 hover:bg-success/25 text-success text-xs font-bold rounded-xl transition-all"
               >
                 <CheckCheck size={15} />
                 <span className="hidden sm:inline">Finished</span>
@@ -623,16 +623,16 @@ export function BookItem({
               <button
                 onClick={() => setShowAbandon(true)}
                 title="Abandon book"
-                className="flex items-center gap-1.5 p-2 sm:px-3.5 sm:py-2 bg-warning/15 hover:bg-warning/25 text-warning text-xs font-bold rounded-xl transition-all"
+                className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 bg-warning/15 hover:bg-warning/25 text-warning text-xs font-bold rounded-xl transition-all"
               >
                 <BookX size={15} />
                 <span className="hidden sm:inline">Abandon</span>
               </button>
-              <div className="flex items-center gap-1.5 ml-auto">
+              <div className="flex items-center gap-2 ml-auto">
                 <button
                   onClick={() => setShowQuotes(true)}
                   title="Quotes"
-                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
+                  className="flex items-center gap-2 p-2 sm:px-3 sm:py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
                 >
                   <Quote size={14} />
                   <span className="hidden sm:inline">Quotes</span>
@@ -640,7 +640,7 @@ export function BookItem({
                 <button
                   onClick={() => setShowEdit(true)}
                   title="Edit"
-                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
+                  className="flex items-center gap-2 p-2 sm:px-3 sm:py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
                 >
                   <Pencil size={14} />
                   <span className="hidden sm:inline">Edit</span>
@@ -779,7 +779,7 @@ export function BookItem({
           )}
 
           {/* Actions row */}
-          <div className="flex items-center gap-1 mt-2 border-t border-border/40 pt-2.5">
+          <div className="flex items-center gap-1 mt-2 border-t border-border/40 pt-3">
             <button onClick={() => setShowEdit(true)} title="Edit"
               className="p-2 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
               <Pencil size={13} />

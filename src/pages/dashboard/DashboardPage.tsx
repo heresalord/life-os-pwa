@@ -346,7 +346,7 @@ export function DashboardPage() {
       {/* Hero Header */}
       <header className="flex items-end justify-between gap-3 pt-1">
         <div className="min-w-0">
-          <p className="text-sm text-text-secondary font-body flex items-center gap-1.5">
+          <p className="text-sm text-text-secondary font-body flex items-center gap-2">
             {icon} {greeting}
           </p>
           <h1 className="font-display text-3xl font-bold text-text tracking-tight mt-0.5">
@@ -361,7 +361,7 @@ export function DashboardPage() {
               {hiddenWidgets.length > 0 && (
                 <button
                   onClick={() => setShowAddMenu(true)}
-                  className="flex items-center gap-2 px-3.5 py-2 bg-accent/10 border border-accent/20 text-accent text-xs font-semibold rounded-xl hover:bg-accent/20 transition-all shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-accent/10 border border-accent/20 text-accent text-xs font-semibold rounded-xl hover:bg-accent/20 transition-all shadow-sm"
                 >
                   <Plus size={14} /> Add Widget
                 </button>

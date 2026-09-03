@@ -36,7 +36,7 @@ export function RecentNotesWidget() {
             <p className="text-[10px] opacity-75 mt-0.5">Tap to write your first note</p>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {recentNotes.map(n => {
               // Try to format date
               let formattedDate = n.date

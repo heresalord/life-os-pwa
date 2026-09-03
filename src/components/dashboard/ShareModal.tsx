@@ -97,7 +97,7 @@ export function ShareModal({ isOpen, onClose, itemType, itemId, itemName }: Shar
               <button
                 type="submit"
                 disabled={loading || !email.trim()}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-bg font-semibold rounded-xl text-xs hover:bg-accent-dim transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-2 bg-accent text-bg font-semibold rounded-xl text-xs hover:bg-accent-dim transition-colors disabled:opacity-50"
               >
                 {loading ? (
                   <div className="w-4 h-4 border-2 border-bg/40 border-t-bg rounded-full animate-spin" />
@@ -110,7 +110,7 @@ export function ShareModal({ isOpen, onClose, itemType, itemId, itemName }: Shar
               </button>
             </form>
           ) : (
-            <div className="space-y-3.5 bg-surface-2 border border-border/80 rounded-xl p-4 text-center">
+            <div className="space-y-4 bg-surface-2 border border-border/80 rounded-xl p-4 text-center">
               <p className="text-[11px] text-text-secondary">
                 Share this unique code with the user:
               </p>

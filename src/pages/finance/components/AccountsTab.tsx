@@ -80,7 +80,7 @@ function AddAccountSheet({ currency: defaultCurrency, onClose }: { currency: str
             const Icon = t.icon
             return (
               <button key={t.value} onClick={() => setType(t.value)}
-                className={clsx('flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border text-xs font-medium transition-all',
+                className={clsx('flex flex-col items-center gap-1 py-2 px-2 rounded-xl border text-xs font-medium transition-all',
                   type === t.value ? 'bg-accent/10 border-accent text-accent' : 'border-border text-text-muted hover:text-text')}>
                 <Icon size={18} />{t.label}
               </button>
@@ -186,7 +186,7 @@ function EditAccountSheet({
             const Icon = t.icon
             return (
               <button key={t.value} onClick={() => setType(t.value)}
-                className={clsx('flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border text-xs font-medium transition-all',
+                className={clsx('flex flex-col items-center gap-1 py-2 px-2 rounded-xl border text-xs font-medium transition-all',
                   type === t.value ? 'bg-accent/10 border-accent text-accent' : 'border-border text-text-muted hover:text-text')}>
                 <Icon size={18} />{t.label}
               </button>
@@ -422,11 +422,11 @@ export function AccountsTab({ currency }: { currency: string }) {
       {/* Action buttons */}
       <div className="flex gap-2">
         <button onClick={() => setSheet('add_account')}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+          className="flex-1 flex items-center justify-center gap-2 py-2 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
           <Plus size={16} /> New Account
         </button>
         <button onClick={() => setSheet('transfer')} disabled={wallets.length < 2}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-40">
+          className="flex-1 flex items-center justify-center gap-2 py-2 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-40">
           <ArrowLeftRight size={16} /> Transfer Funds
         </button>
       </div>

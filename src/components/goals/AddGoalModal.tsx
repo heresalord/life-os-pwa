@@ -238,7 +238,7 @@ export function AddGoalModal({ open: openProp, onOpenChange }: Props = {}) {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       {!isControlled && (
         <Dialog.Trigger asChild>
-          <button className="w-full flex items-center justify-center gap-2 py-3.5 bg-surface-2 border border-dashed border-border rounded-2xl text-text-secondary hover:text-text hover:border-text-muted transition-all duration-200 text-sm font-medium shadow-sm hover:shadow active:scale-98">
+          <button className="w-full flex items-center justify-center gap-2 py-4 bg-surface-2 border border-dashed border-border rounded-2xl text-text-secondary hover:text-text hover:border-text-muted transition-all duration-200 text-sm font-medium shadow-sm hover:shadow active:scale-98">
             <Plus size={16} /> New Goal
           </button>
         </Dialog.Trigger>
@@ -306,7 +306,7 @@ export function AddGoalModal({ open: openProp, onOpenChange }: Props = {}) {
                 placeholder="e.g. Read 20 books"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-sm text-text placeholder-text-muted focus:outline-none transition-colors"
+                className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text placeholder-text-muted focus:outline-none transition-colors"
               />
             </div>
 
@@ -428,7 +428,7 @@ export function AddGoalModal({ open: openProp, onOpenChange }: Props = {}) {
                     placeholder="e.g. 100"
                     value={target}
                     onChange={e => setTarget(e.target.value)}
-                    className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-sm text-text focus:outline-none transition-colors"
+                    className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text focus:outline-none transition-colors"
                   />
                 </div>
                 <div>
@@ -457,7 +457,7 @@ export function AddGoalModal({ open: openProp, onOpenChange }: Props = {}) {
                   rows={2}
                   value={initialMilestones}
                   onChange={e => setInitialMilestones(e.target.value)}
-                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-sm text-text placeholder-text-muted focus:outline-none transition-colors resize-none"
+                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text placeholder-text-muted focus:outline-none transition-colors resize-none"
                 />
               </div>
             )}
@@ -484,7 +484,7 @@ export function AddGoalModal({ open: openProp, onOpenChange }: Props = {}) {
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-sm text-text focus:outline-none transition-colors"
+                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text focus:outline-none transition-colors"
                 />
               </div>
               <div>
@@ -493,7 +493,7 @@ export function AddGoalModal({ open: openProp, onOpenChange }: Props = {}) {
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2.5 text-sm text-text focus:outline-none transition-colors"
+                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text focus:outline-none transition-colors"
                 />
               </div>
             </div>

@@ -49,7 +49,7 @@ export function TaskListSkeleton({ count = 4 }: { count?: number }) {
 
 export function InboxCardSkeleton() {
   return (
-    <div className="p-4 bg-surface border border-border rounded-2xl space-y-2.5">
+    <div className="p-4 bg-surface border border-border rounded-2xl space-y-3">
       <div className="skeleton h-4 rounded w-full" />
       <div className="skeleton h-4 rounded w-4/5" />
       <div className="skeleton h-3 rounded w-1/4 mt-1" />
@@ -107,7 +107,7 @@ export function TransactionRowSkeleton() {
   return (
     <div className="flex items-center gap-3 py-3 px-4">
       <div className="skeleton w-9 h-9 rounded-xl flex-shrink-0" />
-      <div className="flex-1 space-y-1.5">
+      <div className="flex-1 space-y-2">
         <div className="skeleton h-4 rounded w-1/2" />
         <div className="skeleton h-3 rounded w-1/4" />
       </div>

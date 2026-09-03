@@ -137,7 +137,7 @@ Never share these words with anyone.
           {step === 'view' && (
             <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
                     <Lock size={18} />
                   </div>
@@ -155,7 +155,7 @@ Never share these words with anyone.
                 </Dialog.Close>
               </div>
 
-              <div className="bg-warning/10 border border-warning/25 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-text-secondary leading-relaxed">
+              <div className="bg-warning/10 border border-warning/25 rounded-2xl p-4 flex items-start gap-3 text-xs text-text-secondary leading-relaxed">
                 <AlertTriangle size={16} className="text-warning flex-shrink-0 mt-0.5" />
                 <p>
                   Write down these <strong>12 words in order</strong>. If you ever forget your password, this is the only key that can restore your account without sending emails.
@@ -163,7 +163,7 @@ Never share these words with anyone.
               </div>
 
               {/* 12 Word Grid */}
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 select-all">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 select-all">
                 {phrase.map((word, idx) => (
                   <div
                     key={idx}
@@ -183,14 +183,14 @@ Never share these words with anyone.
               <div className="flex gap-2">
                 <button
                   onClick={handleCopy}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-surface-2 hover:bg-muted border border-border text-text font-medium text-xs rounded-xl transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-surface-2 hover:bg-muted border border-border text-text font-medium text-xs rounded-xl transition-colors"
                 >
                   {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
                   {copied ? 'Copied to Clipboard' : 'Copy Phrase'}
                 </button>
                 <button
                   onClick={handleDownload}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-surface-2 hover:bg-muted border border-border text-text font-medium text-xs rounded-xl transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-surface-2 hover:bg-muted border border-border text-text font-medium text-xs rounded-xl transition-colors"
                 >
                   <Download size={14} />
                   Download .txt
@@ -211,7 +211,7 @@ Never share these words with anyone.
           {step === 'quiz' && (
             <div className="space-y-5 animate-in fade-in duration-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
                     <ShieldCheck size={18} />
                   </div>
@@ -239,7 +239,7 @@ Never share these words with anyone.
               )}
 
               {/* Target Slots */}
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 {quizPositions.map((pos, slotIdx) => {
                   const filledWord = selectedAnswers[slotIdx]
                   return (
@@ -265,7 +265,7 @@ Never share these words with anyone.
 
               {/* Word Chips Bank */}
               <div>
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2.5">
+                <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-3">
                   Select matching words:
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -276,7 +276,7 @@ Never share these words with anyone.
                         key={word}
                         disabled={isSelected}
                         onClick={() => handleChipClick(word)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-mono transition-all ${
+                        className={`px-4 py-2 rounded-xl text-xs font-mono transition-all ${
                           isSelected
                             ? 'bg-surface-2/40 border border-border/40 text-text-muted/40 cursor-not-allowed'
                             : 'bg-surface-2 border border-border text-text hover:border-accent hover:text-accent font-medium active:scale-95'
@@ -319,7 +319,7 @@ Never share these words with anyone.
                 <h3 className="text-lg font-display font-bold text-text">
                   Account Fully Protected
                 </h3>
-                <p className="text-xs text-text-secondary mt-1.5 max-w-sm mx-auto leading-relaxed">
+                <p className="text-xs text-text-secondary mt-2 max-w-sm mx-auto leading-relaxed">
                   Your Master Recovery Key is verified. You can now reset your password at any time without needing email confirmation.
                 </p>
               </div>

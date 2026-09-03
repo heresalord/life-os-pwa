@@ -20,6 +20,7 @@ import {
   FileText, Plus, Search, X, Eye, Edit3,
   FolderOpen, FolderPlus,
   Folder, Pin, BookText, LayoutTemplate, FolderTree, ListTodo,
+  Maximize2, Minimize2,
 } from 'lucide-react'
 import type { Note } from '../../db/schema'
 import ReactMarkdown from 'react-markdown'
@@ -47,10 +48,14 @@ function DesktopNoteEditor({
   note,
   allNotes,
   onOpenNote,
+  isFocusMode,
+  onToggleFocusMode,
 }: {
   note: Note
   allNotes: Note[]
   onOpenNote: (id: string) => void
+  isFocusMode: boolean
+  onToggleFocusMode: () => void
 }) {
   const [title, setTitle]       = useState(note.title)
   const [body, setBody]         = useState(stripTags(note.content || ''))
@@ -63,6 +68,18 @@ function DesktopNoteEditor({
   const { addTask } = useTaskMutations(today)
   const [taskFeedback, setTaskFeedback] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Focus mode keyboard shortcut — Cmd/Ctrl+Shift+F toggles distraction-free writing
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        onToggleFocusMode()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onToggleFocusMode])
 
   useEffect(() => {
     setTitle(note.title)
@@ -146,6 +163,13 @@ function DesktopNoteEditor({
             <Eye size={12} /> Preview
           </button>
         </div>
+        <button
+          onClick={onToggleFocusMode}
+          title={isFocusMode ? 'Exit focus mode (⌘⇧F)' : 'Focus mode (⌘⇧F)'}
+          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-muted hover:text-text transition-colors flex-shrink-0"
+        >
+          {isFocusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        </button>
       </div>
 
       {/* Rich text toolbar (write mode) */}
@@ -158,7 +182,7 @@ function DesktopNoteEditor({
             onCreateTask={handleCreateTask}
           />
           {taskFeedback && (
-            <div className="absolute top-full right-3 mt-2 z-10 flex items-center gap-2 px-2.5 py-2 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="absolute top-full right-3 mt-2 z-10 flex items-center gap-2 px-3 py-2 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
               <ListTodo size={12} className="text-accent flex-shrink-0" />
               <span className="truncate max-w-[220px]">Added “{taskFeedback}” to Tasks</span>
             </div>
@@ -200,7 +224,7 @@ function DesktopNoteEditor({
       </div>
 
       {/* Footer: word count + tags */}
-      <div className="flex-shrink-0 border-t border-border px-5 py-2.5 bg-surface">
+      <div className="flex-shrink-0 border-t border-border px-5 py-2 bg-surface">
         <div className="flex items-center gap-3">
           <span className="text-[11px] text-text-muted flex-shrink-0 tabular-nums">
             {wordCount} {wordCount === 1 ? 'word' : 'words'} · {readTime} min read
@@ -266,6 +290,7 @@ export function NotesPage() {
   const [newFolderInput, setNewFolderInput] = useState('')
   const [showNewFolder, setShowNewFolder]   = useState(false)
   const [folderSidebarOpen, setFolderSidebarOpen] = useState(true)
+  const [isFocusMode, setIsFocusMode] = useState(false)
 
   const activeNote = (notes as Note[]).find(n => n.id === activeNoteId) || null
   const allFolders = [...SYSTEM_FOLDERS, ...customFolders]
@@ -389,10 +414,10 @@ export function NotesPage() {
   return (
     <div className="lg:flex lg:gap-5 lg:items-start lg:max-w-7xl">
 
-      {/* ── Folder sidebar (desktop) ── */}
+      {/* ── Folder sidebar (desktop) ── hidden entirely while in focus mode */}
       <div className={clsx(
         'hidden lg:flex flex-col gap-1 flex-shrink-0 transition-all duration-200',
-        folderSidebarOpen ? 'w-44' : 'w-10'
+        isFocusMode ? 'lg:hidden' : (folderSidebarOpen ? 'w-44' : 'w-10')
       )}>
         {/* Sidebar toggle */}
         <button
@@ -410,7 +435,7 @@ export function NotesPage() {
                 key={f}
                 onClick={() => setActiveFolder(f)}
                 className={clsx(
-                  'flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-sm transition-all w-full',
+                  'flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left text-sm transition-all w-full',
                   activeFolder === f
                     ? 'bg-accent/15 text-accent font-medium'
                     : 'text-text-secondary hover:bg-surface-2 hover:text-text'
@@ -426,7 +451,7 @@ export function NotesPage() {
 
             {/* New folder */}
             {showNewFolder ? (
-              <div className="flex items-center gap-1 px-2.5 mt-1">
+              <div className="flex items-center gap-1 px-3 mt-1">
                 <input
                   autoFocus
                   type="text"
@@ -441,7 +466,7 @@ export function NotesPage() {
             ) : (
               <button
                 onClick={() => setShowNewFolder(true)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors text-xs w-full mt-1"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors text-xs w-full mt-1"
               >
                 <FolderPlus size={13} /> New folder
               </button>
@@ -450,8 +475,8 @@ export function NotesPage() {
         )}
       </div>
 
-      {/* ── List pane ── */}
-      <div className="flex-shrink-0 lg:w-72 space-y-3">
+      {/* ── List pane ── hidden entirely while in focus mode */}
+      <div className={clsx('flex-shrink-0 lg:w-72 space-y-3', isFocusMode && 'lg:hidden')}>
         {/* Header */}
         <header className="flex items-center justify-between pb-3">
           <div>
@@ -506,7 +531,7 @@ export function NotesPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search notes…"
-              className="w-full bg-surface border border-border rounded-xl pl-9 pr-9 py-2.5 text-sm text-text placeholder-text-muted focus:border-accent focus:outline-none"
+              className="w-full bg-surface border border-border rounded-xl pl-9 pr-9 py-2 text-sm text-text placeholder-text-muted focus:border-accent focus:outline-none"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text">
@@ -523,7 +548,7 @@ export function NotesPage() {
               <button
                 key={tag}
                 onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all ${
+                className={`text-xs px-3 py-1 rounded-full font-medium transition-all ${
                   activeTag === tag
                     ? 'bg-accent text-bg'
                     : 'bg-accent/10 text-accent hover:bg-accent/20'
@@ -533,7 +558,7 @@ export function NotesPage() {
               </button>
             ))}
             {activeTag && (
-              <button onClick={() => setActiveTag(null)} className="text-xs px-2.5 py-1 rounded-full text-text-muted hover:text-text bg-surface-2 border border-border transition-colors">
+              <button onClick={() => setActiveTag(null)} className="text-xs px-3 py-1 rounded-full text-text-muted hover:text-text bg-surface-2 border border-border transition-colors">
                 Clear
               </button>
             )}
@@ -585,7 +610,7 @@ export function NotesPage() {
         )}
       </div>
 
-      {/* ── Desktop inline editor ── */}
+      {/* ── Desktop inline editor ── takes the full row when focus mode is on */}
       <div className="hidden lg:block flex-1 sticky top-20">
         {activeNote
           ? <DesktopNoteEditor
@@ -593,6 +618,8 @@ export function NotesPage() {
               note={activeNote}
               allNotes={notes as Note[]}
               onOpenNote={id => { setActiveNoteId(id) }}
+              isFocusMode={isFocusMode}
+              onToggleFocusMode={() => setIsFocusMode(v => !v)}
             />
           : <DesktopEditorPlaceholder />
         }

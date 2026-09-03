@@ -220,7 +220,7 @@ export function AuthorPage() {
             )}
           </div>
 
-          <div className="flex-1 min-w-0 space-y-1.5">
+          <div className="flex-1 min-w-0 space-y-2">
             <h1 className="text-2xl font-display font-bold text-text leading-tight">{authorResult.name}</h1>
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
@@ -269,9 +269,9 @@ export function AuthorPage() {
 
         {/* Subject tags */}
         {authorResult.top_subjects && authorResult.top_subjects.length > 0 && (
-          <div className="px-6 pb-5 flex flex-wrap gap-1.5">
+          <div className="px-6 pb-5 flex flex-wrap gap-2">
             {authorResult.top_subjects.slice(0, 8).map(s => (
-              <span key={s} className="text-[10px] px-2.5 py-0.5 bg-accent/8 text-accent border border-accent/15 rounded-full font-medium">
+              <span key={s} className="text-[10px] px-3 py-0.5 bg-accent/8 text-accent border border-accent/15 rounded-full font-medium">
                 {s}
               </span>
             ))}
@@ -320,7 +320,7 @@ export function AuthorPage() {
                     <BookCover coverUrl={book.cover_url} title={book.title} />
                     <div className="space-y-1">
                       <p className="text-xs font-semibold text-text leading-snug truncate group-hover:text-accent transition-colors">{book.title}</p>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         <StatusBadge status="finished" />
                         {book.rating && <span className="text-[10px] text-warning font-bold">{'★'.repeat(book.rating)}</span>}
                       </div>
@@ -389,7 +389,7 @@ export function AuthorPage() {
                       className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
                       style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)' }}
                     >
-                      <span className="flex items-center gap-1 bg-accent text-bg text-[10px] font-bold px-2.5 py-1.5 rounded-full shadow-lg">
+                      <span className="flex items-center gap-1 bg-accent text-bg text-[10px] font-bold px-3 py-2 rounded-full shadow-lg">
                         <Plus size={10} /> Add to Library
                       </span>
                     </button>

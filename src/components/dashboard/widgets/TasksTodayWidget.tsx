@@ -65,7 +65,7 @@ export function TasksTodayWidget() {
             <p className="text-[10px] opacity-75 mt-0.5">Tap to view all tasks</p>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {pendingTasks.map(t => (
               <div
                 key={t.id}

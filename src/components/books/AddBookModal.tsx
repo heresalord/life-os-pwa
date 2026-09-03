@@ -216,7 +216,7 @@ export function AddBookModal({
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
                   placeholder="Search by title or author…"
-                  className="selectable w-full bg-surface-2 border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-text focus:border-accent focus:outline-none" />
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl pl-9 pr-4 py-2 text-sm text-text focus:border-accent focus:outline-none" />
                 {searching && <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted animate-spin" />}
               </div>
 
@@ -224,7 +224,7 @@ export function AddBookModal({
                 <div className="absolute z-10 left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-xl overflow-hidden max-h-64 overflow-y-auto">
                   {suggestions.map((s, i) => (
                     <button key={i} type="button" onClick={() => pickSuggestion(s)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-2 transition-colors text-left border-b border-border last:border-0">
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-surface-2 transition-colors text-left border-b border-border last:border-0">
                       {s.coverUrl
                         ? <img src={s.coverUrl} alt="" className="w-8 h-12 object-cover rounded flex-shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
                         : <div className="w-8 h-12 bg-surface-2 rounded flex-shrink-0 flex items-center justify-center text-text-muted text-lg">📘</div>
@@ -256,9 +256,9 @@ export function AddBookModal({
                 <div>
                   <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Title</label>
                   <input required value={title} onChange={e => { setTitle(e.target.value); setDuplicateError(false) }} placeholder="Book title"
-                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none" />
+                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none" />
                   {duplicateError && (
-                    <p className="flex items-center gap-1.5 text-xs text-danger mt-1.5">
+                    <p className="flex items-center gap-2 text-xs text-danger mt-2">
                       <AlertCircle size={12} /> This book is already in your library.
                     </p>
                   )}
@@ -266,7 +266,7 @@ export function AddBookModal({
                 <div>
                   <label className="block text-xs text-text-muted mb-1 uppercase tracking-wider">Author</label>
                   <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Optional"
-                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none" />
+                    className="selectable w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text focus:border-accent focus:outline-none" />
                 </div>
               </div>
             </div>
@@ -275,7 +275,7 @@ export function AddBookModal({
               <div className="flex-1">
                 <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Pages</label>
                 <input type="number" min="1" value={pages} onChange={e => setPages(e.target.value)} placeholder="Optional"
-                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text focus:border-accent focus:outline-none" />
+                  className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-2 text-text focus:border-accent focus:outline-none" />
               </div>
               <div className="flex-[2]">
                 <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Status</label>

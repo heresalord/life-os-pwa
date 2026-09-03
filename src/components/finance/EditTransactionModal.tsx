@@ -150,7 +150,7 @@ export function EditTransactionModal({ transaction, open, onClose }: Props) {
             </div>
 
             <button type="submit" disabled={!amount || updateTransaction.isPending}
-              className={`w-full py-3.5 text-bg font-medium rounded-xl transition-colors disabled:opacity-50 ${isAdjustment ? 'bg-amber-500 hover:bg-amber-400' : type === 'income' ? 'bg-success hover:bg-success/90' : 'bg-accent hover:bg-accent-dim'}`}>
+              className={`w-full py-4 text-bg font-medium rounded-xl transition-colors disabled:opacity-50 ${isAdjustment ? 'bg-amber-500 hover:bg-amber-400' : type === 'income' ? 'bg-success hover:bg-success/90' : 'bg-accent hover:bg-accent-dim'}`}>
               {updateTransaction.isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </form>

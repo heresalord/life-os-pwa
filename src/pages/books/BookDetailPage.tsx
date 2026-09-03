@@ -288,17 +288,17 @@ export function BookDetailPage() {
         </div>
 
         <div className="flex flex-wrap justify-center gap-2 items-center">
-          <span className={clsx('text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border', statusColor)}>
+          <span className={clsx('text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full border', statusColor)}>
             {statusLabel}
           </span>
           {sourceLabelObj && SourceIcon && (
-            <span className="flex items-center gap-1 text-[10px] font-medium bg-surface-2 border border-border text-text-secondary px-2.5 py-0.5 rounded-full">
+            <span className="flex items-center gap-1 text-[10px] font-medium bg-surface-2 border border-border text-text-secondary px-3 py-0.5 rounded-full">
               <SourceIcon size={10} />
               <span>{sourceLabelObj.label}</span>
             </span>
           )}
           {book.genre && (
-            <span className="text-[10px] font-medium bg-accent/10 border border-accent/25 text-accent px-2.5 py-0.5 rounded-full">
+            <span className="text-[10px] font-medium bg-accent/10 border border-accent/25 text-accent px-3 py-0.5 rounded-full">
               🏷️ {book.genre}
             </span>
           )}
@@ -325,7 +325,7 @@ export function BookDetailPage() {
               haptic('light')
               setShowLogModal(true)
             }}
-            className="mt-1 px-5 py-2.5 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors flex items-center gap-2 shadow-sm"
+            className="mt-1 px-5 py-2 bg-accent text-bg font-semibold text-xs rounded-xl hover:bg-accent-dim transition-colors flex items-center gap-2 shadow-sm"
           >
             <BookOpen size={14} /> Update Progress
           </button>
@@ -378,7 +378,7 @@ export function BookDetailPage() {
               {stats.badges.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {stats.badges.map(b => (
-                    <span key={b.label} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent flex items-center gap-1">
+                    <span key={b.label} className="text-[10px] font-bold px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent flex items-center gap-1">
                       {b.icon} {b.label}
                     </span>
                   ))}
@@ -456,7 +456,7 @@ export function BookDetailPage() {
               )}
 
               {/* Recent sessions list */}
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold sticky top-0 bg-surface pb-1">Recent sessions</p>
                 {[...stats.sortedSessions].reverse().slice(0, 8).map(s => (
                   <div key={s.id} className="flex items-center justify-between text-[11px] text-text-secondary bg-surface-2 px-3 py-2 rounded-lg border border-border/60">
@@ -479,7 +479,7 @@ export function BookDetailPage() {
               <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
                 <Award size={14} className="text-success" /> Finish Reflection
               </h3>
-              <div className="space-y-3.5 mt-2">
+              <div className="space-y-4 mt-2">
                 {book.reflection.split('\n\n').map((section, i) => (
                   <div key={i} className="border-l-2 border-success/30 pl-3">
                     {section.split('\n').map((line, j) => (
@@ -508,7 +508,7 @@ export function BookDetailPage() {
         <div className="space-y-5">
 
           {/* Details */}
-          <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)] space-y-3.5 text-xs">
+          <div className="bg-surface border border-border p-4 rounded-2xl shadow-[var(--shadow-card)] space-y-4 text-xs">
             <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Details</h3>
             <div className="space-y-2">
               {[
@@ -546,7 +546,7 @@ export function BookDetailPage() {
                   value={quotePage}
                   onChange={e => setQuotePage(e.target.value)}
                   placeholder="Page #"
-                  className="selectable w-20 bg-surface-2 border border-border rounded-xl px-2.5 py-2 text-xs text-text placeholder-text-muted focus:border-accent focus:outline-none"
+                  className="selectable w-20 bg-surface-2 border border-border rounded-xl px-3 py-2 text-xs text-text placeholder-text-muted focus:border-accent focus:outline-none"
                 />
                 <button type="submit"
                   disabled={!quoteText.trim() || addQuote.isPending}
@@ -555,7 +555,7 @@ export function BookDetailPage() {
                 </button>
               </div>
             </form>
-            <div className="space-y-2.5 pt-2 max-h-72 overflow-y-auto pr-1">
+            <div className="space-y-3 pt-2 max-h-72 overflow-y-auto pr-1">
               {isLoadingQuotes && (
                 <div className="flex justify-center py-4">
                   <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
@@ -634,7 +634,7 @@ export function BookDetailPage() {
                   placeholder="e.g. 30"
                   className="selectable w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text text-lg font-semibold focus:border-accent focus:outline-none"
                 />
-                <p className="text-[11px] text-text-muted mt-1.5">
+                <p className="text-[11px] text-text-muted mt-2">
                   Used to calculate your reading speed.
                 </p>
               </div>

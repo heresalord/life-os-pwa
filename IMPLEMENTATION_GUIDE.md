@@ -1,7 +1,14 @@
 # Life OS — Implementation Guide
 # Phases 6–17: Remaining Work
-# Last updated: July 2026
-# Status: Phases 0–5 complete. Phase 6 partial. Phases 7–17 open.
+# Last updated: September 2026 (status audited against actual source, not assumed)
+# Status: Phases 0–5 complete. Phases 7–12, 14, 15 complete. Phase 6, 13, 16, 17 partial.
+#
+# AUDIT NOTE: A prior status table in this file claimed Phases 7–17 were all
+# "Open" with ~27h remaining. That was inaccurate — most of that work was
+# already implemented in the codebase (often exceeding the spec below, e.g.
+# the Phase 7 guided-mode wizard and Phase 14 books stats page). Before
+# starting any phase, verify against the actual component file first — do
+# not trust a phase's "Open" label alone.
 
 ---
 
@@ -1125,20 +1132,20 @@ Commit: `feat(phase-17): more page iOS grouped list with colored module icons`
 
 ## SUMMARY TABLE
 
-| Phase | Files | Status | Est. time |
-|-------|-------|--------|-----------|
-| 6.3 spacing | grep + fix across all src/ | Open | 1h |
-| 6.9 skeletons | ListTab, InboxPage, GoalsPage, FinancePage | Open | 2h |
-| 7 Daily Log | DailyLogPage.tsx | Open | 3h |
-| 8 Dashboard | DashboardPage.tsx | Open | 2h |
-| 9 Tasks | TasksPage, ListTab, TaskItem | Open | 4h |
-| 10 Finance | FinancePage, AccountsTab, TransactionsTab, BudgetsTab | Open | 3h |
-| 11 Inbox | InboxPage | Open | 2h |
-| 12 Goals | GoalsPage, GoalItem | Open | 2h |
-| 13 Notes | NotesPage, NoteCard | Open | 2h |
-| 14 Books | BooksPage | Open | 2h |
-| 15 Projects | ProjectsPage | Open | 1h |
-| 16 Profile+Settings | ProfilePage, SettingsPage | Open | 2h |
-| 17 More | MorePage | Open | 1h |
+| Phase | Files | Status | Notes |
+|-------|-------|--------|-------|
+| 6.3 spacing | grep + fix across all src/ | **Done** (this pass) | Fixed remaining `py-3.5`/`px-3.5` violations in SettingsPage, MorePage, ProfilePage. Re-audit periodically — new code can reintroduce non-4px values. |
+| 6.9 skeletons | ListTab, InboxPage, GoalsPage, FinancePage, NotesPage, BooksPage, ProjectsPage | Done | `Skeleton.tsx` components confirmed wired into all listed pages. |
+| 7 Daily Log | DailyLogPage.tsx | Done | Guided mode implemented as a full-screen wizard, exceeds original spec. |
+| 8 Dashboard | DashboardPage.tsx | Done | Hero header, anchored year progress, bottom-sheet edit mode all present. |
+| 9 Tasks | TasksPage, ListTab, TaskItem, ContextualFAB | Done | FAB centralized as a shared `ContextualFAB` component rather than per-page (better pattern than spec'd). Swipe actions include an undo grace period. |
+| 10 Finance | FinancePage, AccountsTab, TransactionsTab, BudgetsTab | Done | Note: balance hero exists in both `FinancePage` and `AccountsTab` — minor duplication worth consolidating later. |
+| 11 Inbox | InboxPage | Done | Capture bar, Inbox Zero state, filter chips all present. |
+| 12 Goals | GoalsPage, GoalItem | Done | Filter chips consolidated, hero progress rings present. |
+| 13 Notes | NotesPage, NoteCard | **Done** (this pass) | 13.1 preview snippet and 13.3 search highlighting were already done. 13.2 focus mode (⌘⇧F toggle, hides sidebar/list) added this pass. 13.4 folder colors remain auto-hash-derived, not a user-set picker — still open if the picker specifically is wanted. |
+| 14 Books | BooksPage | Done | Built out beyond spec (reading-speed stats, bookshelf grid). |
+| 15 Projects | ProjectsPage | Done | Gradient accents, status pills, primary button all present. |
+| 16 Profile+Settings | ProfilePage, SettingsPage | Partial | Profile done. Settings uses a 5-tab layout instead of the iOS grouped-list pattern — a reasonable alternative, but a "Delete Account" danger action (spec'd alongside "Export All Data") is still missing; only "Reset Local Cache" exists today. |
+| 17 More | MorePage.tsx | **Done** (this pass) | Per-module accent colors (home/day/tasks/etc.) added to icon tiles this pass, matching the spec's color list. |
 
-Total remaining: ~27 hours of focused implementation.
+Remaining known gaps: Settings "Delete Account" action (16), Notes folder color picker with persisted color field (13.4), and a periodic spacing re-audit (6.3) since new code can reintroduce non-4px values over time.

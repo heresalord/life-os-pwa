@@ -270,7 +270,7 @@ export function DailyLogHistoryPage() {
                 onClick={() => navigate(`/day/${rec.date}`)}
                 className="flex items-center justify-between py-3 px-2 hover:bg-surface-2/60 rounded-xl transition-all cursor-pointer group"
               >
-                <div className="space-y-1.5 min-w-0 pr-4">
+                <div className="space-y-2 min-w-0 pr-4">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-text group-hover:text-accent transition-colors">
                       {displayDate(rec.date, 'EEEE, MMM d, yyyy')}
@@ -303,7 +303,7 @@ export function DailyLogHistoryPage() {
                 {/* Score badge & Chevron */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className={clsx(
-                    'text-xs font-bold px-2.5 py-1 rounded-full border tabular-nums',
+                    'text-xs font-bold px-3 py-1 rounded-full border tabular-nums',
                     (rec.day_score ?? 0) >= 80 ? 'bg-success/10 border-success/20 text-success'
                     : (rec.day_score ?? 0) >= 50 ? 'bg-warning/10 border-warning/20 text-warning'
                     : 'bg-danger/10 border-danger/20 text-danger'

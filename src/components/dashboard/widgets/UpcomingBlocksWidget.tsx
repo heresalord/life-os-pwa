@@ -81,7 +81,7 @@ export function UpcomingBlocksWidget() {
             <p className="text-[10px] opacity-75 mt-0.5">Tap to view full day timeline</p>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {upcoming.map(item => (
               <div
                 key={item.id}

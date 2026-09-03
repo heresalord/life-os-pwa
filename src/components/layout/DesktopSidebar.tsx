@@ -79,7 +79,7 @@ export function DesktopSidebar() {
           <button
             onClick={() => setSidebarPinnedOpen(!pinned)}
             title={pinned ? 'Collapse sidebar' : 'Keep sidebar expanded'}
-            className="lg:hidden p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors flex-shrink-0"
+            className="lg:hidden p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors flex-shrink-0"
           >
             {pinned ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
           </button>
@@ -101,7 +101,7 @@ export function DesktopSidebar() {
                   end={to === '/'}
                   className={({ isActive }) =>
                     clsx(
-                      'sidebar-item group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                      'sidebar-item group relative flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200',
                       isActive 
                         ? 'bg-accent/10 text-accent font-medium' 
                         : 'text-text-secondary hover:text-text hover:bg-surface-2'
@@ -130,7 +130,7 @@ export function DesktopSidebar() {
             to="/search"
             className={({ isActive }) =>
               clsx(
-                'sidebar-item group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                'sidebar-item group relative flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200',
                 isActive 
                   ? 'bg-accent/10 text-accent font-medium' 
                   : 'text-text-secondary hover:text-text hover:bg-surface-2'
@@ -148,7 +148,7 @@ export function DesktopSidebar() {
             to="/settings"
             className={({ isActive }) =>
               clsx(
-                'sidebar-item group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                'sidebar-item group relative flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200',
                 isActive 
                   ? 'bg-accent/10 text-accent font-medium' 
                   : 'text-text-secondary hover:text-text hover:bg-surface-2'
@@ -164,7 +164,7 @@ export function DesktopSidebar() {
             </div>
             <span className={clsx(labelClass, 'text-sm')}>Settings</span>
             {!isRecoveryVerified && (
-              <span className={clsx(labelClass, 'ml-auto text-[9px] bg-warning/15 text-warning font-bold px-1.5 py-0.5 rounded-full')}>
+              <span className={clsx(labelClass, 'ml-auto text-[9px] bg-warning/15 text-warning font-bold px-2 py-0.5 rounded-full')}>
                 !
               </span>
             )}

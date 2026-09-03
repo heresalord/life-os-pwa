@@ -203,7 +203,7 @@ export function NoteCard({
                                 {f === (note as any).folder && (
                                   <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
                                 )}
-                                <span className={f !== (note as any).folder ? 'pl-3.5' : ''}>{f}</span>
+                                <span className={f !== (note as any).folder ? 'pl-4' : ''}>{f}</span>
                               </DropdownMenu.Item>
                             ))}
                           </DropdownMenu.SubContent>
