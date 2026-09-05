@@ -85,6 +85,8 @@ export function GoalDetailPage() {
     updateGoal,
     deleteGoal,
     addEvent,
+    addHabitLog,
+    deleteHabitLog,
     addMilestone,
     toggleMilestone,
     deleteMilestone
@@ -390,6 +392,7 @@ export function GoalDetailPage() {
       // Premium Calendar Heatmap (Last 20 weeks)
       const numWeeks = 20
       const today = new Date()
+      const todayStr = format(today, 'yyyy-MM-dd')
       // Week starts on Mon (1)
       const start = startOfWeek(subDays(today, numWeeks * 7), { weekStartsOn: 1 })
       const end = endOfWeek(today, { weekStartsOn: 1 })
@@ -421,6 +424,20 @@ export function GoalDetailPage() {
         return schDays.includes(d.getDay())
       }
 
+      const handleCellClick = (dateStr: string, currentVal: number | undefined, _isPastDay: boolean, _isTodayDay: boolean) => {
+        haptic('light')
+        if (currentVal === 1) {
+          // Complete -> Explicit Fail
+          addHabitLog.mutate({ goal_id: id, date: dateStr, value: 0 })
+        } else if (currentVal === 0) {
+          // Explicit Fail -> Reset
+          deleteHabitLog.mutate({ goal_id: id, date: dateStr })
+        } else {
+          // Missed (past) or Pending (today) -> Complete
+          addHabitLog.mutate({ goal_id: id, date: dateStr, value: 1 })
+        }
+      }
+
       return (
         <div className="bg-surface border border-border rounded-2xl p-4.5 space-y-4">
           <div className="flex items-center justify-between">
@@ -448,19 +465,36 @@ export function GoalDetailPage() {
                       const dateStr = format(day, 'yyyy-MM-dd')
                       const value = logsMap.get(dateStr)
                       const scheduled = isScheduled(day)
-                      const isFuture = day > today
+                      const isPast = dateStr < todayStr
+                      const isToday = dateStr === todayStr
+                      const isFuture = dateStr > todayStr
+
+                      // A scheduled past day without a successful log is missed (failed)
+                      const isComplete = value === 1
+                      const isExplicitFail = value === 0
+                      const isMissed = isPast && scheduled && value === undefined
 
                       return (
-                        <div
+                        <button
                           key={dIdx}
-                          title={`${dateStr}: ${value === 1 ? '✓ Complete' : value === 0 ? '✗ Skipped/Failed' : 'No Log'}`}
+                          type="button"
+                          disabled={isFuture || !scheduled}
+                          onClick={() => handleCellClick(dateStr, value, isPast, isToday)}
+                          title={`${dateStr} (${format(day, 'EEE')}): ${
+                            isComplete ? '✓ Complete (Tap to change)' :
+                            isExplicitFail ? '✗ Skipped/Failed (Tap to reset)' :
+                            isMissed ? '✗ Missed (Tap to check in)' :
+                            isToday ? 'Pending Today (Tap to check in)' :
+                            scheduled ? 'Scheduled' : 'Not Scheduled'
+                          }`}
                           className={clsx(
-                            'w-3.5 h-3.5 rounded-[4px] border transition-all',
-                            isFuture ? 'bg-transparent border-transparent'
-                            : value === 1 ? 'bg-success border-success/40'
-                            : value === 0 ? 'bg-danger border-danger/40'
-                            : scheduled ? 'bg-surface-2 border-border/80'
-                            : 'bg-transparent border-border/20'
+                            'w-3.5 h-3.5 rounded-[4px] border transition-all select-none',
+                            isFuture ? 'bg-transparent border-transparent cursor-default'
+                            : !scheduled ? 'bg-transparent border-border/20 cursor-default'
+                            : isComplete ? 'bg-success border-success/40 shadow-[0_0_6px_rgba(34,197,94,0.25)] hover:opacity-80 active:scale-90 cursor-pointer'
+                            : (isExplicitFail || isMissed) ? 'bg-danger/25 border-danger/50 text-danger hover:bg-danger/40 active:scale-90 cursor-pointer'
+                            : isToday ? 'bg-surface-2 border-accent ring-1 ring-accent hover:border-success active:scale-90 cursor-pointer animate-pulse'
+                            : 'bg-surface-2 border-border/80 hover:border-text-secondary active:scale-90 cursor-pointer'
                           )}
                         />
                       )
@@ -470,18 +504,25 @@ export function GoalDetailPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-[10px] text-text-muted justify-end">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded bg-success" />
-              <span>Checked</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded bg-danger" />
-              <span>Failed</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded bg-surface-2 border border-border" />
-              <span>Scheduled</span>
+          <div className="flex flex-wrap items-center gap-4 text-[10px] text-text-muted justify-between pt-1">
+            <span className="text-[9px] text-text-muted italic">💡 Tap any day to log or adjust past check-ins</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-[3px] bg-success border border-success/40" />
+                <span>Checked</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-[3px] bg-danger/30 border border-danger/50" />
+                <span>Missed / Failed</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-[3px] bg-surface-2 border border-accent" />
+                <span>Today</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-[3px] bg-surface-2 border border-border" />
+                <span>Scheduled</span>
+              </div>
             </div>
           </div>
         </div>

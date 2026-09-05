@@ -319,14 +319,7 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span.selectable-text {
 .animate-ping-once   { animation: var(--animate-ping-once); }
 .animate-check-bounce { animation: var(--animate-check-bounce); }
 
-/* ── 6.6 Active nav pill (Phase 6.6) ── */
-/* Applied to the active bottom nav item */
-.nav-pill-active {
-  position: relative;
-  background-color: var(--theme-accent-glow);
-  border-radius: var(--radius-full);
-  padding: 4px 12px;
-}
+
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar       { width: 4px; height: 4px; }

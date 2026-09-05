@@ -1,23 +1,18 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays } from 'date-fns'
 import { Flame, Calendar, ChevronRight, TrendingUp, Trophy, Target, CalendarDays, Frown, Annoyed, Meh, Smile, Laugh } from 'lucide-react'
-import { useDb } from '../../db/DbContext'
-import { useAppStore } from '../../store/useAppStore'
-import { displayDate, getUserLocalDate } from '../../lib/dateUtils'
+import { displayDate } from '../../lib/dateUtils'
+import { useDailyLogStreak } from '../../hooks/useDailyLogStreak'
 import clsx from 'clsx'
 
 const MOOD_ICONS = [Frown, Annoyed, Meh, Smile, Laugh]
 const MOOD_LABELS = ['Low', 'Difficult', 'Okay', 'Good', 'Great']
 
 export function DailyLogHistoryPage() {
-  const db = useDb()
   const navigate = useNavigate()
-  const { timezone } = useAppStore()
-
-  // Load records reactively from Dexie
-  const records = useLiveQuery(() => db.daily_records.toArray()) || []
+  const stats = useDailyLogStreak()
+  const records = stats.records
 
   // Create mapping of date -> record
   const recordsMap = useMemo(() => {
@@ -42,73 +37,6 @@ export function DailyLogHistoryPage() {
     return weeks
   }, [])
 
-  // Calculate Streak metrics
-  const stats = useMemo(() => {
-    const todayStr = getUserLocalDate(timezone)
-    const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date))
-    
-    // Total logged days
-    const totalDays = records.length
-    
-    // Average Day Score
-    const scoredRecords = records.filter(r => r.day_score !== null && r.day_score !== undefined)
-    const averageScore = scoredRecords.length 
-      ? Math.round(scoredRecords.reduce((sum, r) => sum + (r.day_score || 0), 0) / scoredRecords.length)
-      : 0
-
-    // Current Streak (consecutive days with morning_complete and evening_complete)
-    let currentStreak = 0
-    const baseDate = new Date(todayStr + 'T12:00:00')
-    const todayRec = sorted.find(r => r.date === todayStr)
-    const todayComplete = todayRec?.morning_complete && todayRec?.evening_complete
-    
-    let checkDate = todayComplete ? baseDate : subDays(baseDate, 1)
-
-    while (true) {
-      const checkStr = format(checkDate, 'yyyy-MM-dd')
-      const rec = sorted.find(r => r.date === checkStr)
-      if (rec?.morning_complete && rec?.evening_complete) {
-        currentStreak++
-        checkDate = subDays(checkDate, 1)
-      } else {
-        break
-      }
-    }
-
-    // Maximum Streak historically
-    let maxStreak = 0
-    let tempStreak = 0
-    // Sort chronological for historical max streak
-    const chronoRecords = [...records].sort((a, b) => a.date.localeCompare(b.date))
-    
-    // We count consecutive days in records list
-    let prevDateObj: Date | null = null
-
-    for (const rec of chronoRecords) {
-      if (rec.morning_complete && rec.evening_complete) {
-        const currentDateObj = new Date(rec.date + 'T12:00:00')
-        if (prevDateObj) {
-          const diffDays = Math.round((currentDateObj.getTime() - prevDateObj.getTime()) / (24 * 60 * 60 * 1000))
-          if (diffDays === 1) {
-            tempStreak++
-          } else if (diffDays > 1) {
-            tempStreak = 1
-          }
-        } else {
-          tempStreak = 1
-        }
-        prevDateObj = currentDateObj
-        if (tempStreak > maxStreak) {
-          maxStreak = tempStreak
-        }
-      } else {
-        tempStreak = 0
-        prevDateObj = null
-      }
-    }
-
-    return { totalDays, averageScore, currentStreak, maxStreak }
-  }, [records, timezone])
 
   // Get color for daily score cell
   const getCellClass = (score: number | null | undefined, isFuture: boolean) => {
@@ -143,39 +71,60 @@ export function DailyLogHistoryPage() {
         </div>
       </header>
 
-      {/* Stats Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
-          <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning flex-shrink-0">
-            <Flame size={16} className="fill-warning" />
+      {/* Hero Streak Card & Supporting Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Visual Anchor: Current Streak Hero Card */}
+        <div className="sm:col-span-3 bg-gradient-to-r from-warning/15 via-surface to-surface border border-warning/30 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-4 text-center sm:text-left">
+            <div className="w-14 h-14 rounded-2xl bg-warning/20 border border-warning/40 flex items-center justify-center text-warning flex-shrink-0 shadow-inner">
+              <Flame size={32} className="fill-warning" />
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2 justify-center sm:justify-start">
+                <span className="text-4xl font-display font-bold text-text tabular-nums tracking-tight">
+                  {stats.currentStreak}
+                </span>
+                <span className="text-sm font-semibold text-warning">
+                  day{stats.currentStreak !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <p className="text-xs text-text-secondary mt-0.5">
+                {stats.currentStreak >= 3
+                  ? 'Consecutive completed days — momentum is building.'
+                  : 'Complete your morning and evening rituals daily to grow your streak.'}
+              </p>
+            </div>
           </div>
-          <p className="text-2xl font-display font-bold text-text tabular-nums mt-1">{stats.currentStreak}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Current Streak</p>
-          <p className="text-[10px] text-text-muted">consecutive days</p>
+          <div className="flex items-center gap-3 text-xs text-text-muted bg-surface-2/60 border border-border/60 px-3.5 py-2 rounded-xl">
+            <Trophy size={15} className="text-accent flex-shrink-0" />
+            <span>Best streak: <strong className="text-text font-semibold">{stats.maxStreak} days</strong></span>
+          </div>
         </div>
+
+        {/* Secondary Metric Cards */}
         <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
           <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent flex-shrink-0">
             <Trophy size={16} />
           </div>
           <p className="text-2xl font-display font-bold text-text tabular-nums mt-1">{stats.maxStreak}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Max Streak</p>
-          <p className="text-[10px] text-text-muted">all time best</p>
+          <p className="text-xs text-text-secondary font-medium">Max Streak</p>
+          <p className="text-[11px] text-text-muted">all time best</p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
           <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center text-success flex-shrink-0">
             <Target size={16} />
           </div>
           <p className="text-2xl font-display font-bold text-text tabular-nums mt-1">{stats.averageScore}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Avg Day Score</p>
-          <p className="text-[10px] text-text-muted">out of 100</p>
+          <p className="text-xs text-text-secondary font-medium">Avg Day Score</p>
+          <p className="text-[11px] text-text-muted">out of 100</p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-1">
           <div className="w-8 h-8 rounded-full bg-info/10 flex items-center justify-center text-info flex-shrink-0">
             <CalendarDays size={16} />
           </div>
           <p className="text-2xl font-display font-bold text-text tabular-nums mt-1">{stats.totalDays}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Logged Days</p>
-          <p className="text-[10px] text-text-muted">total entries logged</p>
+          <p className="text-xs text-text-secondary font-medium">Logged Days</p>
+          <p className="text-[11px] text-text-muted">total entries recorded</p>
         </div>
       </div>
 

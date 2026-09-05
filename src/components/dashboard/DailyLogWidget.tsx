@@ -1,20 +1,14 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sun, Moon, Flame, Calendar, CheckCircle2 } from 'lucide-react'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { useDb } from '../../db/DbContext'
 import { useAppStore } from '../../store/useAppStore'
-import { getUserLocalDate } from '../../lib/dateUtils'
-import { subDays, format } from 'date-fns'
+import { useDailyLogStreak } from '../../hooks/useDailyLogStreak'
 
 export function DailyLogWidget() {
-  const db = useDb()
   const navigate = useNavigate()
-  const { selectedDate, timezone } = useAppStore()
+  const { selectedDate } = useAppStore()
+  const { currentStreak: streak, records } = useDailyLogStreak()
 
-  // Reactively fetch daily records
-  const records = useLiveQuery(() => db.daily_records.toArray()) || []
-  
   // Find record for the selected date
   const selectedRecord = useMemo(() => {
     return records.find(r => r.date === selectedDate)
@@ -22,33 +16,6 @@ export function DailyLogWidget() {
 
   const morningComplete = selectedRecord?.morning_complete ?? false
   const eveningComplete = selectedRecord?.evening_complete ?? false
-
-  // Calculate streak: consecutive days with BOTH morning and evening complete
-  const streak = useMemo(() => {
-    if (records.length === 0) return 0
-    const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date))
-    const todayStr = getUserLocalDate(timezone)
-    
-    // Check today's record
-    const todayRec = sorted.find(r => r.date === todayStr)
-    const todayComplete = todayRec?.morning_complete && todayRec?.evening_complete
-
-    let currentStreak = 0
-    const baseDate = new Date(todayStr + 'T12:00:00')
-    let checkDate = todayComplete ? baseDate : subDays(baseDate, 1)
-
-    while (true) {
-      const checkStr = format(checkDate, 'yyyy-MM-dd')
-      const rec = sorted.find(r => r.date === checkStr)
-      if (rec?.morning_complete && rec?.evening_complete) {
-        currentStreak++
-        checkDate = subDays(checkDate, 1)
-      } else {
-        break
-      }
-    }
-    return currentStreak
-  }, [records, timezone])
 
   return (
     <div className="bg-surface border border-border rounded-2xl p-4.5 space-y-4 shadow-[var(--shadow-card)] relative overflow-hidden">

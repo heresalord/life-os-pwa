@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Flame } from 'lucide-react'
 import { useGoalsQuery, useHabitLogsQuery } from '../../../hooks/useGoalsQuery'
 import { useGoalMutations } from '../../../hooks/useGoalMutations'
-import { startOfWeek, endOfWeek, eachDayOfInterval, format, isSameDay } from 'date-fns'
+import { startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns'
 import { haptic } from '../../../lib/haptic'
 import clsx from 'clsx'
 
@@ -19,16 +19,19 @@ export function HabitStreakWidget() {
   const end      = endOfWeek(new Date(), { weekStartsOn: 1 })
   const weekDays = eachDayOfInterval({ start, end })
 
-  const handleHabitToggle = async (e: React.MouseEvent, goalId: string, dateStr: string, currentStatus: 'check' | 'fail' | 'none') => {
+  const handleHabitToggle = async (e: React.MouseEvent, goalId: string, dateStr: string, _hasLog: boolean, currentValue: number | undefined, _isPast: boolean) => {
     e.stopPropagation()
     haptic('light')
     try {
-      if (currentStatus === 'none') {
-        await addHabitLog.mutateAsync({ goal_id: goalId, date: dateStr, value: 1 })
-      } else if (currentStatus === 'check') {
+      if (currentValue === 1) {
+        // Checked -> Explicit Fail
         await addHabitLog.mutateAsync({ goal_id: goalId, date: dateStr, value: 0 })
-      } else {
+      } else if (currentValue === 0) {
+        // Explicit Fail -> Reset
         await deleteHabitLog.mutateAsync({ goal_id: goalId, date: dateStr })
+      } else {
+        // Missed (past) or Pending (today) -> Complete
+        await addHabitLog.mutateAsync({ goal_id: goalId, date: dateStr, value: 1 })
       }
     } catch (err) {
       console.error('Failed to toggle habit log:', err)
@@ -74,28 +77,41 @@ export function HabitStreakWidget() {
                 <div className="grid grid-cols-7 gap-1">
                   {weekDays.map(d => {
                     const dateStr     = format(d, 'yyyy-MM-dd')
+                    const todayStr    = format(new Date(), 'yyyy-MM-dd')
                     const log         = habitLogs.find(l => l.goal_id === h.id && l.date === dateStr)
-                    const status      = log === undefined ? 'none' : log.value === 1 ? 'check' : 'fail'
-                    const isTodayDate = isSameDay(d, new Date())
-                    const label       = format(d, 'eeeeee')[0]
+                    const isPast      = dateStr < todayStr
+                    const isTodayDate = dateStr === todayStr
+                    const isFuture    = dateStr > todayStr
+                    
+                    const isComplete     = log?.value === 1
+                    const isExplicitFail = log?.value === 0
+                    const isMissed       = isPast && log === undefined
+                    const label          = format(d, 'eeeeee')[0]
 
                     return (
                       <button
                         key={dateStr}
                         type="button"
-                        onClick={(e) => handleHabitToggle(e, h.id, dateStr, status)}
+                        disabled={isFuture}
+                        onClick={(e) => handleHabitToggle(e, h.id, dateStr, !!log, log?.value, isPast)}
                         className={clsx(
-                          "flex flex-col items-center justify-center py-2 rounded-lg border text-[9px] font-bold transition-all aspect-square relative",
-                          status === 'check' && "bg-success/15 border-success/35 text-success",
-                          status === 'fail'  && "bg-danger/15 border-danger/35 text-danger",
-                          status === 'none'  && "bg-surface-2 border-border/80 text-text-muted hover:border-text-secondary hover:text-text",
-                          isTodayDate && "ring-1.5 ring-accent ring-offset-1 ring-offset-bg"
+                          "flex flex-col items-center justify-center py-2 rounded-lg border text-[9px] font-bold transition-all aspect-square relative select-none",
+                          isFuture && "bg-transparent border-transparent cursor-default opacity-40",
+                          isComplete && "bg-success/20 border-success/40 text-success shadow-[0_0_4px_rgba(34,197,94,0.2)]",
+                          (isExplicitFail || isMissed) && "bg-danger/20 border-danger/40 text-danger",
+                          (!log && isTodayDate) && "bg-surface-2 border-accent text-text-muted ring-1.5 ring-accent ring-offset-1 ring-offset-bg",
+                          (!log && !isPast && !isTodayDate && !isFuture) && "bg-surface-2 border-border/80 text-text-muted hover:border-text-secondary hover:text-text"
                         )}
-                        title={`${format(d, 'do MMM')}: ${status === 'check' ? 'Checked' : status === 'fail' ? 'Failed' : 'None'}`}
+                        title={`${format(d, 'do MMM')}: ${
+                          isComplete ? 'Checked (Tap to change)' :
+                          isExplicitFail ? 'Failed (Tap to reset)' :
+                          isMissed ? 'Missed (Tap to check in)' :
+                          isTodayDate ? 'Today (Tap to check in)' : 'Scheduled'
+                        }`}
                       >
-                        <span className="uppercase text-[8px] opacity-50 mb-0.5">{label}</span>
+                        <span className="uppercase text-[8px] opacity-60 mb-0.5">{label}</span>
                         <span className="text-[10px] leading-none">
-                          {status === 'check' ? '✓' : status === 'fail' ? '✗' : '·'}
+                          {isComplete ? '✓' : (isExplicitFail || isMissed) ? '✗' : '·'}
                         </span>
                       </button>
                     )

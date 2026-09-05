@@ -273,24 +273,25 @@ export function useGoalMutations() {
       note?: string
     }) => {
       if (!user) return
+      const existing = await db.habit_logs.where({ goal_id: payload.goal_id, date: payload.date }).first()
       const log = {
-        id: crypto.randomUUID(),
+        id: existing?.id ?? crypto.randomUUID(),
         user_id: user.id,
         goal_id: payload.goal_id,
         date: payload.date,
         value: payload.value,
         note: payload.note ?? null,
-        created_at: new Date().toISOString()
+        created_at: existing?.created_at ?? new Date().toISOString()
       }
       await db.habit_logs.put(log)
-      await write('habit_logs', 'insert', log)
+      await write('habit_logs', existing ? 'update' : 'insert', log)
       void hapticSuccess() // habit checked off
 
       // Recalculate streak
       const logs = await db.habit_logs.where('goal_id').equals(payload.goal_id).toArray()
       const goal = await db.goals.get(payload.goal_id)
       if (goal) {
-        const { streak, lastCheckin } = calculateStreak(logs, goal.habit_schedule, payload.date)
+        const { streak, lastCheckin } = calculateStreak(logs, goal.habit_schedule, format(new Date(), 'yyyy-MM-dd'))
         const updates = {
           habit_streak: streak,
           last_checkin: lastCheckin,
@@ -306,8 +307,12 @@ export function useGoalMutations() {
       await qc.cancelQueries({ queryKey: activeKey })
       await qc.cancelQueries({ queryKey: QK.habitLogsAll() })
 
+      const specificKey = QK.habitLogs(payload.goal_id, user?.id ?? '')
+      const allLogsKey = QK.habitLogs(undefined, user?.id ?? '')
+
       const prevGoals = qc.getQueryData<AnyItem[]>(activeKey)
-      const prevLogs = qc.getQueryData<AnyItem[]>(QK.habitLogsAll())
+      const prevSpecificLogs = qc.getQueryData<AnyItem[]>(specificKey)
+      const prevAllLogs = qc.getQueryData<AnyItem[]>(allLogsKey)
 
       // Optimistic Log
       const optLog = {
@@ -320,18 +325,27 @@ export function useGoalMutations() {
         created_at: new Date().toISOString()
       }
 
-      // Optimistic Logs list
-      const nextLogs = prevLogs ? [...prevLogs.filter(l => !(l.goal_id === payload.goal_id && l.date === payload.date)), optLog] : [optLog]
-      qc.setQueryData(QK.habitLogsAll(), nextLogs)
+      // Optimistically update both specific goal logs and all habit logs caches
+      if (prevSpecificLogs) {
+        qc.setQueryData(specificKey, [
+          ...prevSpecificLogs.filter(l => l.date !== payload.date),
+          optLog
+        ])
+      }
+      if (prevAllLogs) {
+        qc.setQueryData(allLogsKey, [
+          ...prevAllLogs.filter(l => !(l.goal_id === payload.goal_id && l.date === payload.date)),
+          optLog
+        ])
+      }
 
       // Optimistic Goals list (recalculate streak)
       if (prevGoals) {
         const nextGoals = prevGoals.map(g => {
           if (g.id !== payload.goal_id) return g
-          
-          const goalLogs = nextLogs.filter(l => l.goal_id === g.id)
-          const { streak, lastCheckin } = calculateStreak(goalLogs as any, g.habit_schedule, payload.date)
-          
+          const currentGoalLogs = (prevSpecificLogs ?? prevAllLogs?.filter(l => l.goal_id === g.id) ?? [])
+          const mergedLogs = [...currentGoalLogs.filter(l => l.date !== payload.date), optLog]
+          const { streak, lastCheckin } = calculateStreak(mergedLogs as any, g.habit_schedule, format(new Date(), 'yyyy-MM-dd'))
           return {
             ...g,
             habit_streak: streak,
@@ -342,16 +356,20 @@ export function useGoalMutations() {
         qc.setQueryData(activeKey, nextGoals)
       }
 
-      return { prevGoals, prevLogs }
+      return { prevGoals, prevSpecificLogs, prevAllLogs }
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (_err, vars, ctx) => {
       if (ctx?.prevGoals !== undefined) qc.setQueryData(activeKey, ctx.prevGoals)
-      if (ctx?.prevLogs !== undefined) qc.setQueryData(QK.habitLogsAll(), ctx.prevLogs)
+      if (ctx?.prevSpecificLogs !== undefined) qc.setQueryData(QK.habitLogs(vars.goal_id, user?.id ?? ''), ctx.prevSpecificLogs)
+      if (ctx?.prevAllLogs !== undefined) qc.setQueryData(QK.habitLogs(undefined, user?.id ?? ''), ctx.prevAllLogs)
     },
-    onSettled: () => {
+    onSettled: (_data, _err, vars) => {
       invalidateGoals()
       invalidateHabitLogs()
       qc.invalidateQueries({ queryKey: QK.goalsAll() })
+      qc.invalidateQueries({ queryKey: QK.habitLogs(vars.goal_id, user?.id ?? '') })
+      qc.invalidateQueries({ queryKey: QK.habitLogs(undefined, user?.id ?? '') })
+      qc.invalidateQueries({ queryKey: ['goal', vars.goal_id] })
     }
   })
 
@@ -361,17 +379,17 @@ export function useGoalMutations() {
       date: string
     }) => {
       if (!user) return
-      const log = await db.habit_logs.where({ goal_id: payload.goal_id, date: payload.date }).first()
-      if (log) {
+      const existing = await db.habit_logs.where({ goal_id: payload.goal_id, date: payload.date }).toArray()
+      for (const log of existing) {
         await db.habit_logs.delete(log.id)
         await write('habit_logs', 'delete', log as Record<string, unknown>)
-        void hapticMedium() // habit unchecked
       }
+      void hapticMedium() // habit unchecked
 
       const logs = await db.habit_logs.where('goal_id').equals(payload.goal_id).toArray()
       const goal = await db.goals.get(payload.goal_id)
       if (goal) {
-        const { streak, lastCheckin } = calculateStreak(logs, goal.habit_schedule, payload.date)
+        const { streak, lastCheckin } = calculateStreak(logs, goal.habit_schedule, format(new Date(), 'yyyy-MM-dd'))
         const updates = {
           habit_streak: streak,
           last_checkin: lastCheckin,
@@ -386,21 +404,27 @@ export function useGoalMutations() {
       await qc.cancelQueries({ queryKey: activeKey })
       await qc.cancelQueries({ queryKey: QK.habitLogsAll() })
 
-      const prevGoals = qc.getQueryData<AnyItem[]>(activeKey)
-      const prevLogs = qc.getQueryData<AnyItem[]>(QK.habitLogsAll())
+      const specificKey = QK.habitLogs(payload.goal_id, user?.id ?? '')
+      const allLogsKey = QK.habitLogs(undefined, user?.id ?? '')
 
-      // Optimistic Logs list
-      const nextLogs = prevLogs ? prevLogs.filter(l => !(l.goal_id === payload.goal_id && l.date === payload.date)) : []
-      qc.setQueryData(QK.habitLogsAll(), nextLogs)
+      const prevGoals = qc.getQueryData<AnyItem[]>(activeKey)
+      const prevSpecificLogs = qc.getQueryData<AnyItem[]>(specificKey)
+      const prevAllLogs = qc.getQueryData<AnyItem[]>(allLogsKey)
+
+      if (prevSpecificLogs) {
+        qc.setQueryData(specificKey, prevSpecificLogs.filter(l => l.date !== payload.date))
+      }
+      if (prevAllLogs) {
+        qc.setQueryData(allLogsKey, prevAllLogs.filter(l => !(l.goal_id === payload.goal_id && l.date === payload.date)))
+      }
 
       // Optimistic Goals list (recalculate streak)
       if (prevGoals) {
         const nextGoals = prevGoals.map(g => {
           if (g.id !== payload.goal_id) return g
-          
-          const goalLogs = nextLogs.filter(l => l.goal_id === g.id)
-          const { streak, lastCheckin } = calculateStreak(goalLogs as any, g.habit_schedule, payload.date)
-          
+          const currentGoalLogs = (prevSpecificLogs ?? prevAllLogs?.filter(l => l.goal_id === g.id) ?? [])
+          const mergedLogs = currentGoalLogs.filter(l => l.date !== payload.date)
+          const { streak, lastCheckin } = calculateStreak(mergedLogs as any, g.habit_schedule, format(new Date(), 'yyyy-MM-dd'))
           return {
             ...g,
             habit_streak: streak,
@@ -411,16 +435,20 @@ export function useGoalMutations() {
         qc.setQueryData(activeKey, nextGoals)
       }
 
-      return { prevGoals, prevLogs }
+      return { prevGoals, prevSpecificLogs, prevAllLogs }
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (_err, vars, ctx) => {
       if (ctx?.prevGoals !== undefined) qc.setQueryData(activeKey, ctx.prevGoals)
-      if (ctx?.prevLogs !== undefined) qc.setQueryData(QK.habitLogsAll(), ctx.prevLogs)
+      if (ctx?.prevSpecificLogs !== undefined) qc.setQueryData(QK.habitLogs(vars.goal_id, user?.id ?? ''), ctx.prevSpecificLogs)
+      if (ctx?.prevAllLogs !== undefined) qc.setQueryData(QK.habitLogs(undefined, user?.id ?? ''), ctx.prevAllLogs)
     },
-    onSettled: () => {
+    onSettled: (_data, _err, vars) => {
       invalidateGoals()
       invalidateHabitLogs()
       qc.invalidateQueries({ queryKey: QK.goalsAll() })
+      qc.invalidateQueries({ queryKey: QK.habitLogs(vars.goal_id, user?.id ?? '') })
+      qc.invalidateQueries({ queryKey: QK.habitLogs(undefined, user?.id ?? '') })
+      qc.invalidateQueries({ queryKey: ['goal', vars.goal_id] })
     }
   })
 

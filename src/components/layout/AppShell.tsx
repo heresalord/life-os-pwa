@@ -223,18 +223,24 @@ export function AppShell({ children }: AppShellProps) {
               onClick={() => void hapticLight()}
               className={({ isActive }) =>
                 clsx(
-                  'flex flex-col items-center gap-1 py-1 min-h-[44px] min-w-[48px] justify-center transition-all',
-                  /* 6.6: active tab gets pill background */
+                  'relative flex flex-col items-center gap-1 py-1 px-3 min-h-[44px] min-w-[48px] justify-center transition-all duration-200',
                   isActive
-                    ? 'nav-pill-active text-accent'
-                    : 'px-3 text-text-muted hover:text-text-secondary'
+                    ? 'text-accent font-semibold'
+                    : 'text-text-muted hover:text-text-secondary'
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
-                  <span className={clsx('text-[11px] font-medium', isActive ? 'text-accent' : '')}>
+                  {isActive && (
+                    <span className="absolute top-0 w-7 h-0.5 rounded-full bg-accent shadow-[0_0_8px_var(--theme-accent-glow)]" />
+                  )}
+                  <Icon
+                    size={20}
+                    strokeWidth={isActive ? 2.5 : 1.75}
+                    className={clsx('transition-transform duration-200', isActive && 'scale-110')}
+                  />
+                  <span className={clsx('text-[11px] leading-tight', isActive ? 'text-accent' : 'text-text-muted')}>
                     {navLabel(key, label)}
                   </span>
                 </>
