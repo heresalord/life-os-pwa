@@ -3,6 +3,7 @@ import { Flame } from 'lucide-react'
 import { useGoalsQuery, useHabitLogsQuery } from '../../../hooks/useGoalsQuery'
 import { useGoalMutations } from '../../../hooks/useGoalMutations'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns'
+import { triggerConfetti } from '../../ui/Confetti'
 import { haptic } from '../../../lib/haptic'
 import clsx from 'clsx'
 
@@ -31,6 +32,10 @@ export function HabitStreakWidget() {
         await deleteHabitLog.mutateAsync({ goal_id: goalId, date: dateStr })
       } else {
         // Missed (past) or Pending (today) -> Complete
+        const targetHabit = habits.find(h => h.id === goalId)
+        if (targetHabit && (targetHabit.habit_streak + 1) % 7 === 0) {
+          triggerConfetti()
+        }
         await addHabitLog.mutateAsync({ goal_id: goalId, date: dateStr, value: 1 })
       }
     } catch (err) {

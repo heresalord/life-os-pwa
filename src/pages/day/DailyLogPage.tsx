@@ -97,36 +97,93 @@ function extractHashtags(text: string): string[] {
 // ─── Voice-to-text hook ───────────────────────────────────────────────────────
 function useVoiceInput(onResult: (text: string) => void) {
   const [isListening, setIsListening] = useState(false)
-  const recognitionRef = useRef<any>(null)
+  const isListeningRef = useRef(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const onResultRef = useRef(onResult)
+
+  useEffect(() => {
+    onResultRef.current = onResult
+  }, [onResult])
 
   const supported = typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
+  const stop = useCallback(() => {
+    isListeningRef.current = false
+    try {
+      recognitionRef.current?.stop()
+    } catch {
+      // Ignore if already stopped
+    }
+    setIsListening(false)
+    haptic('light')
+  }, [])
+
   const start = useCallback(() => {
     if (!supported) return
-    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
-    const recognition = new SR()
+    const SpeechRecognitionClass = (window as unknown as { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ??
+      (window as unknown as { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition
+    if (!SpeechRecognitionClass) return
+
+    const recognition = new SpeechRecognitionClass()
     recognition.continuous = true
     recognition.interimResults = false
     recognition.lang = 'en-US'
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((r: any) => r[0].transcript)
-        .join(' ')
-      onResult(transcript)
-    }
-    recognition.onerror = () => setIsListening(false)
-    recognition.onend = () => setIsListening(false)
-    recognitionRef.current = recognition
-    recognition.start()
-    setIsListening(true)
-    haptic('light')
-  }, [supported, onResult])
 
-  const stop = useCallback(() => {
-    recognitionRef.current?.stop()
-    setIsListening(false)
-    haptic('light')
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalChunk = ''
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalChunk += event.results[i][0].transcript
+        }
+      }
+      const trimmed = finalChunk.trim()
+      if (trimmed) {
+        onResultRef.current(trimmed)
+      }
+    }
+
+    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        isListeningRef.current = false
+        setIsListening(false)
+      }
+    }
+
+    recognition.onend = () => {
+      if (isListeningRef.current) {
+        // Auto-restart for seamless continuous dictation across pauses
+        try {
+          recognition.start()
+        } catch {
+          // Ignore restart collisions
+        }
+      } else {
+        setIsListening(false)
+      }
+    }
+
+    recognitionRef.current = recognition
+    isListeningRef.current = true
+    try {
+      recognition.start()
+      setIsListening(true)
+      haptic('light')
+    } catch {
+      isListeningRef.current = false
+      setIsListening(false)
+    }
+  }, [supported])
+
+  useEffect(() => {
+    return () => {
+      isListeningRef.current = false
+      try {
+        recognitionRef.current?.stop()
+      } catch {
+        // Ignore during unmount
+      }
+    }
   }, [])
 
   return { supported, isListening, start, stop }

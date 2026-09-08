@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { getUserLocalDate } from '../lib/dateUtils'
 import { getAccentShades } from '../lib/colorUtils'
 
-export type Theme = 'dark' | 'light'
+export type Theme = 'dark' | 'light' | 'oled' | 'warm-paper' | 'nordic-dusk'
 export type AutoTheme = 'off' | 'time' | 'system'
 
 export const DEFAULT_NAV_ITEMS = ['tasks', 'finance', 'goals', 'books']
@@ -53,11 +53,18 @@ export interface AppState {
 
 // Apply theme visually to <html> and the PWA theme-color meta tag.
 // Does NOT write to localStorage — callers that persist the choice do so explicitly.
+const THEME_META_COLORS: Record<Theme, string> = {
+  dark:         '#0a0a0a',
+  light:        '#fcfbfa',
+  oled:         '#000000',
+  'warm-paper': '#F7F4EE',
+  'nordic-dusk':'#0f172a',
+}
 function applyTheme(theme: Theme) {
   document.documentElement.setAttribute('data-theme', theme)
   // Keep the PWA status-bar theme-color in sync
   const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null
-  if (meta) meta.content = theme === 'light' ? '#fcfbfa' : '#0a0a0a'
+  if (meta) meta.content = THEME_META_COLORS[theme] ?? '#0a0a0a'
 }
 
 // ── Auto-theme helpers ────────────────────────────────────────────────────────

@@ -13,6 +13,8 @@ import { CheckSquare } from 'lucide-react'
 import type { Task } from '../../../db/schema'
 import { haptic } from '../../../lib/haptic'
 
+import { triggerConfetti } from '../../../components/ui/Confetti'
+
 interface Subtask { id: string; title: string; completed: boolean }
 
 export function ListTab({ highlightId }: { highlightId?: string | null } = {}) {
@@ -59,8 +61,14 @@ export function ListTab({ highlightId }: { highlightId?: string | null } = {}) {
     setPendingOrder(items)
   }
 
-  const handleToggleComplete = (id: string, current: boolean) =>
-    updateTask.mutate({ id, updates: { completed: !current, skipped: false, completed_at: !current ? new Date().toISOString() : null } })
+  const handleToggleComplete = (id: string, current: boolean) => {
+    const isNowCompleted = !current
+    if (isNowCompleted && pending.length === 1 && pending[0].id === id) {
+      // Completed the last remaining pending task!
+      triggerConfetti()
+    }
+    updateTask.mutate({ id, updates: { completed: isNowCompleted, skipped: false, completed_at: isNowCompleted ? new Date().toISOString() : null } })
+  }
 
   const handleToggleSkip = (id: string, current: boolean) =>
     updateTask.mutate({ id, updates: { skipped: !current, completed: false, skipped_at: !current ? new Date().toISOString() : null } })

@@ -124,7 +124,86 @@
   --theme-shadow-overlay: 0 32px 80px rgba(0,0,0,0.22), 0 12px 32px rgba(0,0,0,0.14);
 }
 
+/* ── OLED Pitch Black ── True black for AMOLED displays, maximum contrast */
+:root[data-theme="oled"] {
+  --theme-bg:             #000000;
+  --theme-surface:        #0d0d0d;
+  --theme-surface-2:      #161616;
+  --theme-surface-3:      #1f1f1f;
+  --theme-border:         #2e2e2e;
+  --theme-muted:          #3d3d3d;
+  --theme-text:           #ffffff;
+  --theme-text-secondary: #9a9a9a;
+  --theme-text-muted:     #606060;
+  --theme-accent:         #c8b89a;
+  --theme-accent-dim:     #8a7a65;
+  --theme-accent-glow:    #c8b89a20;
+  --theme-success:        #5acd6a;
+  --theme-warning:        #e0b84a;
+  --theme-danger:         #e05a5a;
+  --theme-info:           #5a8fd4;
+  --theme-timetravel:     #e0c030;
+  --theme-bg-translucent: rgba(0, 0, 0, 0.9);
+  --theme-shadow-card:    0 1px 3px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.7);
+  --theme-shadow-modal:   0 20px 60px rgba(0,0,0,0.95), 0 8px 24px rgba(0,0,0,0.8);
+  --theme-shadow-sheet:   0 -4px 32px rgba(0,0,0,0.8), 0 -1px 8px rgba(0,0,0,0.6);
+  --theme-shadow-overlay: 0 32px 80px rgba(0,0,0,0.98), 0 12px 32px rgba(0,0,0,0.9);
+}
+
+/* ── Editorial Warm Paper ── Cream, journal-inspired */
+:root[data-theme="warm-paper"] {
+  --theme-bg:             #F7F4EE;
+  --theme-surface:        #fefcf8;
+  --theme-surface-2:      #f0ece3;
+  --theme-surface-3:      #e8e2d8;
+  --theme-border:         #d8d0c2;
+  --theme-muted:          #c8bfaf;
+  --theme-text:           #1e1a15;
+  --theme-text-secondary: #5a4f44;
+  --theme-text-muted:     #8a7c70;
+  --theme-accent:         #6B5344;
+  --theme-accent-dim:     #4e3c31;
+  --theme-accent-glow:    #6B534426;
+  --theme-success:        #4a7a54;
+  --theme-warning:        #a87d3a;
+  --theme-danger:         #9e4040;
+  --theme-info:           #4a6a96;
+  --theme-timetravel:     #967820;
+  --theme-bg-translucent: rgba(247, 244, 238, 0.88);
+  --theme-shadow-card:    0 1px 4px rgba(80,60,40,0.10), 0 1px 2px rgba(80,60,40,0.08);
+  --theme-shadow-modal:   0 20px 60px rgba(80,60,40,0.22), 0 8px 24px rgba(80,60,40,0.14);
+  --theme-shadow-sheet:   0 -4px 32px rgba(80,60,40,0.14), 0 -1px 8px rgba(80,60,40,0.08);
+  --theme-shadow-overlay: 0 32px 80px rgba(80,60,40,0.26), 0 12px 32px rgba(80,60,40,0.16);
+}
+
+/* ── Nordic Dusk ── Deep midnight navy with ice-blue accents */
+:root[data-theme="nordic-dusk"] {
+  --theme-bg:             #0f172a;
+  --theme-surface:        #1a2540;
+  --theme-surface-2:      #1e2d4a;
+  --theme-surface-3:      #253659;
+  --theme-border:         #2d4166;
+  --theme-muted:          #3a5278;
+  --theme-text:           #e8f0fe;
+  --theme-text-secondary: #8ba8d4;
+  --theme-text-muted:     #5a7aaa;
+  --theme-accent:         #94c5f8;
+  --theme-accent-dim:     #5a95d8;
+  --theme-accent-glow:    #94c5f826;
+  --theme-success:        #5ac89a;
+  --theme-warning:        #e0c056;
+  --theme-danger:         #e06a6a;
+  --theme-info:           #6aaae0;
+  --theme-timetravel:     #e0d050;
+  --theme-bg-translucent: rgba(15, 23, 42, 0.88);
+  --theme-shadow-card:    0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+  --theme-shadow-modal:   0 20px 60px rgba(0,0,0,0.8), 0 8px 24px rgba(0,0,0,0.6);
+  --theme-shadow-sheet:   0 -4px 32px rgba(0,0,0,0.6), 0 -1px 8px rgba(0,0,0,0.4);
+  --theme-shadow-overlay: 0 32px 80px rgba(0,0,0,0.9), 0 12px 32px rgba(0,0,0,0.7);
+}
+
 /* ── Base ── */
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html {

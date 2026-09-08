@@ -11,6 +11,8 @@ import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { useTranslation } from '../../i18n'
 import clsx from 'clsx'
 
+import { RadialGauge } from '../../components/ui/RadialGauge'
+
 type View = 'list' | 'calendar' | 'timeblocks'
 
 const VIEWS = [
@@ -34,6 +36,7 @@ export function TasksPage() {
   const { data: tasks = [] } = useTasksQuery(selectedDate)
   const completedCount = tasks.filter(t => t.completed).length
   const totalCount = tasks.length
+  const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   // Deep link from search: jump to the task's date and switch to list view
   useEffect(() => {
@@ -50,20 +53,25 @@ export function TasksPage() {
 
   return (
     <div className="space-y-4 lg:max-w-5xl">
-      <header className="flex flex-col justify-start pb-2">
-        <h1 className="font-display text-2xl font-bold text-text">
-          {t('tasks.title', 'Tasks')}
-        </h1>
+      <header className="flex items-center justify-between pb-2">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-text">
+            {t('tasks.title', 'Tasks')}
+          </h1>
+          {totalCount > 0 && (
+            <p className="text-xs text-text-muted mt-0.5">
+              {completedCount} of {totalCount} done today
+            </p>
+          )}
+        </div>
         {totalCount > 0 && (
-          <div className="mt-2 w-full max-w-xs space-y-1">
-            <p className="text-xs text-text-muted">{completedCount} of {totalCount} done today</p>
-            <div className="h-1 bg-border rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent rounded-full transition-all duration-500"
-                style={{ width: `${(completedCount / totalCount) * 100}%` }}
-              />
-            </div>
-          </div>
+          <RadialGauge
+            pct={pct}
+            size={48}
+            strokeWidth={4}
+            variant={pct === 100 ? 'success' : 'accent'}
+            label={`${pct}%`}
+          />
         )}
       </header>
 

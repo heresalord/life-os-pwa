@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Target } from 'lucide-react'
 import { useGoalsQuery, useMilestonesQuery } from '../../../hooks/useGoalsQuery'
 import { useGoalEventsQuery } from '../../../hooks/useGoalEventsQuery'
-import clsx from 'clsx'
+import { RadialGauge } from '../../ui/RadialGauge'
 
 export function GoalProgressWidget() {
   const navigate = useNavigate()
@@ -32,7 +32,7 @@ export function GoalProgressWidget() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto space-y-4">
+      <div className="flex-1 overflow-y-auto space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center h-full py-4">
             <div className="w-5 h-5 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
@@ -44,7 +44,7 @@ export function GoalProgressWidget() {
             <p className="text-[10px] opacity-75 mt-0.5">Tap to set your first goal</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {topGoals.map(g => {
               const targetVal = g.target || 1
               let progressPct  = 0
@@ -73,39 +73,36 @@ export function GoalProgressWidget() {
                 progressPct  = ms.length > 0 ? Math.round((completedMs / ms.length) * 100) : 0
                 progressText = `${completedMs}/${ms.length} milestones`
               } else if (g.tracker_type === 'habit') {
-                progressPct  = g.habit_streak > 0 ? 100 : 0
+                progressPct  = Math.min(g.habit_streak * 10, 100)
                 progressText = `${g.habit_streak}d streak 🔥`
               }
 
-              return (
-                <div key={g.id} className="space-y-1">
-                  <div className="flex justify-between items-baseline text-xs font-medium">
-                    <span className="text-text-secondary truncate max-w-[65%] hover:text-accent transition-colors">
-                      {g.name}
-                    </span>
-                    <span className="text-[10px] text-text-muted text-right flex-shrink-0">
-                      {progressText} ({progressPct}%)
-                    </span>
-                  </div>
+              const variant = g.tracker_type === 'habit'
+                ? 'warning'
+                : progressPct >= 100
+                ? 'success'
+                : 'accent'
 
-                  {g.tracker_type === 'habit' ? (
-                    <div className="h-1 flex-1 bg-surface-2 border border-border/40 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-warning rounded-full"
-                        style={{ width: `${Math.min(g.habit_streak * 10, 100)}%` }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-1 bg-surface-2 border border-border/40 rounded-full overflow-hidden">
-                      <div
-                        className={clsx(
-                          "h-full rounded-full transition-all duration-500",
-                          progressPct >= 100 ? "bg-success" : "bg-accent/80"
-                        )}
-                        style={{ width: `${progressPct}%` }}
-                      />
-                    </div>
-                  )}
+              return (
+                <div
+                  key={g.id}
+                  className="flex items-center justify-between gap-3 p-2 rounded-xl bg-surface-2/40 hover:bg-surface-2/70 transition-colors border border-border/30"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-text truncate group-hover:text-accent transition-colors">
+                      {g.name}
+                    </p>
+                    <p className="text-[10px] text-text-muted truncate mt-0.5">
+                      {progressText}
+                    </p>
+                  </div>
+                  <RadialGauge
+                    pct={progressPct}
+                    size={38}
+                    strokeWidth={3.5}
+                    variant={variant}
+                    label={`${progressPct}%`}
+                  />
                 </div>
               )
             })}

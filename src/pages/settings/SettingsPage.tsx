@@ -383,10 +383,10 @@ export function SettingsPage() {
 
   // ─── Render helpers ────────────────────────────────────────────────────────
   const SettingRow = ({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) => (
-    <div className="flex items-center justify-between gap-4 py-4 border-b border-border/50 last:border-0">
-      <div className="min-w-0">
+    <div className="flex items-center justify-between gap-4 py-4 border-b border-border/50 last:border-0 px-1">
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-text">{label}</p>
-        {sub && <p className="text-xs text-text-muted mt-0.5">{sub}</p>}
+        {sub && <p className="text-xs text-text-muted mt-0.5 leading-relaxed">{sub}</p>}
       </div>
       <div className="flex-shrink-0">{children}</div>
     </div>
@@ -526,30 +526,60 @@ export function SettingsPage() {
     </div>
   )
 
-  const renderAppearance = () => (
+  const renderAppearance = () => {
+    // Theme preset definitions for the visual picker
+    const THEME_PRESETS: { id: import('../../store/useAppStore').Theme; label: string; description: string; swatches: [string, string, string] }[] = [
+      { id: 'dark',         label: 'Midnight',     description: 'Default dark',  swatches: ['#0a0a0a', '#c8b89a', '#f0ede8'] },
+      { id: 'light',        label: 'Daylight',     description: 'Clean light',   swatches: ['#fcfbfa', '#b09a75', '#1a1918'] },
+      { id: 'oled',         label: 'OLED Black',   description: 'True black',    swatches: ['#000000', '#c8b89a', '#ffffff'] },
+      { id: 'warm-paper',   label: 'Warm Paper',   description: 'Journal feel',  swatches: ['#F7F4EE', '#6B5344', '#1e1a15'] },
+      { id: 'nordic-dusk',  label: 'Nordic Dusk',  description: 'Ice blue navy', swatches: ['#0f172a', '#94c5f8', '#e8f0fe'] },
+    ]
+
+    return (
     <div className="space-y-4 animate-in fade-in duration-200">
+      {/* Theme Preset Picker */}
       <SectionCard title="Theme" icon={Palette}>
-        <div className="pt-3 grid grid-cols-2 gap-2">
-          <button
-            onClick={() => { haptic('light'); setTheme('dark') }}
-            className={clsx(
-              'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all',
-              theme === 'dark' ? 'bg-surface-2 border-accent text-accent' : 'border-border text-text-muted hover:text-text hover:border-text-muted'
-            )}
-          >
-            <Moon size={15} /> Dark
-          </button>
-          <button
-            onClick={() => { haptic('light'); setTheme('light') }}
-            className={clsx(
-              'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all',
-              theme === 'light' ? 'bg-surface-2 border-accent text-accent' : 'border-border text-text-muted hover:text-text hover:border-text-muted'
-            )}
-          >
-            <Sun size={15} /> Light
-          </button>
+        <div className="pt-3 grid grid-cols-5 gap-2">
+          {THEME_PRESETS.map(preset => {
+            const selected = theme === preset.id
+            return (
+              <button
+                key={preset.id}
+                onClick={() => { haptic('light'); setTheme(preset.id) }}
+                className={clsx(
+                  'flex flex-col items-center gap-2 py-3 px-1 rounded-xl border transition-all relative',
+                  selected
+                    ? 'border-accent bg-accent/8 shadow-[0_0_0_2px_var(--theme-accent)]'
+                    : 'border-border hover:border-text-muted/50 hover:bg-surface-2'
+                )}
+              >
+                {/* Color swatch preview */}
+                <div
+                  className="w-10 h-7 rounded-lg border border-border/60 overflow-hidden flex-shrink-0 flex"
+                  style={{ backgroundColor: preset.swatches[0] }}
+                >
+                  <div className="w-1/3 h-full" style={{ backgroundColor: preset.swatches[1] }} />
+                  <div className="flex-1 h-full flex flex-col justify-center items-center gap-0.5 px-0.5">
+                    <div className="w-full h-1 rounded-full opacity-70" style={{ backgroundColor: preset.swatches[2] }} />
+                    <div className="w-3/4 h-0.5 rounded-full opacity-40" style={{ backgroundColor: preset.swatches[2] }} />
+                  </div>
+                </div>
+                <div className="text-center leading-tight">
+                  <p className={clsx('text-[10px] font-semibold leading-tight', selected ? 'text-accent' : 'text-text')}>{preset.label}</p>
+                  <p className="text-[9px] text-text-muted leading-tight mt-0.5">{preset.description}</p>
+                </div>
+                {selected && (
+                  <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-accent rounded-full flex items-center justify-center">
+                    <Check size={9} className="text-bg" strokeWidth={3} />
+                  </div>
+                )}
+              </button>
+            )
+          })}
         </div>
       </SectionCard>
+
 
       <SectionCard title="Theme Mode" icon={Monitor}>
         <p className="text-xs text-text-muted pt-3 pb-3 leading-relaxed">
@@ -731,6 +761,7 @@ export function SettingsPage() {
       </SectionCard>
     </div>
   )
+  }
 
   const renderNotifications = () => (
     <div className="space-y-6 animate-in fade-in duration-200">
