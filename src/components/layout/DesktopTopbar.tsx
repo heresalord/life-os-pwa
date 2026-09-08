@@ -51,7 +51,7 @@ export function DesktopTopbar() {
     } else if (location.pathname.startsWith('/books/')) {
       title = 'Book Details'
     } else {
-      title = 'Life OS'
+      title = 'Kairo'
     }
   }
 

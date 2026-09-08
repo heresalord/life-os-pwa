@@ -59,7 +59,7 @@ export function DesktopSidebar() {
       {/* Brand header */}
       <div className={clsx('h-16 flex items-center px-4 border-b border-border', pinned ? 'lg:px-6 justify-between' : 'lg:px-6 justify-center lg:justify-between')}>
         <div className={clsx('flex-col leading-tight', flexLabelClass)}>
-          <span className="text-[10px] text-text-muted font-body uppercase tracking-widest">Life OS</span>
+          <span className="text-[10px] text-text-muted font-body uppercase tracking-widest">Kairo</span>
           <span className="text-sm font-semibold text-text">Workspace</span>
         </div>
         <div className="flex items-center gap-2">

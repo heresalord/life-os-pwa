@@ -19,7 +19,7 @@ export function HabitStreakWidget() {
   const end      = endOfWeek(new Date(), { weekStartsOn: 1 })
   const weekDays = eachDayOfInterval({ start, end })
 
-  const handleHabitToggle = async (e: React.MouseEvent, goalId: string, dateStr: string, _hasLog: boolean, currentValue: number | undefined, _isPast: boolean) => {
+  const handleHabitToggle = async (e: React.MouseEvent, goalId: string, dateStr: string, currentValue: number | undefined) => {
     e.stopPropagation()
     haptic('light')
     try {
@@ -93,7 +93,7 @@ export function HabitStreakWidget() {
                         key={dateStr}
                         type="button"
                         disabled={isFuture}
-                        onClick={(e) => handleHabitToggle(e, h.id, dateStr, !!log, log?.value, isPast)}
+                        onClick={(e) => handleHabitToggle(e, h.id, dateStr, log?.value)}
                         className={clsx(
                           "flex flex-col items-center justify-center py-2 rounded-lg border text-[9px] font-bold transition-all aspect-square relative select-none",
                           isFuture && "bg-transparent border-transparent cursor-default opacity-40",

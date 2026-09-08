@@ -47,7 +47,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4 p-6 text-center">
-        <div className="text-3xl font-display text-accent">Life OS</div>
+        <div className="text-3xl font-display text-accent">Kairo</div>
         <div className="space-y-2">
           <p className="text-sm font-semibold text-text">Something went wrong</p>
           <p className="text-xs text-text-muted max-w-xs leading-relaxed font-mono bg-surface-2 px-3 py-2 rounded-lg border border-border">

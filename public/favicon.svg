@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#1f1c16" />
+      <stop offset="60%" stop-color="#0e0d0c" />
+      <stop offset="100%" stop-color="#070707" />
+    </radialGradient>
+
+    <!-- Gold Foil Gradient for K Glyph -->
+    <linearGradient id="goldGradient" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#faeed9" />
+      <stop offset="35%" stop-color="#dfcfb0" />
+      <stop offset="70%" stop-color="#c4b08d" />
+      <stop offset="100%" stop-color="#998363" />
+    </linearGradient>
+
+    <!-- Celestial Ring Gradient -->
+    <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dfcfb0" stop-opacity="0.65" />
+      <stop offset="50%" stop-color="#c4b08d" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#faeed9" stop-opacity="0.45" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.65" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded squircle -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGlow)" />
+
+  <!-- Subtle border highlight -->
+  <rect width="510" height="510" x="1" y="1" rx="114" fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="2" />
+
+  <!-- The Kairos Celestial Moment Ring -->
+  <circle cx="290" cy="256" r="148" fill="none" stroke="url(#ringGradient)" stroke-width="2.5" stroke-dasharray="7 5" opacity="0.8" />
+  <circle cx="290" cy="256" r="148" fill="none" stroke="#dfcfb0" stroke-width="1" opacity="0.3" />
+
+  <!-- Ambient light orb at nexus -->
+  <circle cx="256" cy="256" r="70" fill="#c4b08d" opacity="0.08" filter="url(#subtleGlow)" />
+
+  <!-- Main Kairo Emblem ("K") with shadow -->
+  <g filter="url(#softShadow)">
+    <!-- Vertical Pillar -->
+    <rect x="144" y="126" width="44" height="260" rx="22" fill="url(#goldGradient)" />
+
+    <!-- Upper Arm -->
+    <path d="M 232 260 L 326 150 C 334 140 350 141 358 150 C 367 159 366 174 356 184 L 272 284 Z" fill="url(#goldGradient)" />
+
+    <!-- Lower Arm -->
+    <path d="M 242 242 L 340 354 C 349 364 348 379 338 387 C 329 395 315 394 306 384 L 208 274 Z" fill="url(#goldGradient)" />
+
+    <!-- Core nexus highlight dot -->
+    <circle cx="236" cy="256" r="5" fill="#ffffff" opacity="0.9" filter="url(#subtleGlow)" />
+  </g>
+</svg>

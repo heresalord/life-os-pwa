@@ -20,12 +20,13 @@ import {
   FileText, Plus, Search, X, Eye, Edit3,
   FolderOpen, FolderPlus,
   Folder, Pin, BookText, LayoutTemplate, FolderTree, ListTodo,
-  Maximize2, Minimize2,
+  Maximize2, Minimize2, Lock, Unlock,
 } from 'lucide-react'
 import type { Note } from '../../db/schema'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import clsx from 'clsx'
+import { NotePinUnlockModal } from '../../components/notes/NotePinModal'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SYSTEM_FOLDERS = ['All', 'Pinned', 'Journal', 'Templates']
@@ -50,18 +51,23 @@ function DesktopNoteEditor({
   onOpenNote,
   isFocusMode,
   onToggleFocusMode,
+  isLocked,
+  onUnlock,
 }: {
   note: Note
   allNotes: Note[]
   onOpenNote: (id: string) => void
   isFocusMode: boolean
   onToggleFocusMode: () => void
+  isLocked?: boolean
+  onUnlock?: () => void
 }) {
   const [title, setTitle]       = useState(note.title)
   const [body, setBody]         = useState(stripTags(note.content || ''))
   const [tags, setTags]         = useState<string[]>(extractTags(note.content || ''))
   const [tagInput, setTagInput] = useState('')
   const [mode, setMode]         = useState<'write' | 'preview'>('write')
+  const [showUnlockModal, setShowUnlockModal] = useState(false)
   const { updateNote } = useNoteMutations()
   const { timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
@@ -87,6 +93,36 @@ function DesktopNoteEditor({
     setTags(extractTags(note.content || ''))
     setMode('write')
   }, [note.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (isLocked) {
+    return (
+      <div className="flex flex-col items-center justify-center bg-surface border border-border rounded-2xl text-center p-12 space-y-4" style={{ minHeight: '60vh' }}>
+        <div className="w-14 h-14 rounded-2xl bg-accent/15 text-accent flex items-center justify-center">
+          <Lock size={26} />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-text">{note.title}</h2>
+          <p className="text-xs text-text-muted mt-1">This note is protected with a PIN</p>
+        </div>
+        <button
+          onClick={() => setShowUnlockModal(true)}
+          className="px-5 py-2.5 rounded-xl bg-accent text-white hover:bg-accent/90 text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
+        >
+          <Unlock size={14} /> Unlock Note
+        </button>
+        <NotePinUnlockModal
+          open={showUnlockModal}
+          noteTitle={note.title}
+          pinHash={(note as any).pin_hash ?? ''}
+          onUnlocked={() => {
+            setShowUnlockModal(false)
+            onUnlock?.()
+          }}
+          onClose={() => setShowUnlockModal(false)}
+        />
+      </div>
+    )
+  }
 
   const save = (b = body, t = tags, ttl = title) => {
     const content = applyTags(b, t)
@@ -276,13 +312,15 @@ export function NotesPage() {
   const { deleteNote } = useNoteMutations()
   const [searchParams] = useSearchParams()
   const highlight = searchParams.get('highlight')
+  const folderParam = searchParams.get('folder')
 
   const [activeNoteId, setActiveNoteId]   = useState<string | null>(null)
+  const [unlockedNoteIds, setUnlockedNoteIds] = useState<Set<string>>(new Set())
   const [modalOpen, setModalOpen]         = useState(false)
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
   const [search, setSearch]               = useState('')
   const [activeTag, setActiveTag]         = useState<string | null>(null)
-  const [activeFolder, setActiveFolder]   = useState('All')
+  const [activeFolder, setActiveFolder]   = useState(() => folderParam || 'All')
   const [sortBy, setSortBy]               = useState<'updated' | 'created' | 'alpha' | 'words'>('updated')
   const [customFolders, setCustomFolders] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(FOLDERS_KEY) ?? '[]') } catch { return [] }
@@ -296,6 +334,13 @@ export function NotesPage() {
   const allFolders = [...SYSTEM_FOLDERS, ...customFolders]
 
   const allTags = collectAllTags((notes as Note[]).map(n => n.content || ''))
+
+  // Sync folder query param to active folder state
+  useEffect(() => {
+    if (folderParam && allFolders.includes(folderParam)) {
+      setActiveFolder(folderParam)
+    }
+  }, [folderParam]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Deep link from search: open the highlighted note and clear filters that
   // could hide it from the list.
@@ -312,6 +357,22 @@ export function NotesPage() {
   }, [highlight, isLoading, notes])
 
   useScrollToHighlight(highlight, !isLoading)
+
+  // Journal folder summary statistics
+  const journalStats = useMemo(() => {
+    if (activeFolder !== 'Journal') return null
+    const journalNotes = (notes as Note[]).filter(n => (n as any).folder === 'Journal')
+    const now = new Date()
+    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const thisMonthNotes = journalNotes.filter(n => typeof (n as any).date === 'string' && (n as any).date.startsWith(currentMonthPrefix))
+    const totalWords = journalNotes.reduce((acc, n) => acc + ((n as any).word_count ?? 0), 0)
+    const avgWords = journalNotes.length > 0 ? Math.round(totalWords / journalNotes.length) : 0
+    return {
+      total: journalNotes.length,
+      thisMonth: thisMonthNotes.length,
+      avgWords,
+    }
+  }, [notes, activeFolder])
 
   // Filtered + sorted
   const filtered = useMemo(() => {
@@ -370,6 +431,7 @@ export function NotesPage() {
   }
 
   const handleNoteClick = (id: string) => {
+    setUnlockedNoteIds(prev => new Set(prev).add(id))
     setActiveNoteId(id)
     if (window.innerWidth < 1024) setModalOpen(true)
   }
@@ -488,6 +550,23 @@ export function NotesPage() {
             </p>
           </div>
         </header>
+
+        {/* Journal folder overview banner */}
+        {activeFolder === 'Journal' && journalStats && journalStats.total > 0 && (
+          <div className="p-3.5 bg-success/10 border border-success/20 rounded-xl space-y-1.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-text flex items-center gap-1.5">
+                <BookText size={14} className="text-success" /> Journal Overview
+              </span>
+              <span className="text-[10px] text-text-muted font-mono">{journalStats.thisMonth} this month</span>
+            </div>
+            <div className="flex items-center gap-3 text-text-secondary text-[11px]">
+              <span><strong className="text-text">{journalStats.total}</strong> total entries</span>
+              <span>•</span>
+              <span><strong className="text-text">{journalStats.avgWords}</strong> avg words</span>
+            </div>
+          </div>
+        )}
 
         {/* Mobile folder dropdown + new-folder action */}
         <div className="lg:hidden flex items-center gap-2">
@@ -620,6 +699,8 @@ export function NotesPage() {
               onOpenNote={id => { setActiveNoteId(id) }}
               isFocusMode={isFocusMode}
               onToggleFocusMode={() => setIsFocusMode(v => !v)}
+              isLocked={!!(activeNote as any)?.pin_hash && !unlockedNoteIds.has(activeNote.id)}
+              onUnlock={() => setUnlockedNoteIds(prev => new Set(prev).add(activeNote.id))}
             />
           : <DesktopEditorPlaceholder />
         }

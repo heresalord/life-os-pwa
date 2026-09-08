@@ -10,7 +10,7 @@ export function AuthGuard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-3">
-        <div className="text-3xl font-display text-accent">Life OS</div>
+        <div className="text-3xl font-display text-accent">Kairo</div>
         <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       </div>
     )

@@ -20,7 +20,7 @@ export function InstallBanner() {
               <Download size={18} className="text-accent" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text">Install Life OS</p>
+              <p className="text-sm font-medium text-text">Install Kairo</p>
               <p className="text-xs text-text-muted">Add to your home screen</p>
             </div>
             <button
@@ -90,7 +90,7 @@ export function InstallBanner() {
           <Download size={18} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-text">Install Life OS</p>
+          <p className="text-sm font-medium text-text">Install Kairo</p>
           <p className="text-xs text-text-muted">Works offline, feels native</p>
         </div>
         <button

@@ -424,7 +424,7 @@ export function GoalDetailPage() {
         return schDays.includes(d.getDay())
       }
 
-      const handleCellClick = (dateStr: string, currentVal: number | undefined, _isPastDay: boolean, _isTodayDay: boolean) => {
+      const handleCellClick = (dateStr: string, currentVal: number | undefined) => {
         haptic('light')
         if (currentVal === 1) {
           // Complete -> Explicit Fail
@@ -479,7 +479,7 @@ export function GoalDetailPage() {
                           key={dIdx}
                           type="button"
                           disabled={isFuture || !scheduled}
-                          onClick={() => handleCellClick(dateStr, value, isPast, isToday)}
+                          onClick={() => handleCellClick(dateStr, value)}
                           title={`${dateStr} (${format(day, 'EEE')}): ${
                             isComplete ? '✓ Complete (Tap to change)' :
                             isExplicitFail ? '✗ Skipped/Failed (Tap to reset)' :

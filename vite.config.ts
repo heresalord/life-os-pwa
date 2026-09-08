@@ -12,9 +12,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
-        name: 'Life OS',
-        short_name: 'Life OS',
-        description: 'Your calm personal operating system',
+        name: 'Kairo',
+        short_name: 'Kairo',
+        description: 'Capture what matters, when it matters',
         start_url: '/',
         display: 'standalone',
         background_color: '#0a0a0a',

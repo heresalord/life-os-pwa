@@ -354,7 +354,7 @@ export function SettingsPage() {
     try {
       const parsed = JSON.parse(await file.text())
       const knownKeys = ['tasks', 'notes', 'goals', 'agenda_blocks', 'daily_records', 'inbox_items', 'data']
-      if (!knownKeys.some(k => k in parsed)) throw new Error("Doesn't look like a Life OS backup file.")
+      if (!knownKeys.some(k => k in parsed)) throw new Error("Doesn't look like a valid Kairo backup file.")
       const transformed = transformPayload(parsed, user.id)
       let totalImported = 0
       const warnings: string[] = []
@@ -882,7 +882,7 @@ export function SettingsPage() {
 
       <SectionCard title="Import" icon={Upload}>
         <p className="text-xs text-text-muted pt-3 pb-3 leading-relaxed">
-          Accepts any Life OS JSON backup. Records with matching IDs are skipped.
+          Accepts any Kairo JSON backup. Records with matching IDs are skipped.
         </p>
         <input ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleImport} className="hidden" />
         <button

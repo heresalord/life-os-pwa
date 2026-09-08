@@ -65,7 +65,7 @@ export function AuthLayout({
               marginBottom: '0.25rem',
             }}
           >
-            Life OS
+            Kairo
           </h1>
           {title && (
             <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1a1918', marginTop: '1rem' }}>

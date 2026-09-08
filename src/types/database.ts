@@ -843,6 +843,7 @@ export interface Database {
           folder: string
           word_count: number
           is_template: boolean
+          pin_hash: string | null
           created_at: string
           updated_at: string
         }
@@ -857,6 +858,7 @@ export interface Database {
           folder?: string
           word_count?: number
           is_template?: boolean
+          pin_hash?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -871,6 +873,7 @@ export interface Database {
           folder?: string
           word_count?: number
           is_template?: boolean
+          pin_hash?: string | null
           created_at?: string
           updated_at?: string
         }

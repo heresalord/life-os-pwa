@@ -99,7 +99,7 @@ export function OnboardingFlow() {
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl shadow-lg p-6 sm:p-8">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-display text-accent">Life OS</h1>
+            <h1 className="text-2xl font-display text-accent">Kairo</h1>
             <span className="text-text-muted text-sm">Step {step} of 5</span>
           </div>
           <div className="w-full bg-surface-2 rounded-full h-1.5 overflow-hidden">
@@ -202,7 +202,7 @@ export function OnboardingFlow() {
               <button onClick={() => setStep(4)} className="flex-1 bg-surface-2 text-text font-medium rounded-xl py-3 hover:bg-muted transition-colors">Back</button>
               <button onClick={handleComplete} disabled={loading}
                 className="flex-[2] bg-accent text-bg font-medium rounded-xl py-3 hover:bg-accent-dim transition-colors disabled:opacity-50">
-                {loading ? 'Setting up…' : 'Start using Life OS'}
+                {loading ? 'Setting up…' : 'Start using Kairo'}
               </button>
             </div>
           </div>

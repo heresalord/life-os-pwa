@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Trash2, Pin, MoreHorizontal, Download, Copy, FolderInput, Files } from 'lucide-react'
+import { Trash2, Pin, MoreHorizontal, Download, Copy, FolderInput, Files, Lock, Unlock } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { Note } from '../../db/schema'
@@ -7,6 +7,7 @@ import { extractTags, stripTags } from '../../lib/noteTagUtils'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 import { useAppStore } from '../../store/useAppStore'
 import { getUserLocalDate } from '../../lib/dateUtils'
+import { NotePinSetModal, NotePinUnlockModal } from './NotePinModal'
 import clsx from 'clsx'
 
 const SYSTEM_FOLDERS = ['All', 'Pinned', 'Journal', 'Templates']
@@ -63,10 +64,14 @@ export function NoteCard({
 }) {
   const [swiped, setSwiped] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [pinSetOpen, setPinSetOpen] = useState(false)
+  const [pinUnlockOpen, setPinUnlockOpen] = useState(false)
   const touchStartX = useRef<number | null>(null)
-  const { pinNote, moveToFolder, addNote } = useNoteMutations()
+  const { pinNote, moveToFolder, addNote, setPinHash, clearPinHash } = useNoteMutations()
   const { timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
+
+  const isLocked = !!(note as any).pin_hash
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
   const handleTouchMove  = (e: React.TouchEvent) => {
@@ -91,6 +96,14 @@ export function NoteCard({
     pinNote.mutate({ id: note.id, pinned: !note.pinned })
   }
 
+  const handleNoteClick = () => {
+    if (isLocked) {
+      setPinUnlockOpen(true)
+    } else {
+      onClick()
+    }
+  }
+
   const allFolders = [...new Set([...SYSTEM_FOLDERS, ...folders])].filter(f => f !== 'All' && f !== 'Pinned')
 
   const wordCount = (note as any).word_count as number | undefined
@@ -103,7 +116,8 @@ export function NoteCard({
           isActive
             ? 'bg-accent/8 border-accent/40'
             : 'bg-surface border-border',
-          (note as any).pinned && 'ring-1 ring-amber-400/30'
+          (note as any).pinned && 'ring-1 ring-amber-400/30',
+          isLocked && 'ring-1 ring-accent/20'
         )}
       >
         {/* Swipe-reveal delete zone */}
@@ -114,7 +128,7 @@ export function NoteCard({
         </div>
 
         <div
-          onClick={onClick}
+          onClick={handleNoteClick}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -130,6 +144,9 @@ export function NoteCard({
               {(note as any).pinned && (
                 <Pin size={11} className="text-amber-400 flex-shrink-0 fill-amber-400" />
               )}
+              {isLocked && (
+                <Lock size={11} className="text-accent flex-shrink-0" />
+              )}
               <span className="text-sm font-medium text-text truncate">
                 {highlightText(note.title, searchTerm)}
               </span>
@@ -142,7 +159,6 @@ export function NoteCard({
                 title={(note as any).pinned ? 'Unpin' : 'Pin'}
                 className={clsx(
                   'p-1 rounded-md transition-colors',
-                  // Always visible on mobile (no hover), fade-in on desktop hover
                   (note as any).pinned
                     ? 'opacity-100 text-amber-400 hover:text-amber-300'
                     : 'text-text-muted hover:text-text opacity-60 md:opacity-0 md:group-hover:opacity-100'
@@ -213,6 +229,19 @@ export function NoteCard({
 
                     <DropdownMenu.Separator className="h-px bg-border my-1" />
 
+                    {/* PIN lock / unlock */}
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-2 cursor-pointer outline-none"
+                      onSelect={() => setPinSetOpen(true)}
+                    >
+                      {isLocked
+                        ? <><Unlock size={13} className="text-text-muted" /> Change / Remove PIN</>
+                        : <><Lock size={13} className="text-text-muted" /> Lock with PIN</>
+                      }
+                    </DropdownMenu.Item>
+
+                    <DropdownMenu.Separator className="h-px bg-border my-1" />
+
                     <DropdownMenu.Item
                       className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-2 cursor-pointer outline-none"
                       onSelect={() => exportAsMarkdown(note)}
@@ -243,12 +272,20 @@ export function NoteCard({
             </div>
           </div>
 
-          <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
-            {highlightText(snippet, searchTerm)}
-          </p>
+          {/* Locked overlay — show in place of snippet */}
+          {isLocked ? (
+            <div className="flex items-center gap-2 text-xs text-text-muted py-1">
+              <Lock size={11} />
+              <span>Tap to unlock and view</span>
+            </div>
+          ) : (
+            <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
+              {highlightText(snippet, searchTerm)}
+            </p>
+          )}
 
-          {/* Tags */}
-          {tags.length > 0 && (
+          {/* Tags (only if unlocked) */}
+          {!isLocked && tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {tags.map(tag => (
                 <span key={tag} className="text-[10px] px-2 py-0.5 bg-accent/10 text-accent rounded-full font-medium">
@@ -263,9 +300,14 @@ export function NoteCard({
             <div className="text-[10px] text-text-muted">
               {new Date(note.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
-            {wordCount !== undefined && wordCount > 0 && (
+            {!isLocked && wordCount !== undefined && wordCount > 0 && (
               <div className="text-[10px] text-text-muted">
                 {wordCount} {wordCount === 1 ? 'word' : 'words'}
+              </div>
+            )}
+            {isLocked && (
+              <div className="flex items-center gap-1 text-[10px] text-accent font-medium">
+                <Lock size={9} /> Locked
               </div>
             )}
           </div>
@@ -302,6 +344,24 @@ export function NoteCard({
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      {/* PIN Set/Change modal */}
+      <NotePinSetModal
+        open={pinSetOpen}
+        hasExistingPin={isLocked}
+        onClose={() => setPinSetOpen(false)}
+        onSet={async (pin) => { await setPinHash.mutateAsync({ id: note.id, pin }) }}
+        onRemove={isLocked ? async () => { await clearPinHash.mutateAsync(note.id) } : undefined}
+      />
+
+      {/* PIN Unlock gate */}
+      <NotePinUnlockModal
+        open={pinUnlockOpen}
+        noteTitle={note.title}
+        pinHash={(note as any).pin_hash ?? ''}
+        onUnlocked={() => { setPinUnlockOpen(false); onClick() }}
+        onClose={() => setPinUnlockOpen(false)}
+      />
     </>
   )
 }

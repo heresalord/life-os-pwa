@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Life OS</string>
-    <string name="title_activity_main">Life OS</string>
+    <string name="app_name">Kairo</string>
+    <string name="title_activity_main">Kairo</string>
     <string name="package_name">com.kmsstudio.lifeos</string>
     <string name="custom_url_scheme">com.kmsstudio.lifeos</string>
     <string name="widget_tasks_description">Shows pending and completed tasks for today</string>

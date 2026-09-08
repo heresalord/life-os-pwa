@@ -70,7 +70,7 @@ export function ShareModal({ isOpen, onClose, itemType, itemId, itemName }: Shar
               Sharing: <span className="font-semibold text-text">"{itemName}"</span>
             </p>
             <p className="text-[10px] text-text-muted mt-1 leading-normal">
-              This creates a collaborative share. Anyone you share this code with will be able to view and edit this item when they redeem it in their Life OS account.
+              This creates a collaborative share. Anyone you share this code with will be able to view and edit this item when they redeem it in their Kairo account.
             </p>
           </div>
 

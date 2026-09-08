@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'com.kmsstudio.lifeos',
-  appName: 'Life OS',
+  appName: 'Kairo',
   webDir: 'dist',
   // ── Dev mode: uncomment + set your local IP to enable live reload ──
   // server: {

@@ -5,7 +5,8 @@ import {
   Sun, Moon, Zap, Award, FileText, CheckCircle2, 
   ArrowRight, Check, Plus, Edit2, Play, Eye, ChevronLeft, ChevronRight, ChevronDown,
   Frown, Annoyed, Meh, Smile, Laugh, X, Star, AlertTriangle, CalendarDays,
-  Flame, Heart, ListChecks, Wind
+  Flame, Heart, ListChecks, Wind, Mic, MicOff, Settings2,
+  ExternalLink, BarChart2, Hash, Sparkles
 } from 'lucide-react'
 import { subDays, addDays, format, isToday, parseISO } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
@@ -22,41 +23,22 @@ import { useDb } from '../../db/DbContext'
 import { haptic } from '../../lib/haptic'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useDailyLogStreak } from '../../hooks/useDailyLogStreak'
+import { useNoteMutations } from '../../hooks/useNoteMutations'
+import { useNotesQuery } from '../../hooks/useNotesQuery'
+import { applyTags } from '../../lib/noteTagUtils'
 
 const MOOD_ICONS = [Frown, Annoyed, Meh, Smile, Laugh]
 const MOOD_LABELS = ['Low', 'Difficult', 'Okay', 'Good', 'Great']
 
+// Night journal preset sections key in localStorage
+const NIGHT_SECTIONS_KEY = 'life-os-night-journal-sections'
+const DEFAULT_NIGHT_SECTIONS = ['Biggest Win', 'What Went Well', "What I'd Do Differently", "Tomorrow's Focus"]
+
 const JOURNAL_TEMPLATES = {
   blank: '',
-  gratitude: `## Morning Gratitude
-1. I am grateful for...
-2. I am grateful for...
-3. I am grateful for...
-
-## What would make today great?
-- [ ] 
-- [ ] `,
-  weekly_review: `## Weekly Review
-### Achievements & Wins
-- 
-
-### Challenges & Roadblocks
-- 
-
-### Key Learnings
-- 
-
-### Focus for Next Week
-- `,
-  stress_log: `## Stress Log
-### What is causing me stress?
-- 
-
-### What can I control about it?
-- 
-
-### Action Steps (Things I can do today/tomorrow)
-- [ ] `
+  gratitude: `## Morning Gratitude\n1. I am grateful for...\n2. I am grateful for...\n3. I am grateful for...\n\n## What would make today great?\n- [ ] \n- [ ] `,
+  weekly_review: `## Weekly Review\n### Achievements & Wins\n- \n\n### Challenges & Roadblocks\n- \n\n### Key Learnings\n- \n\n### Focus for Next Week\n- `,
+  stress_log: `## Stress Log\n### What is causing me stress?\n- \n\n### What can I control about it?\n- \n\n### Action Steps (Things I can do today/tomorrow)\n- [ ] `
 }
 
 const TEMPLATE_OPTIONS = [
@@ -65,6 +47,90 @@ const TEMPLATE_OPTIONS = [
   { key: 'weekly_review' as const, label: 'Weekly', icon: ListChecks },
   { key: 'stress_log' as const, label: 'Stress', icon: Wind },
 ]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Format a date string to a friendly journal note title, e.g. "Journal – Sep 7, 2026" */
+function journalNoteTitle(dateStr: string): string {
+  try {
+    return `Journal – ${format(parseISO(dateStr + 'T12:00:00'), 'MMM d, yyyy')}`
+  } catch {
+    return `Journal – ${dateStr}`
+  }
+}
+
+/** Upsert a section (## heading) inside markdown content. */
+function upsertSection(content: string, heading: string, body: string): string {
+  const heading2 = `## ${heading}`
+  const lines = content.split('\n')
+  const startIdx = lines.findIndex(l => l.trim() === heading2)
+  if (startIdx === -1) {
+    // Append new section
+    const trimmed = content.trimEnd()
+    return trimmed + (trimmed ? '\n\n' : '') + `${heading2}\n${body}`
+  }
+  // Find end of section (next ## heading or EOF)
+  let endIdx = lines.length
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    if (lines[i].startsWith('## ')) { endIdx = i; break }
+  }
+  const before = lines.slice(0, startIdx).join('\n')
+  const after = lines.slice(endIdx).join('\n')
+  const section = `${heading2}\n${body}`
+  return [before, section, after].filter(Boolean).join('\n\n').trim()
+}
+
+/** Build night journal initial content from enabled sections. */
+function buildNightJournalTemplate(sections: string[], enabledMap: Record<string, boolean>): string {
+  return sections
+    .filter(s => enabledMap[s] !== false)
+    .map(s => `## ${s}\n`)
+    .join('\n\n')
+}
+
+/** Auto-extract #hashtags from text and return them as tag strings. */
+function extractHashtags(text: string): string[] {
+  const matches = text.match(/#([a-zA-Z0-9_]+)/g) ?? []
+  return [...new Set(matches.map(m => m.slice(1).toLowerCase()))]
+}
+
+// ─── Voice-to-text hook ───────────────────────────────────────────────────────
+function useVoiceInput(onResult: (text: string) => void) {
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<any>(null)
+
+  const supported = typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+
+  const start = useCallback(() => {
+    if (!supported) return
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
+    const recognition = new SR()
+    recognition.continuous = true
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((r: any) => r[0].transcript)
+        .join(' ')
+      onResult(transcript)
+    }
+    recognition.onerror = () => setIsListening(false)
+    recognition.onend = () => setIsListening(false)
+    recognitionRef.current = recognition
+    recognition.start()
+    setIsListening(true)
+    haptic('light')
+  }, [supported, onResult])
+
+  const stop = useCallback(() => {
+    recognitionRef.current?.stop()
+    setIsListening(false)
+    haptic('light')
+  }, [])
+
+  return { supported, isListening, start, stop }
+}
 
 export function DailyLogPage() {
   const { date: paramDate } = useParams<{ date: string }>()
@@ -80,6 +146,10 @@ export function DailyLogPage() {
   const { addTask, updateTask } = useTaskMutations(activeDate)
   const { user } = useAuth()
   const db = useDb()
+
+  // Notes
+  const { addNote, updateNote } = useNoteMutations()
+  const { data: allNotes = [] } = useNotesQuery()
 
   // Streak data for continuity badges
   const { currentStreak } = useDailyLogStreak()
@@ -102,6 +172,16 @@ export function DailyLogPage() {
 
   // Wizard completion celebratory beat
   const [wizardCelebration, setWizardCelebration] = useState<boolean>(false)
+
+  // Night journal sections config
+  const [nightSections] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(NIGHT_SECTIONS_KEY)
+      return stored ? JSON.parse(stored) : DEFAULT_NIGHT_SECTIONS
+    } catch { return DEFAULT_NIGHT_SECTIONS }
+  })
+  const [nightSectionsEnabled, setNightSectionsEnabled] = useState<Record<string, boolean>>({})
+  const [showNightSectionConfig, setShowNightSectionConfig] = useState(false)
 
   // Carry-over is guarded by a localStorage key so it runs at most once per
   // user+date pair, even across remounts, page refreshes, and wizard re-opens.
@@ -134,6 +214,7 @@ export function DailyLogPage() {
 
   // --- Morning state ---
   const [energyAm, setEnergyAm] = useState<number>(3)
+  const [morningJournal, setMorningJournal] = useState<string>('')
   const [intention, setIntention] = useState<string>('')
   const [gratitude, setGratitude] = useState<string[]>(['', '', ''])
   const [newTaskTitle, setNewTaskTitle] = useState<string>('')
@@ -141,12 +222,13 @@ export function DailyLogPage() {
   // --- Evening state ---
   const [mood, setMood] = useState<number>(3)
   const [energyPm, setEnergyPm] = useState<number>(3)
+  const [nightJournal, setNightJournal] = useState<string>('')
   const [winOfDay, setWinOfDay] = useState<string>('')
   const [wentWell, setWentWell] = useState<string>('')
   const [doDifferently, setDoDifferently] = useState<string>('')
   const [tomorrowFocus, setTomorrowFocus] = useState<string>('')
 
-  // --- Journal state ---
+  // --- Free Journal state (static section) ---
   const [journal, setJournal] = useState<string>('')
   const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof JOURNAL_TEMPLATES>('blank')
   const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false)
@@ -156,6 +238,10 @@ export function DailyLogPage() {
 
   // --- Guided Wizard Step ---
   const [wizardStep, setWizardStep] = useState<number>(1)
+
+  // Voice-to-text for morning / evening guided wizard
+  const morningVoice = useVoiceInput((t) => setMorningJournal(prev => prev ? prev + ' ' + t : t))
+  const nightVoice = useVoiceInput((t) => setNightJournal(prev => prev ? prev + ' ' + t : t))
 
   // Reset to step 1 whenever the wizard type changes
   useEffect(() => {
@@ -194,6 +280,57 @@ export function DailyLogPage() {
     if (record.journal !== null && record.journal !== undefined) setJournal(record.journal)
   }, [record, activeDate])
 
+  // Populate morning/night journal from Notes Journal folder
+  const journalNoteForDate = useMemo(() => {
+    const title = journalNoteTitle(activeDate)
+    return (allNotes as any[]).find(n => n.title === title && n.folder === 'Journal') ?? null
+  }, [allNotes, activeDate])
+
+  useEffect(() => {
+    if (!journalNoteForDate) return
+    const content = journalNoteForDate.content as string ?? ''
+    // Extract morning section
+    const morningMatch = content.match(/## Morning\n([\s\S]*?)(?=\n## |$)/)
+    if (morningMatch) setMorningJournal(morningMatch[1].trim())
+    // Extract evening section
+    const eveningMatch = content.match(/## Evening\n([\s\S]*?)(?=\n## |$)/)
+    if (eveningMatch) setNightJournal(eveningMatch[1].trim())
+  }, [journalNoteForDate])
+
+  // Initialize night journal with preset sections if empty
+  useEffect(() => {
+    if (nightJournal) return
+    if (guidedMode === 'evening' && wizardStep === 3) {
+      const template = buildNightJournalTemplate(nightSections, nightSectionsEnabled)
+      if (template.trim()) setNightJournal(template)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guidedMode, wizardStep])
+
+  // "This Day Last Year" note
+  const thisTimeLasYear = useMemo(() => {
+    try {
+      const lastYearDate = format(subDays(parseISO(activeDate + 'T12:00:00'), 365), 'yyyy-MM-dd')
+      const title = journalNoteTitle(lastYearDate)
+      return (allNotes as any[]).find(n => n.title === title && n.folder === 'Journal') ?? null
+    } catch { return null }
+  }, [allNotes, activeDate])
+
+  // Monthly journal stats
+  const monthlyJournalStats = useMemo(() => {
+    const [year, month] = activeDate.split('-')
+    const journalNotes = (allNotes as any[]).filter(n =>
+      n.folder === 'Journal' &&
+      typeof n.date === 'string' &&
+      n.date.startsWith(`${year}-${month}`)
+    )
+    const total = journalNotes.length
+    const avgWords = total > 0
+      ? Math.round(journalNotes.reduce((sum: number, n: any) => sum + (n.word_count ?? 0), 0) / total)
+      : 0
+    return { total, avgWords }
+  }, [allNotes, activeDate])
+
   // Top tasks priorities calculation (priority >= 4)
   const priorities = useMemo(() => {
     return tasks.filter(t => (t.priority || 0) >= 4)
@@ -208,8 +345,32 @@ export function DailyLogPage() {
     return calculateDayScore(tasks, record?.mood ?? null, record?.energy_am ?? null, record?.energy_pm ?? null)
   }, [tasks, record])
 
+  // ─── Save journal note to Notes/Journal folder ────────────────────────────
+  const saveJournalNote = useCallback(async (morningText: string, eveningText: string) => {
+    if (!user) return
+    const title = journalNoteTitle(activeDate)
+    let content = ''
+    if (morningText.trim()) content = upsertSection(content, 'Morning', morningText.trim())
+    if (eveningText.trim()) content = upsertSection(content, 'Evening', eveningText.trim())
+    if (!content.trim()) return
+
+    // Auto-tag from hashtags in journal content
+    const hashtags = extractHashtags(content)
+    const finalContent = hashtags.length > 0 ? applyTags(content, hashtags) : content
+
+    if (journalNoteForDate) {
+      updateNote.mutate({ id: journalNoteForDate.id, updates: { content: finalContent } })
+    } else {
+      addNote.mutate({
+        title,
+        content: finalContent,
+        date: activeDate,
+        folder: 'Journal',
+      })
+    }
+  }, [user, activeDate, journalNoteForDate, addNote, updateNote])
+
   // §0 Fix: Completion Model & Save Fields Wrapper
-  // Evaluates field presence to auto-mark completion if criteria are satisfied
   const handleSaveFields = useCallback(async (updates: Record<string, any>) => {
     setSaveStatus('saving')
     try {
@@ -219,16 +380,11 @@ export function DailyLogPage() {
 
       const curWinOfDay = updates.win_of_day !== undefined ? updates.win_of_day : winOfDay
 
-      // Auto-derive morning completion if energy, intention, and at least one gratitude are entered
       const morningDerived = Boolean(
         record?.morning_complete || updates.morning_complete ||
         (curEnergyAm != null && curIntent?.trim() && curGratitude.some((g: string) => g?.trim()))
       )
 
-      // Auto-derive evening completion if mood, energy, and win are entered.
-      // Mood/energy are checked against the *persisted* record, not the local
-      // slider state — the sliders default to 3 on mount, so a local-state
-      // check would read as "set" even when the user never touched them.
       const savedMood = updates.mood !== undefined ? updates.mood : record?.mood
       const savedEnergyPm = updates.energy_pm !== undefined ? updates.energy_pm : record?.energy_pm
       const eveningDerived = Boolean(
@@ -277,7 +433,6 @@ export function DailyLogPage() {
     setWizardStep(1)
   }
 
-  // §5 Motion & Feedback: 350ms celebratory checkmark beat before dismiss
   const finishMorningWizard = async () => {
     try {
       await upsert.mutateAsync({
@@ -286,6 +441,7 @@ export function DailyLogPage() {
         gratitude,
         morning_complete: true
       })
+      await saveJournalNote(morningJournal, nightJournal)
       haptic('success')
       setWizardCelebration(true)
       setTimeout(() => {
@@ -309,6 +465,7 @@ export function DailyLogPage() {
         tomorrow_focus: tomorrowFocus,
         evening_complete: true
       })
+      await saveJournalNote(morningJournal, nightJournal)
       haptic('success')
       setWizardCelebration(true)
       setTimeout(() => {
@@ -372,7 +529,7 @@ export function DailyLogPage() {
     handleSaveFields({ journal: newContent })
   }
 
-  // §6 Accessibility: 44px min touch target lightning scale
+  // ─── Energy Scale ───────────────────────────────────────────────────────────
   const renderLightningScale = (currentVal: number, onChange: (val: number) => void, readonly = false) => {
     return (
       <div className="flex gap-2 sm:gap-3">
@@ -399,10 +556,10 @@ export function DailyLogPage() {
     )
   }
 
-  // §6 Accessibility & Motion: Mood scale with min 44px hit targets and consistent easing
-  const renderMoodScale = (currentVal: number, onChange: (val: number) => void, readonly = false, compact = false) => {
+  // ─── Mood Scale — compact and overflow-proof across all screens ───────────
+  const renderMoodScale = (currentVal: number, onChange: (val: number) => void, readonly = false) => {
     return (
-      <div className="flex justify-between gap-2">
+      <div className="flex justify-between gap-1 sm:gap-2 w-full">
         {[1, 2, 3, 4, 5].map(val => {
           const MoodIcon = MOOD_ICONS[val - 1]
           const isSelected = currentVal === val
@@ -412,31 +569,21 @@ export function DailyLogPage() {
               disabled={readonly}
               type="button"
               aria-label={`Mood: ${MOOD_LABELS[val - 1]}`}
+              title={MOOD_LABELS[val - 1]}
               onClick={() => {
                 haptic('light')
                 onChange(val)
               }}
-              className={`flex-1 min-h-[44px] flex flex-col items-center justify-center transition-all duration-200 ease-out ${
-                compact ? 'py-3 px-1' : 'p-3'
-              } rounded-xl border ${
+              className={`flex-1 min-w-0 min-h-[50px] flex flex-col items-center justify-center gap-1 transition-all duration-200 ease-out py-2 px-0.5 sm:px-1 rounded-xl border ${
                 isSelected
                   ? 'bg-info/15 border-info text-info scale-105 font-medium'
                   : 'bg-surface-2 border-border text-text-muted hover:border-info/30 hover:bg-surface-2/80 hover:text-text'
               } ${readonly ? 'cursor-default' : 'cursor-pointer active:scale-95'}`}
             >
-              <MoodIcon
-                size={compact ? 22 : 24}
-                className={`${compact ? '' : 'mb-1'} ${
-                  isSelected ? 'text-info' : 'text-text-muted'
-                }`}
-              />
-              {!compact && (
-                <span className={`text-xs font-medium ${
-                  isSelected ? 'text-info' : 'text-text-muted'
-                }`}>
-                  {MOOD_LABELS[val - 1]}
-                </span>
-              )}
+              <MoodIcon size={20} className={`flex-shrink-0 ${isSelected ? 'text-info' : 'text-text-muted'}`} />
+              <span className={`text-[9px] sm:text-[10px] font-medium leading-none truncate max-w-full text-center px-0.5 ${isSelected ? 'text-info' : 'text-text-muted'}`}>
+                {MOOD_LABELS[val - 1]}
+              </span>
             </button>
           )
         })}
@@ -453,19 +600,18 @@ export function DailyLogPage() {
     return () => clearTimeout(t)
   }, [saveStatus])
 
-  // Time-aware ritual suggestions (§1 IA)
+  // Time-aware ritual suggestions
   const currentHour = new Date().getHours()
   const isMorningComplete = Boolean(record?.morning_complete)
   const isEveningComplete = Boolean(record?.evening_complete)
   const isEveningTime = currentHour >= 17 // after 5pm
   const isPastNoon = currentHour >= 12
 
-  // Determine whether evening card is currently unlocked
   const eveningUnlocked = isMorningComplete || isPastNoon || eveningUnlockedEarly
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 relative">
-      {/* Header — minimal iOS-style nav with accessible 44px tap targets */}
+      {/* Header */}
       <header className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <button
@@ -491,7 +637,6 @@ export function DailyLogPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* §2 Save status: Green dot + visible "Saved" text fading together */}
           <div
             className="flex items-center gap-1.5 transition-opacity duration-500 select-none"
             style={{ opacity: saveStatus === 'saved' ? 1 : 0 }}
@@ -507,7 +652,6 @@ export function DailyLogPage() {
             </span>
           )}
 
-          {/* §7 Visible tappable affordance chip for date picker */}
           <button
             onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.focus()}
             className="w-11 h-11 rounded-xl bg-surface-2 hover:bg-surface-3 border border-border/80 text-text-secondary hover:text-text flex items-center justify-center transition-colors shadow-xs"
@@ -527,9 +671,7 @@ export function DailyLogPage() {
         </div>
       </header>
 
-      {/* ========================================================
-          §1 & §4: PRIMARY MOMENT CTA (One primary action sized to the moment)
-          ======================================================== */}
+      {/* PRIMARY MOMENT CTA */}
       {(!isMorningComplete || !isEveningComplete) ? (
         <section
           className={`border rounded-2xl p-5 shadow-[var(--shadow-card)] transition-all ${
@@ -618,9 +760,7 @@ export function DailyLogPage() {
       {/* Habit Cards Grid */}
       <div className="space-y-4">
         
-        {/* ========================================================
-            SECTION 1: MORNING RITUAL (Collapsed summary row when complete)
-            ======================================================== */}
+        {/* SECTION 1: MORNING RITUAL */}
         {isMorningComplete ? (
           <section className="bg-surface border border-border border-l-4 border-l-warning rounded-2xl p-4 shadow-[var(--shadow-card)] transition-all">
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -661,13 +801,21 @@ export function DailyLogPage() {
               </div>
             </div>
 
-            {/* Read-only expanded detail */}
             {morningExpanded && (
               <div className="mt-4 pt-4 border-t border-border/60 space-y-4 text-xs">
                 <div>
                   <span className="text-text-secondary font-medium block mb-1.5">Energy</span>
                   {renderLightningScale(energyAm, () => {}, true)}
                 </div>
+
+                {morningJournal && (
+                  <div>
+                    <span className="text-text-secondary font-medium block mb-1">Morning Journal</span>
+                    <p className="p-3 bg-surface-2 border border-border rounded-xl text-sm text-text font-normal line-clamp-3">
+                      {morningJournal}
+                    </p>
+                  </div>
+                )}
 
                 {intention && (
                   <div>
@@ -722,7 +870,6 @@ export function DailyLogPage() {
               </h2>
             </div>
 
-            {/* §2 Copy: "Energy" */}
             <div className="space-y-2">
               <label className="block text-xs font-medium text-text-secondary">Energy</label>
               {renderLightningScale(energyAm, (val) => {
@@ -731,7 +878,6 @@ export function DailyLogPage() {
               })}
             </div>
 
-            {/* §2 Copy: "Intention" + "What matters most today?" */}
             <div className="space-y-2">
               <label className="block text-xs font-medium text-text-secondary">Intention</label>
               <input
@@ -747,7 +893,6 @@ export function DailyLogPage() {
               />
             </div>
 
-            {/* §2 Copy: "Grateful for" */}
             <div className="space-y-2">
               <label className="block text-xs font-medium text-text-secondary">Grateful for</label>
               <div className="space-y-2">
@@ -772,11 +917,9 @@ export function DailyLogPage() {
               </div>
             </div>
 
-            {/* §2 Copy: "Priorities" (drop "(linked to Tasks)") */}
             <div className="space-y-3">
               <label className="block text-xs font-medium text-text-secondary">Priorities</label>
               
-              {/* List priorities */}
               {priorities.length === 0 ? (
                 <p className="text-xs text-text-muted italic py-1">Nothing set yet — add one below.</p>
               ) : (
@@ -809,7 +952,6 @@ export function DailyLogPage() {
                 </ul>
               )}
 
-              {/* Quick add priority task */}
               <form onSubmit={handleAddPriorityTask} className="flex gap-2">
                 <input
                   type="text"
@@ -827,7 +969,6 @@ export function DailyLogPage() {
                 </button>
               </form>
 
-              {/* §2 Copy: "Add from today's tasks" */}
               {otherTasks.length > 0 && (
                 <div className="pt-2">
                   <p className="text-xs font-medium text-text-secondary mb-2">Add from today's tasks</p>
@@ -849,7 +990,6 @@ export function DailyLogPage() {
               )}
             </div>
 
-            {/* Guided mode full-width primary CTA */}
             <button
               onClick={() => startWizard('morning')}
               className="w-full flex items-center justify-center gap-2 h-12 bg-amber-400 text-gray-900 rounded-xl font-semibold text-sm hover:bg-amber-300 active:scale-98 transition-all shadow-sm"
@@ -864,9 +1004,7 @@ export function DailyLogPage() {
           </section>
         )}
 
-        {/* ========================================================
-            SECTION 2: EVENING REVIEW (Progressive disclosure: stays closed until morning complete or past noon)
-            ======================================================== */}
+        {/* SECTION 2: EVENING REVIEW */}
         {!eveningUnlocked ? (
           <section className="bg-surface border border-border/60 rounded-2xl p-4 text-xs text-text-secondary flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -920,7 +1058,6 @@ export function DailyLogPage() {
               </div>
             </div>
 
-            {/* Read-only expanded detail */}
             {eveningExpanded && (
               <div className="mt-4 pt-4 border-t border-border/60 space-y-4 text-xs">
                 <div>
@@ -933,11 +1070,11 @@ export function DailyLogPage() {
                   {renderLightningScale(energyPm, () => {}, true)}
                 </div>
 
-                {winOfDay && (
+                {nightJournal && (
                   <div>
-                    <span className="text-text-secondary font-medium block mb-1">Today's win</span>
-                    <p className="p-3 bg-surface-2 border border-border rounded-xl text-sm text-text">
-                      {winOfDay}
+                    <span className="text-text-secondary font-medium block mb-1">Night Journal</span>
+                    <p className="p-3 bg-surface-2 border border-border rounded-xl text-sm text-text line-clamp-4">
+                      {nightJournal}
                     </p>
                   </div>
                 )}
@@ -979,7 +1116,6 @@ export function DailyLogPage() {
               </h2>
             </div>
 
-            {/* §2 Copy: "Mood" */}
             <div className="space-y-2">
               <label className="block text-xs font-medium text-text-secondary">Mood</label>
               {renderMoodScale(mood, (val) => {
@@ -988,7 +1124,6 @@ export function DailyLogPage() {
               })}
             </div>
 
-            {/* §2 Copy: "Energy" */}
             <div className="space-y-2">
               <label className="block text-xs font-medium text-text-secondary">Energy</label>
               {renderLightningScale(energyPm, (val) => {
@@ -997,7 +1132,6 @@ export function DailyLogPage() {
               })}
             </div>
 
-            {/* §2 Copy: "Today's win" + accessible non-color character counter */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="block text-xs font-medium text-text-secondary">Today's win</label>
@@ -1024,7 +1158,6 @@ export function DailyLogPage() {
               />
             </div>
 
-            {/* Structured prompts */}
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">What went well?</label>
@@ -1072,7 +1205,6 @@ export function DailyLogPage() {
               </div>
             </div>
 
-            {/* Guided mode full-width primary CTA */}
             <button
               onClick={() => startWizard('evening')}
               className="w-full flex items-center justify-center gap-2 h-12 bg-indigo-500 text-white rounded-xl font-semibold text-sm hover:bg-indigo-400 active:scale-98 transition-all shadow-sm"
@@ -1088,9 +1220,7 @@ export function DailyLogPage() {
         )}
       </div>
 
-      {/* ========================================================
-          §1 & §3: SECTION 3: FREE JOURNAL (Monochrome/Neutral, Below Habit Loop)
-          ======================================================== */}
+      {/* FREE JOURNAL SECTION */}
       <section className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] space-y-4">
         <div className="flex justify-between items-center pb-2 border-b border-border/50 flex-wrap gap-2">
           <h2 className="text-base font-semibold text-text flex items-center gap-2">
@@ -1098,7 +1228,14 @@ export function DailyLogPage() {
             Free Journal
           </h2>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Preview toggle */}
+            <button
+              type="button"
+              onClick={() => navigate('/notes?folder=Journal')}
+              className="text-xs font-semibold py-1.5 px-3 bg-surface-2 border border-border text-text-secondary rounded-xl hover:bg-surface-3 transition-colors flex items-center gap-1.5"
+              title="Open Journal folder in Notes"
+            >
+              <ExternalLink size={12} /> Notes
+            </button>
             <button
               type="button"
               onClick={() => setIsPreviewMode(!isPreviewMode)}
@@ -1113,7 +1250,36 @@ export function DailyLogPage() {
           </div>
         </div>
 
-        {/* §2 & §3: Template picker with Lucide icons */}
+        {/* Monthly journal stats */}
+        {monthlyJournalStats.total > 0 && (
+          <div className="flex items-center gap-3 p-3 bg-surface-2/60 border border-border/50 rounded-xl text-xs text-text-secondary">
+            <BarChart2 size={14} className="text-accent flex-shrink-0" />
+            <span>
+              <strong className="text-text">{monthlyJournalStats.total}</strong> journal {monthlyJournalStats.total === 1 ? 'entry' : 'entries'} this month
+              {monthlyJournalStats.avgWords > 0 && ` · avg ${monthlyJournalStats.avgWords} words`}
+            </span>
+          </div>
+        )}
+
+        {/* This Day Last Year */}
+        {thisTimeLasYear && (
+          <div className="flex items-start gap-3 p-3 bg-accent/5 border border-accent/20 rounded-xl">
+            <Sparkles size={14} className="text-accent flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-accent mb-0.5">This day last year</p>
+              <p className="text-xs text-text-secondary line-clamp-2">
+                {(thisTimeLasYear as any).content?.replace(/##.*\n?/g, '').replace(/[#*`]/g, '').trim().slice(0, 120) || 'You wrote in your journal.'}
+              </p>
+              <button
+                onClick={() => navigate(`/notes?highlight=${(thisTimeLasYear as any).id}`)}
+                className="text-xs text-accent hover:underline mt-1 inline-flex items-center gap-1"
+              >
+                Read it <ExternalLink size={10} />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
           {TEMPLATE_OPTIONS.map(({ key, label, icon: Icon }) => (
             <button
@@ -1131,7 +1297,6 @@ export function DailyLogPage() {
           ))}
         </div>
 
-        {/* Journal Editor or Preview */}
         {isPreviewMode ? (
           <div className="prose prose-invert max-w-none text-sm text-text bg-surface-2/50 border border-border rounded-xl p-4 min-h-[180px]">
             {journal.trim() ? (
@@ -1176,9 +1341,7 @@ export function DailyLogPage() {
         )}
       </section>
 
-      {/* ========================================================
-          §1 & §3: SECTION 4: DAY SCORE (Neutral styling, Below Habits)
-          ======================================================== */}
+      {/* DAY SCORE */}
       <section className="p-5 bg-surface border border-border rounded-2xl shadow-[var(--shadow-card)] space-y-4">
         <h3 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
           <Award size={16} className="text-text-muted" />
@@ -1186,7 +1349,6 @@ export function DailyLogPage() {
         </h3>
 
         <div className="flex flex-col sm:flex-row items-center gap-6">
-          {/* Circular Score Gauge */}
           <div className="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle
@@ -1208,7 +1370,6 @@ export function DailyLogPage() {
             </div>
           </div>
 
-          {/* Component Score breakdown */}
           <div className="flex-1 space-y-2.5 text-xs w-full">
             <div className="flex justify-between items-center">
               <span className="text-text-muted">Task Completion</span>
@@ -1246,7 +1407,7 @@ export function DailyLogPage() {
         </div>
       </section>
 
-      {/* §2 Custom ConfirmDialog for replacing journal template */}
+      {/* ConfirmDialog for replacing journal template */}
       <ConfirmDialog
         open={confirmTemplateOpen}
         onOpenChange={setConfirmTemplateOpen}
@@ -1264,14 +1425,13 @@ export function DailyLogPage() {
 
       {/* ========================================================
           GUIDED MODE — FULL-SCREEN IMMERSIVE WIZARD
-          (With reduced-motion handling & celebratory completion beat)
           ======================================================== */}
       {(guidedMode === 'morning' || guidedMode === 'evening') && createPortal((() => {
         const isMorning = guidedMode === 'morning'
-        const totalSteps = 4
+        const totalSteps = 5
+
         const pct = Math.round((wizardStep / totalSteps) * 100)
 
-        // Gradient config
         const gradientFrom = isMorning ? 'from-amber-950' : 'from-indigo-950'
         const gradientTo   = isMorning ? 'to-orange-900'  : 'to-blue-950'
         const accentColor  = isMorning ? '#f59e0b' : '#60a5fa'
@@ -1284,7 +1444,6 @@ export function DailyLogPage() {
           : 'bg-blue-500  hover:bg-blue-400  text-white'
         const btnFinish    = 'bg-emerald-500 hover:bg-emerald-400 text-white'
 
-        // Progress ring (SVG)
         const r = 28
         const circ = 2 * Math.PI * r
         const dash = circ - (circ * pct) / 100
@@ -1300,7 +1459,7 @@ export function DailyLogPage() {
             <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-10 blur-3xl pointer-events-none"
               style={{ backgroundColor: accentColor, transform: 'translate(-30%, 30%)' }} />
 
-            {/* §5 Celebratory Completion Beat Overlay */}
+            {/* Celebration overlay */}
             {wizardCelebration && (
               <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center motion-safe:animate-in motion-safe:fade-in duration-300">
                 <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-lg scale-110">
@@ -1315,7 +1474,6 @@ export function DailyLogPage() {
 
             {/* Top bar */}
             <div className="relative flex items-center justify-between px-5 pt-safe pt-4 pb-3">
-              {/* Close button with aria-label */}
               <button
                 onClick={() => setSearchParams({})}
                 aria-label="Close wizard"
@@ -1342,7 +1500,6 @@ export function DailyLogPage() {
                 <span className="absolute text-xs font-bold text-white">{wizardStep}/{totalSteps}</span>
               </div>
 
-              {/* Mode label */}
               <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 backdrop-blur-sm border ${accentBorder}`}>
                 {isMorning ? <Sun size={14} className={accentLight} /> : <Moon size={14} className={accentLight} />}
                 <span className={`text-xs font-semibold ${accentLight}`}>
@@ -1359,11 +1516,13 @@ export function DailyLogPage() {
               />
             </div>
 
-            {/* Step content with motion-safe animations */}
+            {/* Step content */}
             <div className="flex-1 overflow-y-auto px-5 py-4">
               <div className="max-w-md mx-auto">
 
                 {/* ── MORNING STEPS ── */}
+
+                {/* Step 1: Energy Check */}
                 {isMorning && wizardStep === 1 && (
                   <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
                     <div>
@@ -1389,10 +1548,64 @@ export function DailyLogPage() {
                   </div>
                 )}
 
+                {/* Step 2: Free Morning Journal */}
                 {isMorning && wizardStep === 2 && (
+                  <div className="space-y-5 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
+                    <div>
+                      <p className="text-amber-300/70 text-xs font-medium mb-1">Step 2 · Morning Journal</p>
+                      <h2 className="text-2xl font-display font-bold text-white">How are you feeling?</h2>
+                      <p className="text-white/60 text-xs mt-1">Free write — no structure needed. Just express yourself.</p>
+                    </div>
+
+                    {/* This Day Last Year callout */}
+                    {thisTimeLasYear && (
+                      <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-amber-400/20">
+                        <Sparkles size={13} className="text-amber-300 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-amber-300 mb-0.5">This day last year you wrote:</p>
+                          <p className="text-xs text-white/60 line-clamp-2">
+                            {(thisTimeLasYear as any).content?.replace(/##.*\n?/g, '').replace(/[#*`]/g, '').trim().slice(0, 100)}…
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="relative">
+                      <textarea
+                        autoFocus
+                        value={morningJournal}
+                        onChange={e => setMorningJournal(e.target.value)}
+                        placeholder="Write freely… What's on your mind this morning? How do you feel? What are you looking forward to?"
+                        rows={8}
+                        className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-4 py-3 text-white placeholder-white/40 text-sm outline-none resize-none transition-colors`}
+                      />
+                      {/* Voice-to-text button */}
+                      {morningVoice.supported && (
+                        <button
+                          type="button"
+                          onClick={morningVoice.isListening ? morningVoice.stop : morningVoice.start}
+                          className={`absolute bottom-3 right-3 w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                            morningVoice.isListening
+                              ? 'bg-red-500 text-white animate-pulse'
+                              : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                          }`}
+                          title={morningVoice.isListening ? 'Stop dictation' : 'Dictate'}
+                        >
+                          {morningVoice.isListening ? <MicOff size={15} /> : <Mic size={15} />}
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-white/40 flex items-center gap-1">
+                      <Hash size={10} /> Use #hashtags to auto-tag this note
+                    </p>
+                  </div>
+                )}
+
+                {/* Step 3: Intention */}
+                {isMorning && wizardStep === 3 && (
                   <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
                     <div>
-                      <p className="text-amber-300/70 text-xs font-medium mb-1">Step 2 · Intention</p>
+                      <p className="text-amber-300/70 text-xs font-medium mb-1">Step 3 · Intention</p>
                       <h2 className="text-2xl font-display font-bold text-white">Set your intention</h2>
                       <p className="text-white/60 text-xs mt-1">What matters most today?</p>
                     </div>
@@ -1407,10 +1620,11 @@ export function DailyLogPage() {
                   </div>
                 )}
 
-                {isMorning && wizardStep === 3 && (
+                {/* Step 4: Gratitude */}
+                {isMorning && wizardStep === 4 && (
                   <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
                     <div>
-                      <p className="text-amber-300/70 text-xs font-medium mb-1">Step 3 · Gratitude</p>
+                      <p className="text-amber-300/70 text-xs font-medium mb-1">Step 4 · Gratitude</p>
                       <h2 className="text-2xl font-display font-bold text-white">Grateful for</h2>
                       <p className="text-white/60 text-xs mt-1">3 things you're genuinely grateful for.</p>
                     </div>
@@ -1431,10 +1645,11 @@ export function DailyLogPage() {
                   </div>
                 )}
 
-                {isMorning && wizardStep === 4 && (
+                {/* Step 5: Priorities */}
+                {isMorning && wizardStep === 5 && (
                   <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
                     <div>
-                      <p className="text-amber-300/70 text-xs font-medium mb-1">Step 4 · Priorities</p>
+                      <p className="text-amber-300/70 text-xs font-medium mb-1">Step 5 · Priorities</p>
                       <h2 className="text-2xl font-display font-bold text-white">Today's Priorities</h2>
                       <p className="text-white/60 text-xs mt-1">Your top tasks to focus on today.</p>
                     </div>
@@ -1465,6 +1680,8 @@ export function DailyLogPage() {
                 )}
 
                 {/* ── EVENING STEPS ── */}
+
+                {/* Step 1: Mood Check */}
                 {!isMorning && wizardStep === 1 && (
                   <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
                     <div>
@@ -1472,10 +1689,11 @@ export function DailyLogPage() {
                       <h2 className="text-2xl font-display font-bold text-white">How was your day?</h2>
                       <p className="text-white/60 text-xs mt-1">Take a moment to check in with your mood.</p>
                     </div>
-                    {renderMoodScale(mood, setMood, false, true)}
+                    {renderMoodScale(mood, setMood)}
                   </div>
                 )}
 
+                {/* Step 2: Energy */}
                 {!isMorning && wizardStep === 2 && (
                   <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
                     <div>
@@ -1489,33 +1707,80 @@ export function DailyLogPage() {
                   </div>
                 )}
 
+                {/* Step 3: Night Journal */}
                 {!isMorning && wizardStep === 3 && (
-                  <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
-                    <div className="flex justify-between items-start">
+                  <div className="space-y-5 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
+                    <div className="flex items-start justify-between">
                       <div>
-                        <p className="text-blue-300/70 text-xs font-medium mb-1">Step 3 · Today's win</p>
-                        <h2 className="text-2xl font-display font-bold text-white">Your biggest win?</h2>
+                        <p className="text-blue-300/70 text-xs font-medium mb-1">Step 3 · Night Journal</p>
+                        <h2 className="text-2xl font-display font-bold text-white">Reflect on your day</h2>
+                        <p className="text-white/60 text-xs mt-1">Free write or use the preset sections below.</p>
                       </div>
-                      <span className={`text-xs font-semibold mt-1 flex items-center gap-1 ${
-                        winOfDay.length >= 260 ? 'text-amber-300 font-bold' : 'text-white/40'
-                      }`}>
-                        {winOfDay.length >= 260 && <AlertTriangle size={11} />}
-                        {winOfDay.length}/280
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowNightSectionConfig(v => !v)}
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white/60 hover:text-white flex items-center justify-center transition-colors flex-shrink-0 mt-1"
+                        title="Configure sections"
+                      >
+                        <Settings2 size={14} />
+                      </button>
                     </div>
-                    <p className="text-white/60 text-xs -mt-3">What was the highlight of your day?</p>
-                    <textarea
-                      autoFocus
-                      value={winOfDay}
-                      maxLength={280}
-                      onChange={e => setWinOfDay(e.target.value)}
-                      placeholder="What was the highlight of your day?"
-                      rows={4}
-                      className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-4 py-3 text-white placeholder-white/40 text-sm outline-none resize-none transition-colors`}
-                    />
+
+                    {/* Section configurator */}
+                    {showNightSectionConfig && (
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                        <p className="text-xs font-semibold text-white/70">Preset Sections</p>
+                        {nightSections.map(section => (
+                          <div key={section} className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setNightSectionsEnabled(prev => ({ ...prev, [section]: prev[section] === false ? true : false }))}
+                              className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-all ${
+                                nightSectionsEnabled[section] === false
+                                  ? 'bg-transparent border-white/30'
+                                  : 'bg-blue-400 border-blue-400 text-gray-900'
+                              }`}
+                            >
+                              {nightSectionsEnabled[section] !== false && <Check size={12} strokeWidth={3} />}
+                            </button>
+                            <span className="text-xs text-white/80 flex-1">{section}</span>
+                          </div>
+                        ))}
+                        <p className="text-[10px] text-white/40">Enabled sections appear as headers in your journal.</p>
+                      </div>
+                    )}
+
+                    <div className="relative">
+                      <textarea
+                        autoFocus
+                        value={nightJournal}
+                        onChange={e => setNightJournal(e.target.value)}
+                        placeholder="How did today go? What's on your mind as you wind down?"
+                        rows={10}
+                        className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-4 py-3 text-white placeholder-white/40 text-sm outline-none resize-none transition-colors`}
+                      />
+                      {nightVoice.supported && (
+                        <button
+                          type="button"
+                          onClick={nightVoice.isListening ? nightVoice.stop : nightVoice.start}
+                          className={`absolute bottom-3 right-3 w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                            nightVoice.isListening
+                              ? 'bg-red-500 text-white animate-pulse'
+                              : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                          }`}
+                          title={nightVoice.isListening ? 'Stop dictation' : 'Dictate'}
+                        >
+                          {nightVoice.isListening ? <MicOff size={15} /> : <Mic size={15} />}
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-white/40 flex items-center gap-1">
+                      <Hash size={10} /> Use #hashtags to auto-tag this note
+                    </p>
                   </div>
                 )}
 
+                {/* Step 4: Structured Reflection */}
                 {!isMorning && wizardStep === 4 && (
                   <div className="space-y-5 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
                     <div>
@@ -1545,10 +1810,38 @@ export function DailyLogPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Step 5: Win of Day */}
+                {!isMorning && wizardStep === 5 && (
+                  <div className="space-y-5 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-300">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-blue-300/70 text-xs font-medium mb-1">Step 5 · Your biggest win</p>
+                        <h2 className="text-2xl font-display font-bold text-white">Biggest win today?</h2>
+                      </div>
+                      <span className={`text-xs font-semibold mt-1 flex items-center gap-1 ${
+                        winOfDay.length >= 260 ? 'text-amber-300 font-bold' : 'text-white/40'
+                      }`}>
+                        {winOfDay.length >= 260 && <AlertTriangle size={11} />}
+                        {winOfDay.length}/280
+                      </span>
+                    </div>
+                    <p className="text-white/60 text-xs -mt-3">What was the highlight of your day?</p>
+                    <textarea
+                      autoFocus
+                      value={winOfDay}
+                      maxLength={280}
+                      onChange={e => setWinOfDay(e.target.value)}
+                      placeholder="What was the highlight of your day?"
+                      rows={4}
+                      className={`w-full bg-white/10 border border-white/20 ${accentFocusBorder} rounded-xl px-4 py-3 text-white placeholder-white/40 text-sm outline-none resize-none transition-colors`}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Bottom nav buttons — Apple 44pt touch standards */}
+            {/* Bottom nav */}
             <div className="px-5 pb-safe pb-6 pt-3 flex gap-3 max-w-md mx-auto w-full">
               {wizardStep > 1 ? (
                 <button
@@ -1564,7 +1857,8 @@ export function DailyLogPage() {
 
               {wizardStep < totalSteps ? (
                 <>
-                  {wizardStep === 3 && (
+                  {/* Allow skipping journal steps */}
+                  {(wizardStep === 2 || wizardStep === 3) && (
                     <button
                       onClick={() => { haptic('light'); setWizardStep(s => s + 1) }}
                       className="px-4 h-12 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-semibold transition-colors"
@@ -1573,7 +1867,15 @@ export function DailyLogPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => { haptic('light'); setWizardStep(s => s + 1) }}
+                    onClick={() => {
+                      haptic('light')
+                      if (isMorning && wizardStep === 2) {
+                        saveJournalNote(morningJournal, nightJournal)
+                      } else if (!isMorning && wizardStep === 3) {
+                        saveJournalNote(morningJournal, nightJournal)
+                      }
+                      setWizardStep(s => s + 1)
+                    }}
                     disabled={carryOverRunning && wizardStep === 1}
                     className={`flex-1 h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 ${btnPrimary} transition-colors disabled:opacity-50`}
                   >
