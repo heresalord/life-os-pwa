@@ -7,7 +7,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
         <!-- ── Main Capacitor Activity ───────────────────────────────────── -->
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
@@ -25,40 +24,25 @@
         <!-- ── File Provider (Capacitor requirement) ─────────────────────── -->
         <!-- ── Homescreen Widget Receivers ─────────────────────────────────── -->
 
-        <receiver
-            android:name=".TasksWidget"
-            android:exported="true"
-            android:label="Tasks Today">
+        <receiver android:name=".TasksWidget" android:exported="true" android:label="Tasks Today">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_tasks_info" />
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_tasks_info" />
         </receiver>
 
-        <receiver
-            android:name=".FinanceWidget"
-            android:exported="true"
-            android:label="Finance Snapshot">
+        <receiver android:name=".FinanceWidget" android:exported="true" android:label="Finance Snapshot">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_finance_info" />
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_finance_info" />
         </receiver>
 
-        <receiver
-            android:name=".InboxWidget"
-            android:exported="true"
-            android:label="Inbox">
+        <receiver android:name=".InboxWidget" android:exported="true" android:label="Inbox">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_inbox_info" />
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_inbox_info" />
         </receiver>
 
         <provider
@@ -66,14 +50,10 @@
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
-
     </application>
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
-
 </manifest>
