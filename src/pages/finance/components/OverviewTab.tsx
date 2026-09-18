@@ -96,7 +96,7 @@ interface OverviewTabProps {
   currency: string
   from: string
   to: string
-  period: 'day' | 'week' | 'month' | 'year'
+  period: 'day' | 'week' | 'month' | 'year' | 'custom'
 }
 
 export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
@@ -112,11 +112,14 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
   const adjustments = txns.filter((t: Transaction) => t.type === 'adjustment'                           ).reduce((s, t) => s + Number(t.amount), 0)
   const net         = income - expenses + adjustments
 
-  // Chart data — cap at 31 bars (monthly max) or 12 bars (annual max)
+  // Chart data — cap at 31 bars (monthly max), 12 bars (annual max), or a
+  // sensible cap for custom ranges so a multi-year selection doesn't render
+  // hundreds of illegible slivers.
   const chartData = useMemo(() => {
     if (period === 'day') return []
     const start = new Date(from + 'T12:00:00')
-    
+    const end   = new Date(to   + 'T12:00:00')
+
     if (period === 'year') {
       const result = []
       for (let m = 0; m < 12; m++) {
@@ -133,7 +136,26 @@ export function OverviewTab({ currency, from, to, period }: OverviewTabProps) {
       return result
     }
 
-    const end   = new Date(to   + 'T12:00:00')
+    // A custom range spanning more than ~45 days would render one sliver
+    // per day and become illegible — fall back to monthly buckets instead.
+    const spanDays = Math.round((end.getTime() - start.getTime()) / 86_400_000)
+    if (period === 'custom' && spanDays > 45) {
+      const months: { date: string; expense: number; income: number }[] = []
+      const cursor = new Date(start.getFullYear(), start.getMonth(), 1)
+      const last   = new Date(end.getFullYear(), end.getMonth(), 1)
+      while (cursor <= last) {
+        const monthPrefix = format(cursor, 'yyyy-MM')
+        const monthTxns = txns.filter((t: Transaction) => t.date.startsWith(monthPrefix))
+        months.push({
+          date: monthPrefix,
+          expense: monthTxns.filter(t => t.type === 'expense' && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
+          income:  monthTxns.filter(t => t.type === 'income'  && t.category !== 'transfer').reduce((s, t) => s + Number(t.amount), 0),
+        })
+        cursor.setMonth(cursor.getMonth() + 1)
+      }
+      return months
+    }
+
     const days  = eachDayOfInterval({ start, end })
     return days.map(d => {
       const ds      = format(d, 'yyyy-MM-dd')

@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { 
   Sun, Moon, Zap, Award, FileText, CheckCircle2, 
-  ArrowRight, Check, Plus, Edit2, Play, Eye, ChevronLeft, ChevronRight, ChevronDown,
+  ArrowRight, Check, Plus, Edit2, Play, ChevronLeft, ChevronRight, ChevronDown,
   Frown, Annoyed, Meh, Smile, Laugh, X, Star, AlertTriangle, CalendarDays,
   Flame, Heart, ListChecks, Wind, Mic, MicOff, Settings2,
   ExternalLink, BarChart2, Hash, Sparkles
@@ -78,6 +78,31 @@ function upsertSection(content: string, heading: string, body: string): string {
   const after = lines.slice(endIdx).join('\n')
   const section = `${heading2}\n${body}`
   return [before, section, after].filter(Boolean).join('\n\n').trim()
+}
+
+/**
+ * Insert a timestamped free-journal entry (### h:mm AM/PM) into the day's
+ * journal note, positioned after any "## Morning" section and before any
+ * "## Evening" section — so the note reads Morning → entries throughout
+ * the day → Evening, in chronological order, no matter when each piece
+ * was written.
+ */
+function insertTimestampedEntry(content: string, body: string, when: Date = new Date()): string {
+  const timeLabel = format(when, 'h:mm a')
+  const entryBlock = `### ${timeLabel}\n${body.trim()}`
+
+  const lines = content.split('\n')
+  const eveningIdx = lines.findIndex(l => l.trim() === '## Evening')
+
+  if (eveningIdx === -1) {
+    // No evening section yet — append at the end (after Morning, if any)
+    const trimmed = content.trimEnd()
+    return trimmed + (trimmed ? '\n\n' : '') + entryBlock
+  }
+
+  const before = lines.slice(0, eveningIdx).join('\n').trimEnd()
+  const after = lines.slice(eveningIdx).join('\n')
+  return `${before}\n\n${entryBlock}\n\n${after}`
 }
 
 /** Build night journal initial content from enabled sections. */
@@ -285,10 +310,12 @@ export function DailyLogPage() {
   const [doDifferently, setDoDifferently] = useState<string>('')
   const [tomorrowFocus, setTomorrowFocus] = useState<string>('')
 
-  // --- Free Journal state (static section) ---
-  const [journal, setJournal] = useState<string>('')
+  // --- Free Journal state ---
+  // NOTE: the standalone `journal` free-text field (daily_records.journal)
+  // is deprecated in favor of timestamped entries appended directly into
+  // the shared Notes/Journal note (see handleAddJournalEntry below). Old
+  // data in that column is left untouched but no longer written to.
   const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof JOURNAL_TEMPLATES>('blank')
-  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false)
 
   // --- UI Save Indicator ---
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'saving' | 'error'>('idle')
@@ -306,9 +333,8 @@ export function DailyLogPage() {
     setWizardCelebration(false)
   }, [guidedMode])
 
-  // Reset preview mode when navigating to a different date
+  // Reset early-unlock state when navigating to a different date
   useEffect(() => {
-    setIsPreviewMode(false)
     setEveningUnlockedEarly(false)
   }, [activeDate])
 
@@ -334,7 +360,6 @@ export function DailyLogPage() {
     if (record.went_well !== null && record.went_well !== undefined) setWentWell(record.went_well)
     if (record.do_differently !== null && record.do_differently !== undefined) setDoDifferently(record.do_differently)
     if (record.tomorrow_focus !== null && record.tomorrow_focus !== undefined) setTomorrowFocus(record.tomorrow_focus)
-    if (record.journal !== null && record.journal !== undefined) setJournal(record.journal)
   }, [record, activeDate])
 
   // Populate morning/night journal from Notes Journal folder
@@ -424,6 +449,44 @@ export function DailyLogPage() {
         date: activeDate,
         folder: 'Journal',
       })
+    }
+  }, [user, activeDate, journalNoteForDate, addNote, updateNote])
+
+  // ─── Append a timestamped entry to the day's journal note ────────────
+  // This is the "free journaling throughout the day" entry point — distinct
+  // from the Morning/Evening ritual fields. Each submission adds a new
+  // ### h:mm AM/PM block into the SAME shared journal note, positioned
+  // between the Morning and Evening sections, so the note reads as one
+  // continuous story of the day rather than three disconnected places.
+  const [newEntryText, setNewEntryText] = useState('')
+  const [addingEntry, setAddingEntry] = useState(false)
+
+  const handleAddJournalEntry = useCallback(async (text: string) => {
+    if (!user || !text.trim()) return
+    setAddingEntry(true)
+    haptic('light')
+    try {
+      const baseContent = (journalNoteForDate?.content as string) ?? ''
+      const merged = insertTimestampedEntry(baseContent, text.trim())
+      const hashtags = extractHashtags(merged)
+      const finalContent = hashtags.length > 0 ? applyTags(merged, hashtags) : merged
+
+      if (journalNoteForDate) {
+        await updateNote.mutateAsync({ id: journalNoteForDate.id, updates: { content: finalContent } })
+      } else {
+        await addNote.mutateAsync({
+          title: journalNoteTitle(activeDate),
+          content: finalContent,
+          date: activeDate,
+          folder: 'Journal',
+        })
+      }
+      setNewEntryText('')
+      haptic('success')
+    } catch {
+      haptic('error')
+    } finally {
+      setAddingEntry(false)
     }
   }, [user, activeDate, journalNoteForDate, addNote, updateNote])
 
@@ -571,7 +634,7 @@ export function DailyLogPage() {
   // --- Journal Helper with ConfirmDialog ---
   const requestTemplate = (templateKey: keyof typeof JOURNAL_TEMPLATES) => {
     haptic('light')
-    if (!journal.trim()) {
+    if (!newEntryText.trim()) {
       applyTemplateImmediate(templateKey)
       return
     }
@@ -581,9 +644,7 @@ export function DailyLogPage() {
 
   const applyTemplateImmediate = (templateKey: keyof typeof JOURNAL_TEMPLATES) => {
     setSelectedTemplate(templateKey)
-    const newContent = JOURNAL_TEMPLATES[templateKey]
-    setJournal(newContent)
-    handleSaveFields({ journal: newContent })
+    setNewEntryText(JOURNAL_TEMPLATES[templateKey])
   }
 
   // ─── Energy Scale ───────────────────────────────────────────────────────────
@@ -1284,27 +1345,14 @@ export function DailyLogPage() {
             <FileText size={18} className="text-text-secondary" />
             Free Journal
           </h2>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => navigate('/notes?folder=Journal')}
-              className="text-xs font-semibold py-1.5 px-3 bg-surface-2 border border-border text-text-secondary rounded-xl hover:bg-surface-3 transition-colors flex items-center gap-1.5"
-              title="Open Journal folder in Notes"
-            >
-              <ExternalLink size={12} /> Notes
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsPreviewMode(!isPreviewMode)}
-              className="text-xs font-semibold py-1.5 px-3 bg-surface-2 border border-border text-text rounded-xl hover:bg-surface-3 transition-colors flex items-center gap-2"
-            >
-              {isPreviewMode ? (
-                <><Edit2 size={13} /> Write</>
-              ) : (
-                <><Eye size={13} /> Preview</>
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/notes?folder=Journal')}
+            className="text-xs font-semibold py-1.5 px-3 bg-surface-2 border border-border text-text-secondary rounded-xl hover:bg-surface-3 transition-colors flex items-center gap-1.5 flex-shrink-0"
+            title="Open Journal folder in Notes"
+          >
+            <ExternalLink size={12} /> Notes
+          </button>
         </div>
 
         {/* Monthly journal stats */}
@@ -1337,64 +1385,62 @@ export function DailyLogPage() {
           </div>
         )}
 
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
-          {TEMPLATE_OPTIONS.map(({ key, label, icon: Icon }) => (
+        {/* Add a moment — each submission appends a timestamped entry to
+            today's shared journal note, between the Morning and Evening
+            sections, rather than replacing anything. */}
+        <div className="space-y-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+            {TEMPLATE_OPTIONS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => requestTemplate(key)}
+                className={`flex-shrink-0 px-3.5 py-1.5 text-xs font-medium rounded-full border flex items-center gap-1.5 transition-all ${
+                  selectedTemplate === key
+                    ? 'bg-text/10 border-text/40 text-text font-semibold'
+                    : 'bg-surface-2 border-border text-text-secondary hover:text-text hover:border-text-secondary'
+                }`}
+              >
+                <Icon size={13} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={newEntryText}
+            onChange={(e) => setNewEntryText(e.target.value)}
+            placeholder="Add a moment from your day… (supports markdown, #hashtags auto-tag)"
+            rows={3}
+            className="w-full bg-surface-2 border border-border focus:border-border-hover rounded-xl px-4 py-3 text-sm text-text focus:outline-none transition-all resize-none"
+          />
+
+          <div className="flex justify-end">
             <button
-              key={key}
-              onClick={() => requestTemplate(key)}
-              className={`flex-shrink-0 px-3.5 py-1.5 text-xs font-medium rounded-full border flex items-center gap-1.5 transition-all ${
-                selectedTemplate === key
-                  ? 'bg-text/10 border-text/40 text-text font-semibold'
-                  : 'bg-surface-2 border-border text-text-secondary hover:text-text hover:border-text-secondary'
-              }`}
+              type="button"
+              onClick={() => handleAddJournalEntry(newEntryText)}
+              disabled={!newEntryText.trim() || addingEntry}
+              className="px-4 py-2 bg-text text-bg text-xs font-semibold rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2"
             >
-              <Icon size={13} />
-              <span>{label}</span>
+              <Plus size={14} />
+              {addingEntry ? 'Adding…' : `Add entry · ${format(new Date(), 'h:mm a')}`}
             </button>
-          ))}
+          </div>
         </div>
 
-        {isPreviewMode ? (
-          <div className="prose prose-invert max-w-none text-sm text-text bg-surface-2/50 border border-border rounded-xl p-4 min-h-[180px]">
-            {journal.trim() ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{journal}</ReactMarkdown>
-            ) : (
-              <p className="text-text-muted italic">Nothing written yet. Write something in Editor mode.</p>
-            )}
+        {/* Today's full journal note — Morning, timestamped entries, and
+            Evening, all in one continuous read-only preview. Edit Morning /
+            Evening via their rituals above; edit the full raw note in Notes. */}
+        {journalNoteForDate?.content ? (
+          <div className="pt-2 border-t border-border/50">
+            <p className="text-xs font-medium text-text-secondary mb-2">Today's journal</p>
+            <div className="prose prose-invert max-w-none text-sm text-text bg-surface-2/50 border border-border rounded-xl p-4 prose-h2:text-sm prose-h2:mt-3 prose-h2:mb-1 prose-h3:text-xs prose-h3:text-accent prose-h3:mt-3 prose-h3:mb-1 prose-p:my-1">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{journalNoteForDate.content as string}</ReactMarkdown>
+            </div>
           </div>
         ) : (
-          <div className="grid" style={{ gridTemplateAreas: '"overlap"' }}>
-            <pre
-              aria-hidden
-              style={{
-                gridArea: 'overlap',
-                visibility: 'hidden',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-                fontSize: '0.875rem',
-                lineHeight: '1.5',
-                padding: '0.75rem 1rem',
-                margin: 0,
-              }}
-            >{journal + ' '}</pre>
-            <textarea
-              value={journal}
-              onChange={(e) => {
-                setJournal(e.target.value)
-                debouncedSave({ journal: e.target.value })
-              }}
-              onBlur={() => handleSaveFields({ journal })}
-              placeholder="Reflect freely about your day here (supports full markdown formatting)..."
-              style={{
-                gridArea: 'overlap',
-                resize: 'none',
-                overflow: 'hidden',
-                minHeight: '140px',
-              }}
-              className="w-full bg-surface-2 border border-border focus:border-border-hover rounded-xl px-4 py-3 text-sm text-text focus:outline-none transition-all font-mono"
-            />
-          </div>
+          <p className="text-xs text-text-muted italic text-center py-4">
+            Nothing written yet today — add a moment above, or start your morning ritual.
+          </p>
         )}
       </section>
 
@@ -1468,9 +1514,9 @@ export function DailyLogPage() {
       <ConfirmDialog
         open={confirmTemplateOpen}
         onOpenChange={setConfirmTemplateOpen}
-        title="Replace journal?"
-        description="This swaps in the template and clears what's currently written."
-        confirmLabel="Replace journal"
+        title="Replace draft entry?"
+        description="This swaps in the template and clears what you've started typing below."
+        confirmLabel="Replace draft"
         variant="danger"
         onConfirm={() => {
           if (pendingTemplateKey) {

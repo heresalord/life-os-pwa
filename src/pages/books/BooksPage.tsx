@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as Dialog from '@radix-ui/react-dialog'
-import { BookOpen, Search, X, SlidersHorizontal, Award, Star } from 'lucide-react'
+import { BookOpen, Search, X, SlidersHorizontal, Award, Star, Clock3, CheckCircle2, XCircle, BarChart3 } from 'lucide-react'
 import { useBooksQuery } from '../../hooks/useBooksQuery'
 import { useBookMutations } from '../../hooks/useBookMutations'
 import { BookItem } from '../../components/books/BookItem'
 import { AddBookModal } from '../../components/books/AddBookModal'
 import { EmptyState } from '../../components/EmptyState'
+import { ExportButton } from '../../components/ExportButton'
 import { PageSkeleton } from '../../components/Skeleton'
 import { useReadingGoalsQuery, useSaveReadingGoalMutation } from '../../hooks/useReadingGoalsQuery'
 import { haptic } from '../../lib/haptic'
@@ -16,12 +17,12 @@ import clsx from 'clsx'
 
 type TabStatus = 'reading' | 'to-read' | 'finished' | 'abandoned' | 'stats'
 
-const TABS: { value: TabStatus; label: string }[] = [
-  { value: 'reading',   label: 'Reading'   },
-  { value: 'to-read',   label: 'To Read'   },
-  { value: 'finished',  label: 'Finished'  },
-  { value: 'abandoned', label: 'Abandoned' },
-  { value: 'stats',     label: 'Stats'     },
+const TABS: { value: TabStatus; label: string; icon: typeof BookOpen }[] = [
+  { value: 'reading',   label: 'Reading',   icon: BookOpen     },
+  { value: 'to-read',   label: 'To Read',   icon: Clock3       },
+  { value: 'finished',  label: 'Finished',  icon: CheckCircle2 },
+  { value: 'abandoned', label: 'Abandoned', icon: XCircle      },
+  { value: 'stats',     label: 'Stats',     icon: BarChart3    },
 ]
 
 const EMPTY_MESSAGES: Record<Exclude<TabStatus, 'stats'>, string> = {
@@ -227,6 +228,7 @@ export function BooksPage() {
           </p>
         </div>
 
+        <div className="flex items-center gap-2">
         {targetBooks > 0 ? (
           <button
             onClick={() => { haptic('light'); setShowGoalModal(true) }}
@@ -259,27 +261,32 @@ export function BooksPage() {
             <Award size={14} /> Set Reading Goal
           </button>
         )}
+        <ExportButton table="books" label="Books" />
+        </div>
       </header>
 
-      {/* ── Tab switcher — matches "list / calendar / time block" style ── */}
-      <div className="flex bg-surface-2 p-1 rounded-xl gap-1 overflow-x-auto">
-        {TABS.map(t => {
-          const count = t.value !== 'stats' ? allBooks.filter(b => b.status === t.value).length : 0
+      {/* ── Tab switcher — icon + label on wide screens, icon-only on narrow (matches Finance's tab bar pattern) so all 5 fit without needing to scroll ── */}
+      <div className="grid grid-cols-5 gap-1 p-1 bg-surface-2 border border-border rounded-2xl">
+        {TABS.map(tb => {
+          const Icon = tb.icon
+          const isActive = tab === tb.value
+          const count = tb.value !== 'stats' ? allBooks.filter(b => b.status === tb.value).length : 0
           return (
             <button
-              key={t.value}
-              onClick={() => { haptic('light'); setTab(t.value) }}
+              key={tb.value}
+              onClick={() => { haptic('light'); setTab(tb.value) }}
               className={clsx(
-                'flex-1 min-w-fit py-2 px-3 text-xs font-semibold rounded-lg whitespace-nowrap transition-all',
-                tab === t.value
-                  ? 'bg-surface text-text shadow-sm'
-                  : 'text-text-muted hover:text-text-secondary'
+                'flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-2 px-1 rounded-xl transition-all duration-200 font-medium w-full',
+                isActive ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
               )}
             >
-              {t.label}
-              {t.value !== 'stats' && count > 0 && (
-                <span className="ml-2 text-[10px] opacity-60">{count}</span>
-              )}
+              <Icon size={15} strokeWidth={isActive ? 2.5 : 1.75} />
+              <span className="text-[9px] sm:text-xs font-semibold whitespace-nowrap">
+                {tb.label}
+                {tb.value !== 'stats' && count > 0 && (
+                  <span className="ml-1 opacity-60 hidden sm:inline">{count}</span>
+                )}
+              </span>
             </button>
           )
         })}
@@ -519,50 +526,55 @@ export function BooksPage() {
             </div>
           </div>
 
-          {/* Status Breakdown Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {([ 
-              { label: 'Reading',   count: stats.byStatus.reading,   color: 'text-info',    bg: 'bg-info/10'    },
-              { label: 'To Read',   count: stats.byStatus['to-read'], color: 'text-accent',  bg: 'bg-accent/10'  },
-              { label: 'Finished',  count: stats.byStatus.finished,  color: 'text-success', bg: 'bg-success/10' },
-              { label: 'Abandoned', count: stats.byStatus.abandoned, color: 'text-warning', bg: 'bg-warning/10' },
-            ] as const).map(({ label, count, color, bg }) => (
-              <div key={label} className={clsx('border border-border rounded-2xl p-4 text-center shadow-[var(--shadow-card)]', bg)}>
-                <p className={clsx('text-3xl font-display font-bold', color)}>{count}</p>
-                <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold mt-1">{label}</p>
-              </div>
-            ))}
+          {/* Library breakdown — one neutral card, not four competing colors.
+              Apple Health reserves color for the one thing that matters (the
+              ring above); everything else here is quiet by comparison. */}
+          <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)]">
+            <div className="grid grid-cols-4 divide-x divide-border/60">
+              {([
+                { label: 'Reading',   count: stats.byStatus.reading },
+                { label: 'To Read',   count: stats.byStatus['to-read'] },
+                { label: 'Finished',  count: stats.byStatus.finished },
+                { label: 'Abandoned', count: stats.byStatus.abandoned },
+              ] as const).map(({ label, count }) => (
+                <div key={label} className="text-center px-1">
+                  <p className="text-2xl font-display font-bold text-text">{count}</p>
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Reading Speed & Time Stats */}
+          {/* Reading Speed & Time Stats — same treatment: one card, a list of
+              label/value rows, instead of four separate colored boxes. */}
           {(stats.avgPagesPerDay || stats.avgDaysPerBook || stats.longestBook || stats.fastestBook) && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] divide-y divide-border/50">
               {stats.avgPagesPerDay !== null && (
-                <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex flex-col gap-1">
-                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Reading Speed</p>
-                  <p className="text-2xl font-display font-bold text-accent mt-1">{stats.avgPagesPerDay}</p>
-                  <p className="text-[10px] text-text-secondary">pages / day (avg)</p>
+                <div className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                  <span className="text-xs text-text-secondary">Reading speed</span>
+                  <span className="text-sm font-semibold text-text">{stats.avgPagesPerDay} pages/day</span>
                 </div>
               )}
               {stats.avgDaysPerBook !== null && (
-                <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex flex-col gap-1">
-                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Avg Finish Time</p>
-                  <p className="text-2xl font-display font-bold text-info mt-1">{stats.avgDaysPerBook}</p>
-                  <p className="text-[10px] text-text-secondary">days per book</p>
+                <div className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                  <span className="text-xs text-text-secondary">Avg. finish time</span>
+                  <span className="text-sm font-semibold text-text">{stats.avgDaysPerBook} days/book</span>
                 </div>
               )}
               {stats.longestBook && (
-                <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex flex-col gap-1">
-                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Longest Read</p>
-                  <p className="text-2xl font-display font-bold text-warning mt-1">{stats.longestBook.total_pages.toLocaleString()}</p>
-                  <p className="text-[10px] text-text-secondary truncate" title={stats.longestBook.title}>{stats.longestBook.title}</p>
+                <div className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-3">
+                  <span className="text-xs text-text-secondary flex-shrink-0">Longest read</span>
+                  <span className="text-sm font-semibold text-text truncate text-right" title={stats.longestBook.title}>
+                    {stats.longestBook.title} <span className="text-text-muted font-normal">· {stats.longestBook.total_pages.toLocaleString()}p</span>
+                  </span>
                 </div>
               )}
               {stats.fastestBook && (
-                <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex flex-col gap-1">
-                  <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Fastest Finish</p>
-                  <p className="text-2xl font-display font-bold text-success mt-1">{stats.fastestBook.days}d</p>
-                  <p className="text-[10px] text-text-secondary truncate" title={stats.fastestBook.title}>{stats.fastestBook.title}</p>
+                <div className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-3">
+                  <span className="text-xs text-text-secondary flex-shrink-0">Fastest finish</span>
+                  <span className="text-sm font-semibold text-text truncate text-right" title={stats.fastestBook.title}>
+                    {stats.fastestBook.title} <span className="text-text-muted font-normal">· {stats.fastestBook.days}d</span>
+                  </span>
                 </div>
               )}
             </div>

@@ -1,11 +1,16 @@
 import { useNavigate } from 'react-router-dom'
-import { Flame } from 'lucide-react'
+import { Flame, Lock } from 'lucide-react'
 import { useGoalsQuery, useHabitLogsQuery } from '../../../hooks/useGoalsQuery'
 import { useGoalMutations } from '../../../hooks/useGoalMutations'
-import { startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns'
+import { startOfWeek, endOfWeek, eachDayOfInterval, format, differenceInCalendarDays } from 'date-fns'
 import { triggerConfetti } from '../../ui/Confetti'
 import { haptic } from '../../../lib/haptic'
 import clsx from 'clsx'
+
+// A missed day freezes (becomes permanently uneditable) once this many days
+// have passed without a check-in — keeps the habit log honest instead of
+// letting someone retroactively "complete" a habit from weeks ago.
+const FREEZE_AFTER_DAYS = 3
 
 export function HabitStreakWidget() {
   const navigate = useNavigate()
@@ -20,8 +25,9 @@ export function HabitStreakWidget() {
   const end      = endOfWeek(new Date(), { weekStartsOn: 1 })
   const weekDays = eachDayOfInterval({ start, end })
 
-  const handleHabitToggle = async (e: React.MouseEvent, goalId: string, dateStr: string, currentValue: number | undefined) => {
+  const handleHabitToggle = async (e: React.MouseEvent, goalId: string, dateStr: string, currentValue: number | undefined, isFrozen: boolean) => {
     e.stopPropagation()
+    if (isFrozen) { haptic('error'); return }
     haptic('light')
     try {
       if (currentValue === 1) {
@@ -87,6 +93,7 @@ export function HabitStreakWidget() {
                     const isPast      = dateStr < todayStr
                     const isTodayDate = dateStr === todayStr
                     const isFuture    = dateStr > todayStr
+                    const isFrozen    = isPast && !log && differenceInCalendarDays(new Date(todayStr), new Date(dateStr)) > FREEZE_AFTER_DAYS
                     
                     const isComplete     = log?.value === 1
                     const isExplicitFail = log?.value === 0
@@ -97,17 +104,19 @@ export function HabitStreakWidget() {
                       <button
                         key={dateStr}
                         type="button"
-                        disabled={isFuture}
-                        onClick={(e) => handleHabitToggle(e, h.id, dateStr, log?.value)}
+                        disabled={isFuture || isFrozen}
+                        onClick={(e) => handleHabitToggle(e, h.id, dateStr, log?.value, isFrozen)}
                         className={clsx(
                           "flex flex-col items-center justify-center py-2 rounded-lg border text-[9px] font-bold transition-all aspect-square relative select-none",
                           isFuture && "bg-transparent border-transparent cursor-default opacity-40",
+                          isFrozen && "bg-surface-2/60 border-border/40 text-text-muted cursor-not-allowed opacity-60",
                           isComplete && "bg-success/20 border-success/40 text-success shadow-[0_0_4px_rgba(34,197,94,0.2)]",
-                          (isExplicitFail || isMissed) && "bg-danger/20 border-danger/40 text-danger",
+                          (isExplicitFail || isMissed) && !isFrozen && "bg-danger/20 border-danger/40 text-danger",
                           (!log && isTodayDate) && "bg-surface-2 border-accent text-text-muted ring-1.5 ring-accent ring-offset-1 ring-offset-bg",
                           (!log && !isPast && !isTodayDate && !isFuture) && "bg-surface-2 border-border/80 text-text-muted hover:border-text-secondary hover:text-text"
                         )}
                         title={`${format(d, 'do MMM')}: ${
+                          isFrozen ? 'Missed — too long ago to change' :
                           isComplete ? 'Checked (Tap to change)' :
                           isExplicitFail ? 'Failed (Tap to reset)' :
                           isMissed ? 'Missed (Tap to check in)' :
@@ -116,7 +125,7 @@ export function HabitStreakWidget() {
                       >
                         <span className="uppercase text-[8px] opacity-60 mb-0.5">{label}</span>
                         <span className="text-[10px] leading-none">
-                          {isComplete ? '✓' : (isExplicitFail || isMissed) ? '✗' : '·'}
+                          {isFrozen ? <Lock size={9} className="mx-auto" /> : isComplete ? '✓' : (isExplicitFail || isMissed) ? '✗' : '·'}
                         </span>
                       </button>
                     )

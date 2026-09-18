@@ -39,8 +39,10 @@ export function FinancePage() {
 
   const { timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
-  const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month')
+  const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'year' | 'custom'>('month')
   const [referenceDate, setReferenceDate] = useState<string>(today)
+  const [customFrom, setCustomFrom] = useState<string>(today)
+  const [customTo, setCustomTo] = useState<string>(today)
   const [addOpen, setAddOpen] = useState(false)
 
   const [searchParams] = useSearchParams()
@@ -104,6 +106,10 @@ export function FinancePage() {
 
   const getPeriodLabel = () => {
     const d = new Date(referenceDate + 'T12:00:00')
+    if (period === 'custom') {
+      if (customFrom === customTo) return format(new Date(customFrom + 'T12:00:00'), 'MMM d, yyyy')
+      return `${format(new Date(customFrom + 'T12:00:00'), 'MMM d, yyyy')} – ${format(new Date(customTo + 'T12:00:00'), 'MMM d, yyyy')}`
+    }
     if (period === 'day')   return format(d, 'MMMM d, yyyy')
     if (period === 'week') {
       const s = startOfWeek(d, { weekStartsOn: 1 })
@@ -116,6 +122,7 @@ export function FinancePage() {
 
   const dateRange = useMemo(() => {
     const d = new Date(referenceDate + 'T12:00:00')
+    if (period === 'custom') return { from: customFrom, to: customTo }
     if (period === 'day')   return { from: referenceDate, to: referenceDate }
     if (period === 'week')  return {
       from: format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
@@ -129,7 +136,7 @@ export function FinancePage() {
       from: format(startOfYear(d), 'yyyy-MM-dd'),
       to:   format(endOfYear(d),   'yyyy-MM-dd'),
     }
-  }, [referenceDate, period])
+  }, [referenceDate, period, customFrom, customTo])
 
   return (
     <div className="space-y-4 lg:max-w-5xl lg:mx-auto">
@@ -178,24 +185,30 @@ export function FinancePage() {
 
       {/* ── Timeframe selector ────────────────────────────────────── */}
       {(active === 'overview' || active === 'transactions') && (
-        <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="space-y-2 mb-1">
+          <div className="flex items-center justify-between gap-2">
           {/* Period pills */}
-          <div className="flex gap-1 bg-surface-2 rounded-xl p-1">
-            {(['day', 'week', 'month', 'year'] as const).map(p => (
+          <div className="flex gap-1 bg-surface-2 rounded-xl p-1 overflow-x-auto">
+            {(['day', 'week', 'month', 'year', 'custom'] as const).map(p => (
               <button
                 key={p}
-                onClick={() => { setPeriod(p); setReferenceDate(today) }}
+                onClick={() => {
+                  setPeriod(p)
+                  if (p !== 'custom') setReferenceDate(today)
+                  else { setCustomFrom(referenceDate); setCustomTo(referenceDate) }
+                }}
                 className={clsx(
-                  'px-3 py-2 rounded-lg text-xs font-semibold transition-colors capitalize',
+                  'px-3 py-2 rounded-lg text-xs font-semibold transition-colors capitalize whitespace-nowrap',
                   period === p ? 'bg-bg text-text shadow-sm' : 'text-text-muted hover:text-text'
                 )}
               >
-                {t(`finance.period_${p}`, p)}
+                {p === 'custom' ? 'Custom' : t(`finance.period_${p}`, p)}
               </button>
             ))}
           </div>
 
-          {/* Prev / label / next */}
+          {/* Prev / label / next — hidden for custom ranges */}
+          {period !== 'custom' && (
           <div className="flex items-center gap-1">
             <button
               onClick={() => adjustPeriod('prev')}
@@ -212,6 +225,29 @@ export function FinancePage() {
               <ChevronRight size={15} />
             </button>
           </div>
+          )}
+          </div>
+
+          {period === 'custom' && (
+            <div className="flex items-center gap-2 bg-surface border border-border rounded-xl p-2">
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo}
+                onChange={e => setCustomFrom(e.target.value)}
+                className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-xs text-text focus:outline-none focus:border-accent"
+              />
+              <span className="text-text-muted text-xs flex-shrink-0">to</span>
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom}
+                max={today}
+                onChange={e => setCustomTo(e.target.value)}
+                className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-xs text-text focus:outline-none focus:border-accent"
+              />
+            </div>
+          )}
         </div>
       )}
 

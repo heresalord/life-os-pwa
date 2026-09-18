@@ -27,6 +27,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import clsx from 'clsx'
 import { NotePinUnlockModal } from '../../components/notes/NotePinModal'
+import { ExportButton } from '../../components/ExportButton'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SYSTEM_FOLDERS = ['All', 'Pinned', 'Journal', 'Templates']
@@ -549,6 +550,7 @@ export function NotesPage() {
               {(notes as Note[]).length > 0 ? `${(notes as Note[]).length} note${(notes as Note[]).length > 1 ? 's' : ''}` : 'Freewrite, reflect, or draft.'}
             </p>
           </div>
+          <ExportButton table="notes" label="Notes" />
         </header>
 
         {/* Journal folder overview banner */}

@@ -5,6 +5,7 @@ import { ListTab } from './components/ListTab'
 import { CalendarTab } from './components/CalendarTab'
 import { TimeBlocksTab } from './components/TimeBlocksTab'
 import { AddTaskModal } from '../../components/tasks/AddTaskModal'
+import { ExportButton } from '../../components/ExportButton'
 import { useTasksQuery } from '../../hooks/useTasksQuery'
 import { useAppStore } from '../../store/useAppStore'
 import { useContextualAdd } from '../../hooks/useContextualAdd'
@@ -64,15 +65,18 @@ export function TasksPage() {
             </p>
           )}
         </div>
-        {totalCount > 0 && (
-          <RadialGauge
-            pct={pct}
-            size={48}
-            strokeWidth={4}
-            variant={pct === 100 ? 'success' : 'accent'}
-            label={`${pct}%`}
-          />
-        )}
+        <div className="flex items-center gap-2">
+          {totalCount > 0 && (
+            <RadialGauge
+              pct={pct}
+              size={48}
+              strokeWidth={4}
+              variant={pct === 100 ? 'success' : 'accent'}
+              label={`${pct}%`}
+            />
+          )}
+          <ExportButton table="tasks" label="Tasks" />
+        </div>
       </header>
 
       {/* View switcher */}

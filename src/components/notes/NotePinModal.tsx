@@ -1,10 +1,62 @@
-import { useState, useEffect, useRef } from 'react'
-import { Lock, Unlock, Eye, EyeOff, X, ShieldCheck, AlertTriangle } from 'lucide-react'
-import { createPortal } from 'react-dom'
+import { useEffect, useRef, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { Lock, Unlock, X, Delete } from 'lucide-react'
 import { verifyPin } from '../../hooks/useNoteMutations'
 
-// ─── PIN Set/Change Modal ────────────────────────────────────────────────────
+const PIN_LENGTH = 4
 
+function PinDots({ length, filled }: { length: number; filled: number }) {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      {Array.from({ length }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
+            i < filled ? 'bg-accent border-accent' : 'border-border bg-transparent'
+          }`}
+        />
+      ))}
+    </div>
+  )
+}
+
+function Keypad({ onDigit, onDelete }: { onDigit: (d: string) => void; onDelete: () => void }) {
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del']
+  return (
+    <div className="grid grid-cols-3 gap-3 w-full max-w-[260px] mx-auto">
+      {keys.map((k, i) => {
+        if (k === '') return <div key={i} />
+        if (k === 'del') {
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={onDelete}
+              className="h-14 rounded-2xl flex items-center justify-center text-text-secondary hover:bg-surface-2 active:scale-95 transition-all"
+            >
+              <Delete size={20} />
+            </button>
+          )
+        }
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onDigit(k)}
+            className="h-14 rounded-2xl bg-surface-2 border border-border/60 text-lg font-semibold text-text hover:bg-surface-3 active:scale-95 transition-all"
+          >
+            {k}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Set, change, or remove a note's PIN. Two steps when setting a fresh PIN:
+ * enter it, then confirm it matches before saving.
+ */
 export function NotePinSetModal({
   open,
   hasExistingPin,
@@ -18,176 +70,96 @@ export function NotePinSetModal({
   onSet: (pin: string) => Promise<void>
   onRemove?: () => Promise<void>
 }) {
-  const [step, setStep] = useState<'current' | 'new' | 'confirm'>('new')
-  const [currentPin, setCurrentPin] = useState('')
-  const [newPin, setNewPin] = useState('')
+  const [stage, setStage] = useState<'enter' | 'confirm'>('enter')
+  const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
-  const [showPin, setShowPin] = useState(false)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (open) {
-      setStep(hasExistingPin ? 'current' : 'new')
-      setCurrentPin('')
-      setNewPin('')
+      setStage('enter')
+      setPin('')
       setConfirmPin('')
-      setError('')
-      setShowPin(false)
+      setError(null)
     }
-  }, [open, hasExistingPin])
+  }, [open])
 
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50)
-  }, [open, step])
+  const current = stage === 'enter' ? pin : confirmPin
+  const setCurrent = stage === 'enter' ? setPin : setConfirmPin
 
-  if (!open) return null
-
-  const handleNext = async () => {
-    setError('')
-    if (step === 'current') {
-      // Verify handled externally — we just pass currentPin up
-      // For simplicity we transition to new step directly
-      if (!currentPin) { setError('Enter your current PIN'); return }
-      setStep('new')
-      return
-    }
-    if (step === 'new') {
-      if (newPin.length < 4) { setError('PIN must be at least 4 digits'); return }
-      if (!/^\d+$/.test(newPin)) { setError('PIN must contain only numbers'); return }
-      setStep('confirm')
-      return
-    }
-    if (step === 'confirm') {
-      if (confirmPin !== newPin) { setError('PINs do not match'); return }
-      setLoading(true)
-      try {
-        await onSet(newPin)
-        onClose()
-      } catch {
-        setError('Failed to set PIN')
-      } finally {
-        setLoading(false)
+  const handleDigit = (d: string) => {
+    if (current.length >= PIN_LENGTH) return
+    const next = current + d
+    setCurrent(next)
+    setError(null)
+    if (next.length === PIN_LENGTH) {
+      if (stage === 'enter') {
+        setTimeout(() => setStage('confirm'), 150)
+      } else {
+        if (next === pin) {
+          setSaving(true)
+          onSet(next).then(onClose).catch(() => setError('Something went wrong. Try again.')).finally(() => setSaving(false))
+        } else {
+          setError("PINs didn't match — try again.")
+          setTimeout(() => { setConfirmPin(''); setStage('enter'); setPin('') }, 700)
+        }
       }
     }
   }
 
-  const handleRemove = async () => {
-    if (!onRemove) return
-    setLoading(true)
-    try {
-      await onRemove()
-      onClose()
-    } catch {
-      setError('Failed to remove PIN')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const handleDelete = () => setCurrent(current.slice(0, -1))
 
-  const stepLabel = step === 'current' ? 'Enter Current PIN' : step === 'new' ? 'Set New PIN' : 'Confirm PIN'
-  const value = step === 'current' ? currentPin : step === 'new' ? newPin : confirmPin
-  const setValue = step === 'current' ? setCurrentPin : step === 'new' ? setNewPin : setConfirmPin
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-surface border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-200">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/15 text-accent flex items-center justify-center">
-              <Lock size={18} />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-text">{hasExistingPin ? 'Change PIN' : 'Lock Note'}</h2>
-              <p className="text-xs text-text-muted">{stepLabel}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-surface-2 text-text-muted flex items-center justify-center">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Progress dots */}
-        <div className="flex gap-2 justify-center">
-          {(hasExistingPin ? ['current', 'new', 'confirm'] : ['new', 'confirm']).map((s, i) => (
-            <div
-              key={s}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                (hasExistingPin ? ['current', 'new', 'confirm'] : ['new', 'confirm']).indexOf(step) >= i
-                  ? 'bg-accent w-6'
-                  : 'bg-border w-4'
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* PIN input — digit boxes */}
-        <div className="space-y-3">
-          <div className="relative">
-            <input
-              ref={inputRef}
-              type={showPin ? 'text' : 'password'}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={8}
-              value={value}
-              onChange={e => { setValue(e.target.value.replace(/\D/g, '')); setError('') }}
-              onKeyDown={e => { if (e.key === 'Enter') handleNext() }}
-              placeholder="Enter PIN…"
-              className="w-full bg-surface-2 border border-border focus:border-accent focus:ring-1 focus:ring-accent/30 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.5em] font-bold text-text focus:outline-none transition-all"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPin(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text"
-            >
-              {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+  return (
+    <Dialog.Root open={open} onOpenChange={v => { if (!v) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/85 backdrop-blur-sm" />
+        <Dialog.Content
+          className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-6 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm sm:rounded-2xl sm:border"
+          style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        >
+          <div className="w-10 h-1 rounded-full bg-border mx-auto mb-5 sm:hidden" />
+          <div className="flex items-center justify-between mb-6">
+            <Dialog.Title className="text-base font-medium text-text flex items-center gap-2">
+              <Lock size={16} className="text-accent" />
+              {hasExistingPin ? 'Change PIN' : 'Lock with PIN'}
+            </Dialog.Title>
+            <Dialog.Close className="text-text-muted hover:text-text"><X size={18} /></Dialog.Close>
           </div>
 
-          {error && (
-            <p className="text-xs text-danger flex items-center gap-1.5">
-              <AlertTriangle size={12} /> {error}
-            </p>
-          )}
-        </div>
+          <div className="space-y-6">
+            <div className="text-center space-y-1">
+              <p className="text-sm text-text-secondary">
+                {stage === 'enter' ? 'Enter a 4-digit PIN' : 'Confirm your PIN'}
+              </p>
+              {error && <p className="text-xs text-danger font-medium">{error}</p>}
+            </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          {hasExistingPin && step === 'current' && onRemove && (
-            <button
-              onClick={handleRemove}
-              disabled={loading}
-              className="flex-1 h-11 rounded-xl text-sm font-semibold bg-danger/10 text-danger hover:bg-danger/20 transition-colors flex items-center justify-center gap-2"
-            >
-              <Unlock size={15} /> Remove PIN
-            </button>
-          )}
-          <button
-            onClick={handleNext}
-            disabled={loading || !value}
-            className="flex-1 h-11 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-          >
-            {step === 'confirm' ? (
-              <><ShieldCheck size={15} /> Set PIN</>
-            ) : (
-              'Continue →'
+            <PinDots length={PIN_LENGTH} filled={current.length} />
+
+            <Keypad onDigit={handleDigit} onDelete={handleDelete} />
+
+            {saving && <p className="text-center text-xs text-text-muted">Saving…</p>}
+
+            {hasExistingPin && onRemove && (
+              <button
+                onClick={() => { onRemove().then(onClose) }}
+                className="w-full py-2.5 text-sm font-medium text-danger hover:bg-danger/10 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <Unlock size={14} /> Remove PIN Lock
+              </button>
             )}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
-// ─── PIN Unlock Gate Modal ────────────────────────────────────────────────────
-
+/**
+ * Prompt for a note's existing PIN and verify it against the stored hash
+ * before letting the caller reveal the note's content.
+ */
 export function NotePinUnlockModal({
   open,
   noteTitle,
@@ -202,110 +174,62 @@ export function NotePinUnlockModal({
   onClose: () => void
 }) {
   const [pin, setPin] = useState('')
-  const [showPin, setShowPin] = useState(false)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [attempts, setAttempts] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const shakeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (open) {
-      setPin('')
-      setError('')
-      setAttempts(0)
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
+    if (open) { setPin(''); setError(false) }
   }, [open])
 
-  if (!open) return null
-
-  const handleUnlock = async () => {
-    if (!pin) return
-    setLoading(true)
-    setError('')
-    try {
-      const ok = await verifyPin(pin, pinHash)
+  const handleDigit = async (d: string) => {
+    if (pin.length >= PIN_LENGTH || checking) return
+    const next = pin + d
+    setPin(next)
+    if (next.length === PIN_LENGTH) {
+      setChecking(true)
+      const ok = await verifyPin(next, pinHash)
+      setChecking(false)
       if (ok) {
         onUnlocked()
       } else {
-        setAttempts(a => a + 1)
-        setPin('')
-        setError(attempts >= 2 ? 'Too many wrong attempts. Check your PIN.' : 'Wrong PIN, try again.')
-        inputRef.current?.focus()
+        setError(true)
+        setTimeout(() => { setPin(''); setError(false) }, 500)
       }
-    } catch {
-      setError('Something went wrong')
-    } finally {
-      setLoading(false)
     }
   }
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-surface border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-        {/* Lock icon */}
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
-            <Lock size={28} />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-text">This note is locked</h2>
-            <p className="text-xs text-text-muted mt-0.5 max-w-[200px] mx-auto line-clamp-1">"{noteTitle}"</p>
-          </div>
-        </div>
+  const handleDelete = () => setPin(p => p.slice(0, -1))
 
-        {/* PIN input */}
-        <div className="space-y-3">
-          <div className="relative">
-            <input
-              ref={inputRef}
-              type={showPin ? 'text' : 'password'}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={8}
-              value={pin}
-              onChange={e => { setPin(e.target.value.replace(/\D/g, '')); setError('') }}
-              onKeyDown={e => { if (e.key === 'Enter') handleUnlock() }}
-              placeholder="Enter PIN…"
-              className="w-full bg-surface-2 border border-border focus:border-accent focus:ring-1 focus:ring-accent/30 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.5em] font-bold text-text focus:outline-none transition-all"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPin(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text"
-            >
-              {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+  return (
+    <Dialog.Root open={open} onOpenChange={v => { if (!v) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/85 backdrop-blur-sm" />
+        <Dialog.Content
+          className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-6 shadow-2xl sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm sm:rounded-2xl sm:border"
+          style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        >
+          <div className="w-10 h-1 rounded-full bg-border mx-auto mb-5 sm:hidden" />
+          <div className="flex items-center justify-between mb-6">
+            <Dialog.Title className="text-base font-medium text-text flex items-center gap-2 min-w-0">
+              <Lock size={16} className="text-accent flex-shrink-0" />
+              <span className="truncate">{noteTitle}</span>
+            </Dialog.Title>
+            <Dialog.Close className="text-text-muted hover:text-text flex-shrink-0"><X size={18} /></Dialog.Close>
           </div>
 
-          {error && (
-            <p className="text-xs text-danger flex items-center justify-center gap-1.5">
-              <AlertTriangle size={12} /> {error}
-            </p>
-          )}
-        </div>
+          <div className="space-y-6">
+            <p className="text-sm text-text-secondary text-center">Enter PIN to unlock</p>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={onClose}
-            className="w-11 h-11 rounded-xl bg-surface-2 hover:bg-surface-3 border border-border text-text-muted hover:text-text flex items-center justify-center transition-colors"
-          >
-            <X size={16} />
-          </button>
-          <button
-            onClick={handleUnlock}
-            disabled={loading || !pin}
-            className="flex-1 h-11 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-          >
-            <Unlock size={15} /> Unlock
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+            <div ref={shakeRef} className={error ? 'animate-[shake_0.4s_ease-in-out]' : ''}>
+              <PinDots length={PIN_LENGTH} filled={pin.length} />
+            </div>
+            {error && <p className="text-center text-xs text-danger font-medium">Incorrect PIN</p>}
+
+            <Keypad onDigit={handleDigit} onDelete={handleDelete} />
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

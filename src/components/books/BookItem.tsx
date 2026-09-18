@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Trash2, Pencil, CheckCheck, BookX, ChevronDown, ChevronUp,
-  X, BookOpen, Star, Quote,
+  X, BookOpen, Star, Quote, MoreHorizontal,
 } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useBookMutations } from '../../hooks/useBookMutations'
@@ -489,6 +489,61 @@ function ProgressModal({ book, open, onClose }: { book: Book; open: boolean; onC
 }
 
 // ── Main BookItem ─────────────────────────────────────────────────────────
+// Apple Books keeps its library grid uncluttered by tucking every secondary
+// action behind a single "···" — this replaces the row of 3-5 always-visible
+// icon buttons the grid card used to show.
+function BookActionsMenu({
+  items,
+  size = 14,
+}: {
+  items: { label: string; icon: React.ComponentType<{ size?: number }>; onClick: () => void; tone?: 'default' | 'danger' }[]
+  size?: number
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); haptic('light'); setOpen(v => !v) }}
+        title="More"
+        className="w-7 h-7 flex items-center justify-center rounded-full text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
+      >
+        <MoreHorizontal size={size} />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-1 z-20 w-44 bg-surface border border-border rounded-xl shadow-lg py-1 animate-in fade-in slide-in-from-top-1 duration-150"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {items.map(({ label, icon: Icon, onClick, tone }) => (
+            <button
+              key={label}
+              onClick={() => { setOpen(false); onClick() }}
+              className={clsx(
+                'w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-left transition-colors',
+                tone === 'danger' ? 'text-danger hover:bg-danger/10' : 'text-text hover:bg-surface-2'
+              )}
+            >
+              <Icon size={13} />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function BookItem({
   book,
   onDelete,
@@ -511,18 +566,6 @@ export function BookItem({
   const pct = book.total_pages && book.current_page
     ? Math.min(Math.round((book.current_page / book.total_pages) * 100), 100) : 0
 
-  const statusColor = {
-    'reading':   'text-info bg-info/10',
-    'finished':  'text-success bg-success/10',
-    'abandoned': 'text-warning bg-warning/10',
-    'to-read':   'text-text-muted bg-surface-2',
-  }[book.status] ?? 'text-text-muted bg-surface-2'
-
-  const statusLabel = {
-    'to-read': 'To read', 'reading': 'Reading',
-    'finished': 'Finished', 'abandoned': 'Abandoned',
-  }[book.status] ?? book.status
-
   const handleStartReading = () => {
     updateBook.mutate({ id: book.id, updates: {
       status: 'reading', started_at: new Date().toISOString().split('T')[0],
@@ -537,31 +580,23 @@ export function BookItem({
   if (layoutMode === 'hero') {
     return (
       <>
-        <div className="bg-surface border border-border rounded-3xl overflow-hidden shadow-[var(--shadow-card)] transition-all flex flex-col sm:flex-row group w-full mb-6">
-          {/* Cover image on left / top */}
-          <div className="relative w-full sm:w-48 aspect-[3/4] bg-surface-2 flex-shrink-0 flex items-center justify-center overflow-hidden border-b sm:border-b-0 sm:border-r border-border">
+        <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 w-full mb-8">
+          {/* Cover — same floating-shadow treatment as the grid, just larger */}
+          <div
+            onClick={() => navigate(`/books/${book.id}`)}
+            className="relative w-32 sm:w-40 aspect-[2/3] flex-shrink-0 rounded-lg overflow-hidden shadow-lg ring-1 ring-black/5 cursor-pointer bg-surface-2 flex items-center justify-center mx-auto sm:mx-0"
+          >
             {book.cover_url ? (
-              <img src={book.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
+              <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-6xl opacity-20">📘</span>
+              <span className="text-5xl opacity-20">📘</span>
             )}
-            <button
-              onClick={confirmDelete}
-              className="absolute top-3 right-3 p-2 bg-surface/90 hover:bg-danger/20 hover:text-danger border border-border rounded-xl opacity-0 group-hover:opacity-100 transition-all text-text-muted"
-            >
-              <Trash2 size={14} />
-            </button>
-            <span className={clsx('absolute bottom-3 left-3 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-md bg-surface/90 border border-border/50', statusColor)}>
-              {statusLabel}
-            </span>
           </div>
 
-          {/* Details on right */}
-          <div className="p-6 flex-1 flex flex-col justify-between gap-4">
-            <div className="space-y-2">
-              <span className="text-[10px] bg-accent/10 text-accent border border-accent/20 px-3 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                Hero Reading
-              </span>
+          {/* Details */}
+          <div className="flex-1 flex flex-col justify-center gap-3 text-center sm:text-left">
+            <div>
+              <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1">Reading Now</p>
               <button
                 onClick={() => navigate(`/books/${book.id}`)}
                 className="text-xl font-display font-bold text-text leading-snug hover:text-accent transition-colors text-left block w-full"
@@ -569,82 +604,52 @@ export function BookItem({
                 {book.title}
               </button>
               {book.author && (
-                <p className="text-sm text-text-secondary">
-                  by{' '}
-                  <button
-                    onClick={e => { e.stopPropagation(); navigate(`/books/author/${encodeURIComponent(book.author!)}`) }}
-                    className="font-medium text-text hover:text-accent transition-colors"
-                  >
-                    {book.author}
-                  </button>
-                </p>
-              )}
-              {book.genre && (
-                <span className="inline-block text-[10px] bg-surface-2 border border-border text-text-muted px-2 py-0.5 rounded-md font-medium">
-                  {book.genre}
-                </span>
+                <button
+                  onClick={e => { e.stopPropagation(); navigate(`/books/author/${encodeURIComponent(book.author!)}`) }}
+                  className="text-sm text-text-secondary hover:text-accent transition-colors mt-0.5"
+                >
+                  {book.author}
+                </button>
               )}
             </div>
 
-            {/* Reading progress */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-baseline text-xs text-text-muted">
-                <span className="font-semibold text-text-secondary">Progress</span>
-                <span className="font-bold text-accent text-sm">{pct}%</span>
-              </div>
-              <div className="h-2.5 bg-surface-2 rounded-full overflow-hidden border border-border">
+            {/* Progress — same thin unlabeled track as the grid cards, just wider */}
+            <button onClick={() => setShowProgress(true)} className="group/prog space-y-1.5">
+              <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden max-w-xs mx-auto sm:mx-0">
                 <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
               </div>
-              <div className="flex justify-between items-center text-xs text-text-muted">
-                {book.total_pages ? (
-                  <span>Page <strong>{book.current_page || 0}</strong> of <strong>{book.total_pages}</strong></span>
-                ) : (
-                  <span>No pages set</span>
-                )}
-                <button
-                  onClick={() => setShowProgress(true)}
-                  className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
-                >
-                  Update page
-                </button>
-              </div>
-            </div>
+              <p className="text-xs text-text-muted group-hover/prog:text-accent transition-colors">
+                {book.total_pages
+                  ? <>Page {book.current_page || 0} of {book.total_pages} · {pct}%</>
+                  : 'Tap to set progress'
+                }
+              </p>
+            </button>
 
-            {/* Actions row — icon-only on mobile, icon+label on sm+ */}
-            <div className="flex items-center gap-2 pt-3 border-t border-border/40">
+            {/* Primary actions understated, secondary tucked into the same
+                overflow menu the grid cards use — Apple Books never shows
+                more than one or two calls to action on a reading card. */}
+            <div className="flex items-center justify-center sm:justify-start gap-4 pt-1">
               <button
                 onClick={() => setShowFinish(true)}
-                title="Mark as Finished"
-                className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 bg-success/15 hover:bg-success/25 text-success text-xs font-bold rounded-xl transition-all"
+                className="text-sm font-semibold text-success hover:underline"
               >
-                <CheckCheck size={15} />
-                <span className="hidden sm:inline">Finished</span>
+                Mark Finished
               </button>
               <button
                 onClick={() => setShowAbandon(true)}
-                title="Abandon book"
-                className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 bg-warning/15 hover:bg-warning/25 text-warning text-xs font-bold rounded-xl transition-all"
+                className="text-sm font-medium text-text-muted hover:text-warning transition-colors"
               >
-                <BookX size={15} />
-                <span className="hidden sm:inline">Abandon</span>
+                Stop Reading
               </button>
-              <div className="flex items-center gap-2 ml-auto">
-                <button
-                  onClick={() => setShowQuotes(true)}
-                  title="Quotes"
-                  className="flex items-center gap-2 p-2 sm:px-3 sm:py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
-                >
-                  <Quote size={14} />
-                  <span className="hidden sm:inline">Quotes</span>
-                </button>
-                <button
-                  onClick={() => setShowEdit(true)}
-                  title="Edit"
-                  className="flex items-center gap-2 p-2 sm:px-3 sm:py-2 bg-surface-2 hover:bg-muted text-text-secondary hover:text-text border border-border text-xs font-bold rounded-xl transition-all"
-                >
-                  <Pencil size={14} />
-                  <span className="hidden sm:inline">Edit</span>
-                </button>
+              <div className="ml-auto sm:ml-0">
+                <BookActionsMenu
+                  items={[
+                    { label: 'Edit', icon: Pencil, onClick: () => setShowEdit(true) },
+                    { label: 'Quotes', icon: Quote, onClick: () => setShowQuotes(true) },
+                    { label: 'Delete', icon: Trash2, onClick: confirmDelete, tone: 'danger' as const },
+                  ]}
+                />
               </div>
             </div>
           </div>
@@ -695,148 +700,114 @@ export function BookItem({
 
   return (
     <>
-      <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:scale-[1.01] transition-all flex flex-col justify-between group h-full">
-        {/* Top Image area / cover */}
-        <div className="relative aspect-[3/4] bg-surface-2 border-b border-border flex items-center justify-center overflow-hidden">
+      <div className="group flex flex-col h-full">
+        {/* Cover — floats on its own shadow, no card chrome around it. Status
+            is intentionally not shown here: every card in a given tab already
+            shares one status (Reading / To Read / Finished / Abandoned), so
+            repeating it per-card was pure noise. */}
+        <div
+          onClick={() => navigate(`/books/${book.id}`)}
+          className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md ring-1 ring-black/5 cursor-pointer bg-surface-2 flex items-center justify-center"
+        >
           {book.cover_url ? (
-            <img src={book.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <img src={book.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" />
           ) : (
-            <span className="text-5xl opacity-20">📘</span>
+            <span className="text-4xl opacity-20">📘</span>
           )}
-          {/* Float delete button */}
-          <button
-            onClick={confirmDelete}
-            className="absolute top-2.5 right-2.5 p-2 bg-surface/90 hover:bg-danger/20 hover:text-danger border border-border rounded-xl opacity-0 group-hover:opacity-100 transition-all text-text-muted"
-          >
-            <Trash2 size={14} />
-          </button>
-          {/* Float Status badge */}
-          <span className={clsx('absolute bottom-2.5 left-2.5 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full backdrop-blur-md bg-surface/90 border border-border/50', statusColor)}>
-            {statusLabel}
-          </span>
         </div>
 
-        {/* Body details */}
-        <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-          <div className="space-y-1">
+        {/* Title / author — sits below the cover on the page background,
+            no bordered card wrapping it, matching Apple Books' library grid. */}
+        <div className="pt-2.5 flex items-start justify-between gap-1">
+          <div className="min-w-0 flex-1">
             <button
               onClick={() => navigate(`/books/${book.id}`)}
-              className="text-sm font-semibold text-text leading-snug hover:text-accent transition-colors text-left block truncate w-full"
+              className="text-[13px] font-semibold text-text leading-snug hover:text-accent transition-colors text-left block line-clamp-2 w-full"
             >
               {book.title}
             </button>
             {book.author && (
               <button
                 onClick={e => { e.stopPropagation(); navigate(`/books/author/${encodeURIComponent(book.author!)}`) }}
-                className="text-xs text-text-secondary truncate hover:text-accent transition-colors text-left"
+                className="text-[11px] text-text-muted truncate hover:text-accent transition-colors text-left block mt-0.5 w-full"
               >
                 {book.author}
               </button>
             )}
-            
-            {/* Star rating (finished books) */}
-            {book.status === 'finished' && book.rating && (
-              <div className="pt-1">
-                <StarRating value={book.rating} size={11} readOnly />
-              </div>
-            )}
           </div>
-
-          {/* Reading progress */}
-          {book.status === 'reading' && (
-            <button onClick={() => setShowProgress(true)} className="text-left group/prog mt-1">
-              <div className="flex justify-between text-[9px] text-text-muted mb-1">
-                <span className="group-hover/prog:text-accent font-medium">Update progress</span>
-                <span>{pct}%</span>
-              </div>
-              <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden border border-border/50">
-                <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
-              </div>
-            </button>
-          )}
-
-          {/* Shelves list */}
-          {book.shelves && Array.isArray(book.shelves) && book.shelves.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-0.5">
-              {(book.shelves as any[]).map((shelf: string) => (
-                <span key={shelf} className="text-[9px] bg-surface-2 border border-border/80 text-text-muted px-2 py-0.5 rounded-md font-medium">
-                  {shelf}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Finished: reflection snippet */}
-          {book.status === 'finished' && book.reflection && (
-            <p className="text-xs text-text-muted italic line-clamp-2 leading-relaxed">
-              {book.reflection.split('\n').find(l => l && !l.startsWith('**')) || ''}
-            </p>
-          )}
-
-          {/* Abandoned: reason */}
-          {book.status === 'abandoned' && book.abandon_reason && (
-            <p className="text-xs text-text-muted italic">"{book.abandon_reason}"</p>
-          )}
-
-          {/* Actions row */}
-          <div className="flex items-center gap-1 mt-2 border-t border-border/40 pt-3">
-            <button onClick={() => setShowEdit(true)} title="Edit"
-              className="p-2 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
-              <Pencil size={13} />
-            </button>
-
-            {/* Quotes (all statuses) */}
-            <button onClick={() => setShowQuotes(true)} title="Quotes"
-              className="p-2 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
-              <Quote size={13} />
-            </button>
-
-            {book.status === 'to-read' && (
-              <button onClick={handleStartReading} title="Start reading"
-                className="p-2 text-text-muted hover:text-info hover:bg-info/10 rounded-lg transition-colors">
-                <BookOpen size={13} />
-              </button>
-            )}
-
-            {book.status === 'reading' && (
-              <>
-                <button onClick={() => setShowFinish(true)} title="Mark finished"
-                  className="p-2 text-text-muted hover:text-success hover:bg-success/10 rounded-lg transition-colors">
-                  <CheckCheck size={13} />
-                </button>
-                <button onClick={() => setShowAbandon(true)} title="Abandon"
-                  className="p-2 text-text-muted hover:text-warning hover:bg-warning/10 rounded-lg transition-colors">
-                  <BookX size={13} />
-                </button>
-              </>
-            )}
-
-            {book.status === 'finished' && book.reflection && (
-              <button onClick={() => setShowReflection(v => !v)}
-                title={showReflection ? 'Hide reflection' : 'Show reflection'}
-                className="p-2 text-text-muted hover:text-text hover:bg-surface-2 rounded-lg transition-colors">
-                {showReflection ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              </button>
-            )}
-          </div>
-
-          {/* Expandable reflection */}
-          {showReflection && book.reflection && (
-            <div className="mt-3 pt-3 border-t border-border space-y-3">
-              {book.reflection.split('\n\n').map((section, i) => (
-                <div key={i}>
-                  {section.split('\n').map((line, j) => (
-                    <p key={j} className={clsx('text-xs leading-relaxed',
-                      line.startsWith('**') ? 'font-medium text-text-secondary mb-1' : 'text-text-muted'
-                    )}>
-                      {line.replace(/\*\*/g, '')}
-                    </p>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
+          <BookActionsMenu
+            items={[
+              { label: 'Edit', icon: Pencil, onClick: () => setShowEdit(true) },
+              { label: 'Quotes', icon: Quote, onClick: () => setShowQuotes(true) },
+              ...(book.status === 'to-read' ? [{ label: 'Start reading', icon: BookOpen, onClick: handleStartReading }] : []),
+              ...(book.status === 'reading' ? [
+                { label: 'Mark finished', icon: CheckCheck, onClick: () => setShowFinish(true) },
+                { label: 'Abandon', icon: BookX, onClick: () => setShowAbandon(true) },
+              ] : []),
+              ...(book.status === 'finished' && book.reflection ? [{ label: showReflection ? 'Hide reflection' : 'Show reflection', icon: showReflection ? ChevronUp : ChevronDown, onClick: () => setShowReflection(v => !v) }] : []),
+              { label: 'Delete', icon: Trash2, onClick: confirmDelete, tone: 'danger' as const },
+            ]}
+          />
         </div>
+
+        {/* Star rating (finished books) */}
+        {book.status === 'finished' && book.rating && (
+          <div className="pt-1">
+            <StarRating value={book.rating} size={11} readOnly />
+          </div>
+        )}
+
+        {/* Reading progress — a thin, unlabeled track under the cover, the
+            way Apple Books shows progress on "Reading Now" items. Tap to
+            update; the percentage is the only text shown. */}
+        {book.status === 'reading' && (
+          <button onClick={() => setShowProgress(true)} className="mt-2 group/prog">
+            <div className="h-1 bg-surface-2 rounded-full overflow-hidden">
+              <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-[10px] text-text-muted mt-1 block group-hover/prog:text-accent transition-colors">{pct}%</span>
+          </button>
+        )}
+
+        {/* Shelves list */}
+        {book.shelves && Array.isArray(book.shelves) && book.shelves.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {(book.shelves as any[]).map((shelf: string) => (
+              <span key={shelf} className="text-[9px] bg-surface-2 border border-border/80 text-text-muted px-2 py-0.5 rounded-md font-medium">
+                {shelf}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Finished: reflection snippet */}
+        {book.status === 'finished' && book.reflection && (
+          <p className="text-[11px] text-text-muted italic line-clamp-2 leading-relaxed mt-1.5">
+            {book.reflection.split('\n').find(l => l && !l.startsWith('**')) || ''}
+          </p>
+        )}
+
+        {/* Abandoned: reason */}
+        {book.status === 'abandoned' && book.abandon_reason && (
+          <p className="text-[11px] text-text-muted italic mt-1.5">"{book.abandon_reason}"</p>
+        )}
+
+        {/* Expandable reflection */}
+        {showReflection && book.reflection && (
+          <div className="mt-2 pt-2 border-t border-border/60 space-y-2">
+            {book.reflection.split('\n\n').map((section, i) => (
+              <div key={i}>
+                {section.split('\n').map((line, j) => (
+                  <p key={j} className={clsx('text-[11px] leading-relaxed',
+                    line.startsWith('**') ? 'font-medium text-text-secondary mb-0.5' : 'text-text-muted'
+                  )}>
+                    {line.replace(/\*\*/g, '')}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <FinishBookFlow book={book} open={showFinish}   onClose={() => setShowFinish(false)} />

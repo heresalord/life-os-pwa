@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Maximize2, Minimize2, Plus, ListTodo } from 'lucide-react'
+import { X, Maximize2, Minimize2, Plus, ListTodo, Lock } from 'lucide-react'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import { useAppStore } from '../../store/useAppStore'
@@ -10,6 +10,7 @@ import { extractTags, stripTags, applyTags, cleanTaskTitle } from '../../lib/not
 import { useNotesQuery } from '../../hooks/useNotesQuery'
 import { RichTextToolbar } from './RichTextToolbar'
 import { NoteLinkAutocomplete } from './NoteLinkAutocomplete'
+import { NotePinUnlockModal } from './NotePinModal'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { haptic } from '../../lib/haptic'
@@ -84,19 +85,33 @@ export function NoteEditorModal({
   const [customDateVal, setCustomDateVal] = useState(today)
   const [hasSelection, setHasSelection] = useState(false)
 
+  // ── PIN lock gate ── defense in depth: NoteCard already intercepts clicks on
+  // locked notes before this modal ever opens, but this modal can also be
+  // reached via deep links (e.g. search results), so it must independently
+  // refuse to render a locked note's content until the PIN is verified.
+  const [isUnlocked, setIsUnlocked] = useState(false)
+  const [showUnlockModal, setShowUnlockModal] = useState(false)
+  const isLocked = !!note?.pin_hash && !isUnlocked
+
+  useEffect(() => {
+    // Re-lock whenever a different note is opened, or this note is reopened
+    // after being closed — unlocking never persists past a close.
+    if (open) setIsUnlocked(false)
+  }, [note?.id, open])
+
   const checkSelection = () => {
     const ta = textareaRef.current
     setHasSelection(!!ta && ta.selectionStart !== ta.selectionEnd)
   }
 
   useEffect(() => {
-    if (note && open) {
+    if (note && open && !isLocked) {
       setTitle(note.title)
       setBody(stripTags(note.content || ''))
       setTags(extractTags(note.content || ''))
       setMode('write')
     }
-  }, [note, open])
+  }, [note, open, isLocked])
 
   const buildContent = (b = body, t = tags) => applyTags(b, t)
 
@@ -173,28 +188,53 @@ export function NoteEditorModal({
 
           {/* Header */}
           <div className="flex flex-shrink-0 items-center justify-between p-4 border-b border-border gap-3">
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              onBlur={() => handleSave()}
-              className="text-lg font-display text-text bg-transparent border-none focus:outline-none flex-1 min-w-0"
-              placeholder="Note Title"
-            />
+            {isLocked ? (
+              <span className="text-lg font-display text-text-muted flex items-center gap-2">
+                <Lock size={16} /> Locked Note
+              </span>
+            ) : (
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                onBlur={() => handleSave()}
+                className="text-lg font-display text-text bg-transparent border-none focus:outline-none flex-1 min-w-0"
+                placeholder="Note Title"
+              />
+            )}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {!isLocked && (
               <div className="flex bg-surface-2 rounded-lg p-0.5">
                 <button onClick={() => setMode('write')} className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'write' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>Write</button>
                 <button onClick={() => setMode('preview')} className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'preview' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>Preview</button>
               </div>
+              )}
+              {!isLocked && (
               <button onClick={() => setFullscreen(!fullscreen)} className="text-text-muted hover:text-text hidden sm:block">
                 {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
               </button>
+              )}
               <button onClick={handleClose} className="text-text-muted hover:text-text">
                 <X size={20} />
               </button>
             </div>
           </div>
 
+          {isLocked ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-border flex items-center justify-center">
+                <Lock size={22} className="text-text-muted" />
+              </div>
+              <p className="text-sm text-text-secondary">This note is protected with a PIN.</p>
+              <button
+                onClick={() => setShowUnlockModal(true)}
+                className="px-5 py-2.5 bg-accent text-bg text-sm font-semibold rounded-xl hover:bg-accent-dim transition-colors"
+              >
+                Enter PIN
+              </button>
+            </div>
+          ) : (
+          <>
           {/* Rich text toolbar (write mode only) */}
           {mode === 'write' && (
             <div className="relative">
@@ -289,9 +329,21 @@ export function NoteEditorModal({
               </div>
             </div>
           </div>
+          </>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+
+    {note && (
+      <NotePinUnlockModal
+        open={showUnlockModal}
+        noteTitle={note.title || 'Untitled'}
+        pinHash={note.pin_hash || ''}
+        onUnlocked={() => { setShowUnlockModal(false); setIsUnlocked(true); haptic('success') }}
+        onClose={() => setShowUnlockModal(false)}
+      />
+    )}
 
     <Dialog.Root open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
       <Dialog.Portal>

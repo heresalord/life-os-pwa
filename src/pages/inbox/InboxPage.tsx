@@ -5,6 +5,7 @@ import { useInboxMutations } from '../../hooks/useInboxMutations'
 import { useScrollToHighlight } from '../../hooks/useScrollToHighlight'
 import { InboxItemCard } from '../../components/inbox/InboxItemCard'
 import { EmptyState } from '../../components/EmptyState'
+import { ExportButton } from '../../components/ExportButton'
 import { InboxListSkeleton } from '../../components/Skeleton'
 import { haptic } from '../../lib/haptic'
 import { Inbox, Plus, FileText, Lightbulb, AlertTriangle, CheckSquare, Layers } from 'lucide-react'
@@ -53,6 +54,7 @@ export function InboxPage() {
           </h1>
           <p className="text-xs text-text-muted mt-0.5">Capture and process your thoughts.</p>
         </div>
+        <ExportButton table="inbox_items" label="Inbox" />
       </header>
 
       {/* Quick capture — styled as integrated bar */}

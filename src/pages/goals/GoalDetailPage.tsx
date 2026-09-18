@@ -26,9 +26,14 @@ import { useGoalQuery, useHabitLogsQuery, useMilestonesQuery } from '../../hooks
 import { useGoalEventsQuery } from '../../hooks/useGoalEventsQuery'
 import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { useProjectsQuery } from '../../hooks/useProjectsQuery'
-import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays, parseISO } from 'date-fns'
+import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays, parseISO, differenceInCalendarDays } from 'date-fns'
 import clsx from 'clsx'
 import { haptic } from '../../lib/haptic'
+import { Lock } from 'lucide-react'
+
+// A missed day freezes (becomes permanently uneditable) once this many days
+// have passed without a check-in.
+const FREEZE_AFTER_DAYS = 3
 
 const CATEGORY_ICONS: Record<string, any> = {
   Health: Activity,
@@ -424,7 +429,8 @@ export function GoalDetailPage() {
         return schDays.includes(d.getDay())
       }
 
-      const handleCellClick = (dateStr: string, currentVal: number | undefined) => {
+      const handleCellClick = (dateStr: string, currentVal: number | undefined, isFrozen: boolean) => {
+        if (isFrozen) { haptic('error'); return }
         haptic('light')
         if (currentVal === 1) {
           // Complete -> Explicit Fail
@@ -468,6 +474,7 @@ export function GoalDetailPage() {
                       const isPast = dateStr < todayStr
                       const isToday = dateStr === todayStr
                       const isFuture = dateStr > todayStr
+                      const isFrozen = isPast && value === undefined && differenceInCalendarDays(new Date(todayStr), new Date(dateStr)) > FREEZE_AFTER_DAYS
 
                       // A scheduled past day without a successful log is missed (failed)
                       const isComplete = value === 1
@@ -478,9 +485,10 @@ export function GoalDetailPage() {
                         <button
                           key={dIdx}
                           type="button"
-                          disabled={isFuture || !scheduled}
-                          onClick={() => handleCellClick(dateStr, value)}
+                          disabled={isFuture || !scheduled || isFrozen}
+                          onClick={() => handleCellClick(dateStr, value, isFrozen)}
                           title={`${dateStr} (${format(day, 'EEE')}): ${
+                            isFrozen ? '✗ Missed — too long ago to change' :
                             isComplete ? '✓ Complete (Tap to change)' :
                             isExplicitFail ? '✗ Skipped/Failed (Tap to reset)' :
                             isMissed ? '✗ Missed (Tap to check in)' :
@@ -488,15 +496,18 @@ export function GoalDetailPage() {
                             scheduled ? 'Scheduled' : 'Not Scheduled'
                           }`}
                           className={clsx(
-                            'w-3.5 h-3.5 rounded-[4px] border transition-all select-none',
+                            'w-3.5 h-3.5 rounded-[4px] border transition-all select-none flex items-center justify-center',
                             isFuture ? 'bg-transparent border-transparent cursor-default'
                             : !scheduled ? 'bg-transparent border-border/20 cursor-default'
+                            : isFrozen ? 'bg-surface-2/60 border-border/30 cursor-not-allowed'
                             : isComplete ? 'bg-success border-success/40 shadow-[0_0_6px_rgba(34,197,94,0.25)] hover:opacity-80 active:scale-90 cursor-pointer'
                             : (isExplicitFail || isMissed) ? 'bg-danger/25 border-danger/50 text-danger hover:bg-danger/40 active:scale-90 cursor-pointer'
                             : isToday ? 'bg-surface-2 border-accent ring-1 ring-accent hover:border-success active:scale-90 cursor-pointer animate-pulse'
                             : 'bg-surface-2 border-border/80 hover:border-text-secondary active:scale-90 cursor-pointer'
                           )}
-                        />
+                        >
+                          {isFrozen && <Lock size={7} className="text-text-muted" />}
+                        </button>
                       )
                     })}
                   </div>

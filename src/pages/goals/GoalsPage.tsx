@@ -4,6 +4,7 @@ import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { GoalItem } from '../../components/goals/GoalItem'
 import { AddGoalModal } from '../../components/goals/AddGoalModal'
 import { EmptyState } from '../../components/EmptyState'
+import { ExportButton } from '../../components/ExportButton'
 import { GoalGridSkeleton } from '../../components/Skeleton'
 import { useTranslation } from '../../i18n'
 import { haptic } from '../../lib/haptic'
@@ -99,6 +100,7 @@ export function GoalsPage() {
           </p>
         </div>
         {/* State filter chips — pinned, always visible */}
+        <div className="flex items-center gap-2">
         <div className="flex items-center gap-1 p-1 bg-surface-2 border border-border rounded-xl">
           {STATE_FILTERS.map(({ value, label, icon: Icon }) => (
             <button
@@ -115,6 +117,8 @@ export function GoalsPage() {
               <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
+        </div>
+        <ExportButton table="goals" label="Goals" />
         </div>
       </header>
 
