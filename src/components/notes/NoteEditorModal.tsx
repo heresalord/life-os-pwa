@@ -14,6 +14,7 @@ import { NotePinUnlockModal } from './NotePinModal'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { haptic } from '../../lib/haptic'
+import { checklistMarkdownComponents } from '../../lib/markdownChecklist'
 
 function computeWordCount(text: string) {
   const t = text.trim()
@@ -21,15 +22,17 @@ function computeWordCount(text: string) {
   return t.split(/\s+/).filter(Boolean).length
 }
 
-// Custom renderer: replace [[title]] with linked spans in preview
+// Custom renderer: replace [[title]] with linked spans in preview + interactive checklists
 function NoteLinkedMarkdown({
   body,
   notes,
   onOpenNote,
+  onBodyChange,
 }: {
   body: string
   notes: Note[]
   onOpenNote: (id: string) => void
+  onBodyChange?: (next: string) => void
 }) {
   // Replace [[Note Title]] with a placeholder element hint
   const jsxParts = body.split(/(\[\[.*?\]\])/g).map((part, i) => {
@@ -48,7 +51,15 @@ function NoteLinkedMarkdown({
         </button>
       )
     }
-    return <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>{part}</ReactMarkdown>
+    return (
+      <ReactMarkdown
+        key={i}
+        remarkPlugins={[remarkGfm]}
+        components={onBodyChange ? checklistMarkdownComponents(body, onBodyChange) : undefined}
+      >
+        {part}
+      </ReactMarkdown>
+    )
   })
 
   return <>{jsxParts}</>
@@ -284,6 +295,7 @@ export function NoteEditorModal({
                       body={body}
                       notes={allNotes as Note[]}
                       onOpenNote={id => { onOpenNote?.(id); onOpenChange(false) }}
+                      onBodyChange={b => { setBody(b); handleSave(b) }}
                     />
                   ) : (
                     <p className="text-text-muted italic">Nothing written yet.</p>

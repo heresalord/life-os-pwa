@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useUserSettings } from '../../hooks/useUserSettings'
-import { exportAllDataToJson, exportTransactionsCSV } from '../../lib/exportUtils'
+import { exportAllDataToJson, exportTableCSV } from '../../lib/exportUtils'
 import { useDb } from '../../db/DbContext'
 import { useAppStore } from '../../store/useAppStore'
 import { ALL_NAV_OPTIONS } from '../../lib/constants'
@@ -895,19 +895,36 @@ export function SettingsPage() {
   const renderData = () => (
     <div className="space-y-4 animate-in fade-in duration-200">
       <SectionCard title="Export" icon={Download}>
-        <div className="pt-3 grid grid-cols-2 gap-3">
+        <p className="text-xs text-text-muted pt-3 pb-3 leading-relaxed">
+          Download your data as CSV or a full JSON backup.
+        </p>
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Full backup */}
           <button
-            onClick={() => exportAllDataToJson(db)}
-            className="flex items-center justify-center gap-2 py-3 bg-surface-2 text-text text-sm font-medium rounded-xl hover:bg-muted border border-border press-row transition-colors"
+            onClick={() => { haptic('light'); exportAllDataToJson(db) }}
+            className="col-span-2 flex items-center justify-center gap-2 py-3 bg-accent/10 text-accent border border-accent/20 text-sm font-semibold rounded-xl hover:bg-accent/15 press-row transition-colors"
           >
-            <Download size={14} /> JSON Backup
+            <Download size={14} /> Full JSON Backup
           </button>
-          <button
-            onClick={() => exportTransactionsCSV(db)}
-            className="flex items-center justify-center gap-2 py-3 bg-surface-2 text-text text-sm font-medium rounded-xl hover:bg-muted border border-border press-row transition-colors"
-          >
-            <Download size={14} /> Finance CSV
-          </button>
+
+          {/* Per-module CSV exports */}
+          {([
+            { table: 'tasks',        label: 'Tasks'     },
+            { table: 'notes',        label: 'Notes'     },
+            { table: 'books',        label: 'Books'     },
+            { table: 'goals',        label: 'Goals'     },
+            { table: 'agenda_blocks',label: 'Agenda'    },
+            { table: 'inbox_items',  label: 'Inbox'     },
+            { table: 'transactions', label: 'Finance'   },
+          ] as const).map(({ table, label }) => (
+            <button
+              key={table}
+              onClick={() => { haptic('light'); exportTableCSV(db, table, label) }}
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-surface-2 text-text-secondary text-xs font-medium rounded-xl hover:bg-muted hover:text-text border border-border press-row transition-colors"
+            >
+              <Download size={12} /> {label} CSV
+            </button>
+          ))}
         </div>
       </SectionCard>
 

@@ -580,11 +580,11 @@ export function BookItem({
   if (layoutMode === 'hero') {
     return (
       <>
-        <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 w-full mb-8">
+        <div className="flex flex-col sm:flex-row items-center gap-6 w-full mb-8">
           {/* Cover — same floating-shadow treatment as the grid, just larger */}
           <div
             onClick={() => navigate(`/books/${book.id}`)}
-            className="relative w-32 sm:w-40 aspect-[2/3] flex-shrink-0 rounded-lg overflow-hidden shadow-lg ring-1 ring-black/5 cursor-pointer bg-surface-2 flex items-center justify-center mx-auto sm:mx-0"
+            className="relative w-36 sm:w-44 aspect-[2/3] flex-shrink-0 rounded-lg overflow-hidden shadow-xl ring-1 ring-black/10 cursor-pointer bg-surface-2 flex items-center justify-center mx-auto sm:mx-0 transition-transform hover:scale-[1.02] duration-300"
           >
             {book.cover_url ? (
               <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
@@ -594,19 +594,21 @@ export function BookItem({
           </div>
 
           {/* Details */}
-          <div className="flex-1 flex flex-col justify-center gap-3 text-center sm:text-left">
-            <div>
-              <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1">Reading Now</p>
+          <div className="flex-1 flex flex-col justify-center items-center sm:items-start text-center sm:text-left gap-3.5 w-full">
+            <div className="w-full">
+              <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-1 text-center sm:text-left">
+                Reading Now
+              </p>
               <button
                 onClick={() => navigate(`/books/${book.id}`)}
-                className="text-xl font-display font-bold text-text leading-snug hover:text-accent transition-colors text-left block w-full"
+                className="text-xl sm:text-2xl font-display font-bold text-text leading-snug hover:text-accent transition-colors text-center sm:text-left block w-full"
               >
                 {book.title}
               </button>
               {book.author && (
                 <button
                   onClick={e => { e.stopPropagation(); navigate(`/books/author/${encodeURIComponent(book.author!)}`) }}
-                  className="text-sm text-text-secondary hover:text-accent transition-colors mt-0.5"
+                  className="text-sm text-text-secondary hover:text-accent transition-colors mt-1 text-center sm:text-left block w-full"
                 >
                   {book.author}
                 </button>
@@ -614,11 +616,11 @@ export function BookItem({
             </div>
 
             {/* Progress — same thin unlabeled track as the grid cards, just wider */}
-            <button onClick={() => setShowProgress(true)} className="group/prog space-y-1.5">
-              <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden max-w-xs mx-auto sm:mx-0">
+            <button onClick={() => setShowProgress(true)} className="group/prog space-y-1.5 w-full max-w-xs mx-auto sm:mx-0">
+              <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden w-full">
                 <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
               </div>
-              <p className="text-xs text-text-muted group-hover/prog:text-accent transition-colors">
+              <p className="text-xs text-text-muted text-center sm:text-left group-hover/prog:text-accent transition-colors">
                 {book.total_pages
                   ? <>Page {book.current_page || 0} of {book.total_pages} · {pct}%</>
                   : 'Tap to set progress'
@@ -629,7 +631,7 @@ export function BookItem({
             {/* Primary actions understated, secondary tucked into the same
                 overflow menu the grid cards use — Apple Books never shows
                 more than one or two calls to action on a reading card. */}
-            <div className="flex items-center justify-center sm:justify-start gap-4 pt-1">
+            <div className="flex items-center justify-center sm:justify-start gap-4 pt-1 w-full">
               <button
                 onClick={() => setShowFinish(true)}
                 className="text-sm font-semibold text-success hover:underline"
@@ -642,15 +644,13 @@ export function BookItem({
               >
                 Stop Reading
               </button>
-              <div className="ml-auto sm:ml-0">
-                <BookActionsMenu
-                  items={[
-                    { label: 'Edit', icon: Pencil, onClick: () => setShowEdit(true) },
-                    { label: 'Quotes', icon: Quote, onClick: () => setShowQuotes(true) },
-                    { label: 'Delete', icon: Trash2, onClick: confirmDelete, tone: 'danger' as const },
-                  ]}
-                />
-              </div>
+              <BookActionsMenu
+                items={[
+                  { label: 'Edit', icon: Pencil, onClick: () => setShowEdit(true) },
+                  { label: 'Quotes', icon: Quote, onClick: () => setShowQuotes(true) },
+                  { label: 'Delete', icon: Trash2, onClick: confirmDelete, tone: 'danger' as const },
+                ]}
+              />
             </div>
           </div>
         </div>

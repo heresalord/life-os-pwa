@@ -20,18 +20,21 @@ import {
   FileText, Plus, Search, X, Eye, Edit3,
   FolderOpen, FolderPlus,
   Folder, Pin, BookText, LayoutTemplate, FolderTree, ListTodo,
-  Maximize2, Minimize2, Lock, Unlock,
+  Maximize2, Minimize2, Lock, Unlock, Flame,
 } from 'lucide-react'
 import type { Note } from '../../db/schema'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import clsx from 'clsx'
 import { NotePinUnlockModal } from '../../components/notes/NotePinModal'
-import { ExportButton } from '../../components/ExportButton'
+import { WritingGoalModal } from '../../components/notes/WritingGoalModal'
+import { checklistMarkdownComponents } from '../../lib/markdownChecklist'
+import { haptic } from '../../lib/haptic'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SYSTEM_FOLDERS = ['All', 'Pinned', 'Journal', 'Templates']
 const FOLDERS_KEY    = 'life-os-note-folders'
+const NOTES_GOAL_KEY = 'life-os-notes-monthly-goal'
 const SORT_LABELS: Record<string, string> = {
   updated:  'Last Edited',
   created:  'Created Date',
@@ -177,7 +180,18 @@ function DesktopNoteEditor({
           </button>
         )
       }
-      return <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>{part}</ReactMarkdown>
+      return (
+        <ReactMarkdown
+          key={i}
+          remarkPlugins={[remarkGfm]}
+          components={checklistMarkdownComponents(body, next => {
+            setBody(next)
+            save(next)
+          })}
+        >
+          {part}
+        </ReactMarkdown>
+      )
     })
 
   return (
@@ -330,6 +344,10 @@ export function NotesPage() {
   const [showNewFolder, setShowNewFolder]   = useState(false)
   const [folderSidebarOpen, setFolderSidebarOpen] = useState(true)
   const [isFocusMode, setIsFocusMode] = useState(false)
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem(NOTES_GOAL_KEY) ?? '20') || 20 } catch { return 20 }
+  })
+  const [showGoalModal, setShowGoalModal] = useState(false)
 
   const activeNote = (notes as Note[]).find(n => n.id === activeNoteId) || null
   const allFolders = [...SYSTEM_FOLDERS, ...customFolders]
@@ -374,6 +392,41 @@ export function NotesPage() {
       avgWords,
     }
   }, [notes, activeFolder])
+
+  // Monthly writing stats — for the Apple-vibe goal ring in the header
+  const writingStats = useMemo(() => {
+    const now = new Date()
+    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const allNotes = notes as Note[]
+    // Count regular (non-template) notes created or updated this month
+    const thisMonthNotes = allNotes.filter(n =>
+      !(n as any).is_template &&
+      (
+        (typeof (n as any).created_at === 'string' && (n as any).created_at.startsWith(currentMonthPrefix)) ||
+        (typeof n.updated_at === 'string' && n.updated_at.startsWith(currentMonthPrefix))
+      )
+    )
+    // Writing streak: consecutive days with at least one note updated
+    const daySet = new Set<string>()
+    allNotes.forEach(n => {
+      if (n.updated_at) daySet.add(n.updated_at.slice(0, 10))
+    })
+    let streak = 0
+    const today = new Date()
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const ds = d.toISOString().slice(0, 10)
+      if (daySet.has(ds)) streak++
+      else if (i > 0) break
+    }
+    return { thisMonth: thisMonthNotes.length, streak }
+  }, [notes])
+
+  const pct = Math.min(Math.round((writingStats.thisMonth / monthlyGoal) * 100), 100)
+  const ringR = 20, ringStroke = 3
+  const ringCirc = 2 * Math.PI * (ringR - ringStroke * 2)
+  const ringOffset = ringCirc - (ringCirc * pct) / 100
 
   // Filtered + sorted
   const filtered = useMemo(() => {
@@ -539,7 +592,7 @@ export function NotesPage() {
       </div>
 
       {/* ── List pane ── hidden entirely while in focus mode */}
-      <div className={clsx('flex-shrink-0 lg:w-72 space-y-3', isFocusMode && 'lg:hidden')}>
+      <div className={clsx('flex-shrink-0 lg:w-72 space-y-3 relative', isFocusMode && 'lg:hidden')}>
         {/* Header */}
         <header className="flex items-center justify-between pb-3">
           <div>
@@ -550,7 +603,62 @@ export function NotesPage() {
               {(notes as Note[]).length > 0 ? `${(notes as Note[]).length} note${(notes as Note[]).length > 1 ? 's' : ''}` : 'Freewrite, reflect, or draft.'}
             </p>
           </div>
-          <ExportButton table="notes" label="Notes" />
+
+          <div className="flex items-center gap-2">
+            {/* Writing goal ring — Apple-vibe, mirrors Books reading goal */}
+            {(notes as Note[]).length > 0 && (
+              <button
+                onClick={() => {
+                  haptic('light')
+                  setShowGoalModal(true)
+                }}
+                className="flex items-center gap-2.5 bg-surface border border-border px-3 py-1.5 rounded-xl hover:border-accent transition-all hover:shadow-sm"
+                title={`${writingStats.thisMonth} / ${monthlyGoal} notes this month · Click to adjust goal`}
+              >
+                <div className="relative flex items-center justify-center">
+                  <svg height={ringR * 2} width={ringR * 2} className="transform -rotate-90">
+                    <circle
+                      stroke="var(--color-border)" fill="transparent"
+                      strokeWidth={ringStroke} r={ringR - ringStroke * 2}
+                      cx={ringR} cy={ringR}
+                    />
+                    <circle
+                      stroke="var(--color-accent)" fill="transparent"
+                      strokeWidth={ringStroke}
+                      strokeDasharray={`${ringCirc} ${ringCirc}`}
+                      style={{ strokeDashoffset: ringOffset }}
+                      r={ringR - ringStroke * 2} cx={ringR} cy={ringR}
+                      strokeLinecap="round"
+                      className="transition-all duration-500 ease-out"
+                    />
+                  </svg>
+                  <span className="absolute text-[8px] font-bold text-text-secondary">{pct}%</span>
+                </div>
+                <div className="text-left hidden sm:block">
+                  <p className="text-[9px] text-text-muted uppercase tracking-wider font-semibold">Writing Goal</p>
+                  <p className="text-xs font-semibold text-text">
+                    {writingStats.thisMonth} <span className="text-text-secondary text-[10px] font-normal">/ {monthlyGoal} notes</span>
+                  </p>
+                </div>
+                {writingStats.streak > 1 && (
+                  <span className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-warning">
+                    <Flame size={11} className="fill-warning" />{writingStats.streak}
+                  </span>
+                )}
+              </button>
+            )}
+            <WritingGoalModal
+              open={showGoalModal}
+              onClose={() => setShowGoalModal(false)}
+              currentGoal={monthlyGoal}
+              onSaveGoal={g => {
+                setMonthlyGoal(g)
+                localStorage.setItem(NOTES_GOAL_KEY, String(g))
+              }}
+              thisMonthCount={writingStats.thisMonth}
+              streak={writingStats.streak}
+            />
+          </div>
         </header>
 
         {/* Journal folder overview banner */}
@@ -603,19 +711,20 @@ export function NotesPage() {
           </div>
         )}
 
-        {/* Search */}
+        {/* Search — filled pill capsule, matching iOS 26's prominent, borderless
+            search fields rather than an outlined box. */}
         {(notes as Note[]).length > 0 && (
           <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search notes…"
-              className="w-full bg-surface border border-border rounded-xl pl-9 pr-9 py-2 text-sm text-text placeholder-text-muted focus:border-accent focus:outline-none"
+              className="w-full bg-surface-2 border border-transparent rounded-full pl-9 pr-9 py-2.5 text-sm text-text placeholder-text-muted focus:bg-surface focus:border-accent/40 focus:outline-none transition-colors"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text">
+              <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text">
                 <X size={14} />
               </button>
             )}

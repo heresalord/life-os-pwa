@@ -1,5 +1,5 @@
 import React from 'react'
-import { Bold, Italic, Heading1, Heading2, Link, List, Code, ListTodo } from 'lucide-react'
+import { Bold, Italic, Heading1, Heading2, Link, List, Code, ListTodo, CheckSquare } from 'lucide-react'
 
 interface RichTextToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
@@ -67,12 +67,16 @@ const TOOLS = [
     icon: <Heading2 size={13} strokeWidth={2.5} />,
   },
   {
-    label: 'Link',
-    icon: <Link size={13} strokeWidth={2.5} />,
+    label: 'Checklist',
+    icon: <CheckSquare size={13} strokeWidth={2.5} />,
   },
   {
     label: 'List',
     icon: <List size={13} strokeWidth={2.5} />,
+  },
+  {
+    label: 'Link',
+    icon: <Link size={13} strokeWidth={2.5} />,
   },
   {
     label: 'Code',
@@ -110,6 +114,8 @@ export function RichTextToolbar({ textareaRef, onBodyChange, onCreateTask }: Ric
           })
           return newText
         }
+        case 'Checklist':
+          return prefixLines(ta, '- [ ] ')
         case 'List':
           return prefixLines(ta, '- ')
         case 'Code': {
@@ -128,39 +134,43 @@ export function RichTextToolbar({ textareaRef, onBodyChange, onCreateTask }: Ric
   }
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 border-b border-border bg-surface flex-shrink-0">
-      {TOOLS.map((tool, i) => (
-        <React.Fragment key={tool.label}>
-          {i === 4 && <div className="w-px h-4 bg-border mx-1" />}
-          <button
-            type="button"
-            title={tool.label}
-            onMouseDown={e => {
-              e.preventDefault() // don't steal textarea focus
-              handleToolAction(tool.label)
-            }}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:text-text hover:bg-surface-2 transition-colors text-xs font-medium"
-          >
-            {tool.icon}
-          </button>
-        </React.Fragment>
-      ))}
-      {onCreateTask && (
-        <>
-          <div className="w-px h-4 bg-border mx-1" />
-          <button
-            type="button"
-            title="Create task from selection"
-            onMouseDown={e => {
-              e.preventDefault()
-              onCreateTask()
-            }}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:text-accent hover:bg-accent/10 transition-colors text-xs font-medium"
-          >
-            <ListTodo size={13} strokeWidth={2.5} />
-          </button>
-        </>
-      )}
+    <div className="flex-shrink-0 px-3 py-2 border-b border-border bg-surface">
+      {/* Floating pill toolbar, horizontally scrollable — matches iOS 26 Notes'
+          adaptive formatting bar rather than a flat, full-width bordered strip. */}
+      <div className="flex items-center gap-0.5 w-fit max-w-full overflow-x-auto scrollbar-none px-1.5 py-1 rounded-full bg-surface-2/70 backdrop-blur-md border border-border/60 shadow-sm">
+        {TOOLS.map((tool, i) => (
+          <React.Fragment key={tool.label}>
+            {i === 4 && <div className="w-px h-4 bg-border/70 mx-1 flex-shrink-0" />}
+            <button
+              type="button"
+              title={tool.label}
+              onMouseDown={e => {
+                e.preventDefault() // don't steal textarea focus
+                handleToolAction(tool.label)
+              }}
+              className="flex items-center justify-center w-7 h-7 rounded-full text-text-muted hover:text-text hover:bg-surface transition-colors text-xs font-medium flex-shrink-0"
+            >
+              {tool.icon}
+            </button>
+          </React.Fragment>
+        ))}
+        {onCreateTask && (
+          <>
+            <div className="w-px h-4 bg-border/70 mx-1 flex-shrink-0" />
+            <button
+              type="button"
+              title="Create task from selection"
+              onMouseDown={e => {
+                e.preventDefault()
+                onCreateTask()
+              }}
+              className="flex items-center justify-center w-7 h-7 rounded-full text-text-muted hover:text-accent hover:bg-accent/10 transition-colors text-xs font-medium flex-shrink-0"
+            >
+              <ListTodo size={13} strokeWidth={2.5} />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }

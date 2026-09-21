@@ -10,7 +10,6 @@ import { AgendaBlock } from '../../components/agenda/AgendaBlock'
 import { AgendaTaskBlock } from '../../components/agenda/AgendaTaskBlock'
 import { AddBlockModal } from '../../components/agenda/AddBlockModal'
 import { EmptyState } from '../../components/EmptyState'
-import { ExportButton } from '../../components/ExportButton'
 import { CalendarDays, Clock, Play } from 'lucide-react'
 import type { AgendaBlock as AgendaBlockType, Task } from '../../db/schema'
 import { PageSkeleton } from '../../components/Skeleton'
@@ -98,7 +97,6 @@ export function AgendaPage() {
           <h1 className="text-2xl font-display text-text font-bold">Agenda</h1>
           <p className="text-xs text-text-muted mt-0.5">Plan and execute your day side-by-side</p>
         </div>
-        <ExportButton table="agenda_blocks" label="Agenda" />
       </header>
 
       <AddBlockModal date={selectedDate} open={addOpen} onOpenChange={setAddOpen} />

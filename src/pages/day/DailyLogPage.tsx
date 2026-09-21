@@ -365,17 +365,20 @@ export function DailyLogPage() {
   // Populate morning/night journal from Notes Journal folder
   const journalNoteForDate = useMemo(() => {
     const title = journalNoteTitle(activeDate)
-    return (allNotes as any[]).find(n => n.title === title && n.folder === 'Journal') ?? null
+    return (allNotes as any[]).find(n =>
+      (n.date === activeDate && (n.folder === 'Journal' || n.title?.toLowerCase().startsWith('journal'))) ||
+      n.title === title
+    ) ?? null
   }, [allNotes, activeDate])
 
   useEffect(() => {
     if (!journalNoteForDate) return
     const content = journalNoteForDate.content as string ?? ''
     // Extract morning section
-    const morningMatch = content.match(/## Morning\n([\s\S]*?)(?=\n## |$)/)
+    const morningMatch = content.match(/## Morning[^\n]*\n([\s\S]*?)(?=\n## |$)/)
     if (morningMatch) setMorningJournal(morningMatch[1].trim())
     // Extract evening section
-    const eveningMatch = content.match(/## Evening\n([\s\S]*?)(?=\n## |$)/)
+    const eveningMatch = content.match(/## Evening[^\n]*\n([\s\S]*?)(?=\n## |$)/)
     if (eveningMatch) setNightJournal(eveningMatch[1].trim())
   }, [journalNoteForDate])
 
@@ -394,7 +397,10 @@ export function DailyLogPage() {
     try {
       const lastYearDate = format(subDays(parseISO(activeDate + 'T12:00:00'), 365), 'yyyy-MM-dd')
       const title = journalNoteTitle(lastYearDate)
-      return (allNotes as any[]).find(n => n.title === title && n.folder === 'Journal') ?? null
+      return (allNotes as any[]).find(n =>
+        (n.date === lastYearDate && (n.folder === 'Journal' || n.title?.toLowerCase().startsWith('journal'))) ||
+        n.title === title
+      ) ?? null
     } catch { return null }
   }, [allNotes, activeDate])
 
@@ -428,10 +434,26 @@ export function DailyLogPage() {
   }, [tasks, record])
 
   // ─── Save journal note to Notes/Journal folder ────────────────────────────
+  // IMPORTANT: always start from the *existing* note content so that
+  // free-journal timestamped entries (added via handleAddJournalEntry between
+  // the Morning and Evening sections) are preserved when the ritual saves.
   const saveJournalNote = useCallback(async (morningText: string, eveningText: string) => {
     if (!user) return
     const title = journalNoteTitle(activeDate)
-    let content = ''
+
+    // Base: keep whatever is already in the note (preserves timestamped entries)
+    let content = (journalNoteForDate?.content as string | undefined) ?? ''
+    let noteId = journalNoteForDate?.id
+
+    // If not in state, check local Dexie directly
+    if (!noteId || !content) {
+      const local = await db.notes.where('date').equals(activeDate).filter(n => n.folder === 'Journal').first()
+      if (local) {
+        noteId = local.id
+        if (!content) content = local.content ?? ''
+      }
+    }
+
     if (morningText.trim()) content = upsertSection(content, 'Morning', morningText.trim())
     if (eveningText.trim()) content = upsertSection(content, 'Evening', eveningText.trim())
     if (!content.trim()) return
@@ -440,17 +462,17 @@ export function DailyLogPage() {
     const hashtags = extractHashtags(content)
     const finalContent = hashtags.length > 0 ? applyTags(content, hashtags) : content
 
-    if (journalNoteForDate) {
-      updateNote.mutate({ id: journalNoteForDate.id, updates: { content: finalContent } })
+    if (noteId) {
+      await updateNote.mutateAsync({ id: noteId, updates: { content: finalContent } })
     } else {
-      addNote.mutate({
+      await addNote.mutateAsync({
         title,
         content: finalContent,
         date: activeDate,
         folder: 'Journal',
       })
     }
-  }, [user, activeDate, journalNoteForDate, addNote, updateNote])
+  }, [user, activeDate, journalNoteForDate, db.notes, addNote, updateNote])
 
   // ─── Append a timestamped entry to the day's journal note ────────────
   // This is the "free journaling throughout the day" entry point — distinct
@@ -466,13 +488,23 @@ export function DailyLogPage() {
     setAddingEntry(true)
     haptic('light')
     try {
-      const baseContent = (journalNoteForDate?.content as string) ?? ''
+      let baseContent = (journalNoteForDate?.content as string) ?? ''
+      let noteId = journalNoteForDate?.id
+
+      if (!noteId || !baseContent) {
+        const local = await db.notes.where('date').equals(activeDate).filter(n => n.folder === 'Journal').first()
+        if (local) {
+          noteId = local.id
+          if (!baseContent) baseContent = local.content ?? ''
+        }
+      }
+
       const merged = insertTimestampedEntry(baseContent, text.trim())
       const hashtags = extractHashtags(merged)
       const finalContent = hashtags.length > 0 ? applyTags(merged, hashtags) : merged
 
-      if (journalNoteForDate) {
-        await updateNote.mutateAsync({ id: journalNoteForDate.id, updates: { content: finalContent } })
+      if (noteId) {
+        await updateNote.mutateAsync({ id: noteId, updates: { content: finalContent } })
       } else {
         await addNote.mutateAsync({
           title: journalNoteTitle(activeDate),
@@ -488,28 +520,18 @@ export function DailyLogPage() {
     } finally {
       setAddingEntry(false)
     }
-  }, [user, activeDate, journalNoteForDate, addNote, updateNote])
+  }, [user, activeDate, journalNoteForDate, db.notes, addNote, updateNote])
 
   // §0 Fix: Completion Model & Save Fields Wrapper
   const handleSaveFields = useCallback(async (updates: Record<string, any>) => {
     setSaveStatus('saving')
     try {
-      const curEnergyAm = updates.energy_am !== undefined ? updates.energy_am : energyAm
-      const curIntent = updates.intent !== undefined ? updates.intent : intention
-      const curGratitude = updates.gratitude !== undefined ? updates.gratitude : gratitude
-
-      const curWinOfDay = updates.win_of_day !== undefined ? updates.win_of_day : winOfDay
-
       const morningDerived = Boolean(
-        record?.morning_complete || updates.morning_complete ||
-        (curEnergyAm != null && curIntent?.trim() && curGratitude.some((g: string) => g?.trim()))
+        record?.morning_complete || updates.morning_complete
       )
 
-      const savedMood = updates.mood !== undefined ? updates.mood : record?.mood
-      const savedEnergyPm = updates.energy_pm !== undefined ? updates.energy_pm : record?.energy_pm
       const eveningDerived = Boolean(
-        record?.evening_complete || updates.evening_complete ||
-        (savedMood != null && savedEnergyPm != null && curWinOfDay?.trim())
+        record?.evening_complete || updates.evening_complete
       )
 
       const payload: Record<string, any> = {
@@ -1108,17 +1130,30 @@ export function DailyLogPage() {
               )}
             </div>
 
-            <button
-              onClick={() => startWizard('morning')}
-              className="w-full flex items-center justify-center gap-2 h-12 bg-amber-400 text-gray-900 rounded-xl font-semibold text-sm hover:bg-amber-300 active:scale-98 transition-all shadow-sm"
-            >
-              <Play size={16} className="fill-gray-900" /> Start Morning Ritual
-              {currentStreak > 0 && (
-                <span className="inline-flex items-center gap-1 text-xs font-bold pl-2 border-l border-gray-900/20">
-                  <Flame size={12} className="fill-gray-900" /> {currentStreak}
-                </span>
-              )}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('success')
+                  handleSaveFields({ morning_complete: true })
+                }}
+                className="flex-1 flex items-center justify-center gap-2 h-11 bg-success text-bg rounded-xl font-semibold text-xs hover:bg-success/90 active:scale-98 transition-all shadow-sm"
+              >
+                <Check size={15} strokeWidth={2.5} /> Mark Morning Complete
+              </button>
+              <button
+                type="button"
+                onClick={() => startWizard('morning')}
+                className="flex-1 flex items-center justify-center gap-2 h-11 bg-amber-400 text-gray-900 rounded-xl font-semibold text-xs hover:bg-amber-300 active:scale-98 transition-all shadow-sm"
+              >
+                <Play size={14} className="fill-gray-900" /> Start Guided Wizard
+                {currentStreak > 0 && (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold pl-2 border-l border-gray-900/20">
+                    <Flame size={11} className="fill-gray-900" /> {currentStreak}
+                  </span>
+                )}
+              </button>
+            </div>
           </section>
         )}
 

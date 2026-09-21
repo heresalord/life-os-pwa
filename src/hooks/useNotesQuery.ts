@@ -31,9 +31,20 @@ export function useNotesQuery(date?: string) {
           const { data, error } = await q
           if (error) throw error
           if (data) {
-            const reconciled = await reconcilePendingSync(db, 'notes', data as Note[])
+            // Keep local Dexie notes that have not yet synced to Supabase
+            const localNotes = await (date
+              ? db.notes.where('date').equals(date).toArray()
+              : db.notes.toArray()
+            )
+            const serverIds = new Set(data.map((n: any) => n.id))
+            const localOnly = localNotes.filter(n => !serverIds.has(n.id))
+            const merged = [...(data as Note[]), ...localOnly]
+            const reconciled = await reconcilePendingSync(db, 'notes', merged)
             await db.notes.bulkPut(reconciled)
-            queryClient.setQueryData(QK.notes(date, user!.id), reconciled)
+            const sorted = reconciled.sort(
+              (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            )
+            queryClient.setQueryData(QK.notes(date, user!.id), sorted)
           }
         })
       }

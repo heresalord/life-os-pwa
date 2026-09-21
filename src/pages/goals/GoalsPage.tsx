@@ -4,7 +4,6 @@ import { useGoalMutations } from '../../hooks/useGoalMutations'
 import { GoalItem } from '../../components/goals/GoalItem'
 import { AddGoalModal } from '../../components/goals/AddGoalModal'
 import { EmptyState } from '../../components/EmptyState'
-import { ExportButton } from '../../components/ExportButton'
 import { GoalGridSkeleton } from '../../components/Skeleton'
 import { useTranslation } from '../../i18n'
 import { haptic } from '../../lib/haptic'
@@ -118,7 +117,6 @@ export function GoalsPage() {
             </button>
           ))}
         </div>
-        <ExportButton table="goals" label="Goals" />
         </div>
       </header>
 

@@ -28,6 +28,13 @@ export function useDailyRecord(date: string) {
             .maybeSingle()
           if (error) throw error
           if (data) {
+            const localNow = await db.daily_records.where('date').equals(date).first()
+            if (localNow?.updated_at && data.updated_at) {
+              if (new Date(localNow.updated_at).getTime() > new Date(data.updated_at).getTime()) {
+                // Local write is newer than server response — do not overwrite
+                return
+              }
+            }
             await db.daily_records.put(data as Parameters<typeof db.daily_records.put>[0])
             queryClient.setQueryData(QK.dailyRecord(date, user!.id), data)
           }

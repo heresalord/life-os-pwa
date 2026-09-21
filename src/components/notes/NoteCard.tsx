@@ -114,8 +114,8 @@ export function NoteCard({
         className={clsx(
           'relative overflow-hidden rounded-xl border group cursor-pointer transition-colors',
           isActive
-            ? 'bg-accent/8 border-accent/40'
-            : 'bg-surface border-border',
+            ? 'bg-surface-2 border-transparent'
+            : 'bg-surface border-border/60',
           (note as any).pinned && 'ring-1 ring-amber-400/30',
           isLocked && 'ring-1 ring-accent/20'
         )}
@@ -134,7 +134,7 @@ export function NoteCard({
           onTouchEnd={handleTouchEnd}
           className={clsx(
             'relative flex flex-col p-4 transition-all duration-200 ease-out',
-            isActive ? 'bg-accent/8' : 'bg-surface hover:bg-surface-2',
+            isActive ? 'bg-surface-2' : 'bg-surface hover:bg-surface-2/60',
             swiped ? '-translate-x-16' : 'translate-x-0'
           )}
         >

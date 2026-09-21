@@ -7,7 +7,6 @@ import { useBookMutations } from '../../hooks/useBookMutations'
 import { BookItem } from '../../components/books/BookItem'
 import { AddBookModal } from '../../components/books/AddBookModal'
 import { EmptyState } from '../../components/EmptyState'
-import { ExportButton } from '../../components/ExportButton'
 import { PageSkeleton } from '../../components/Skeleton'
 import { useReadingGoalsQuery, useSaveReadingGoalMutation } from '../../hooks/useReadingGoalsQuery'
 import { haptic } from '../../lib/haptic'
@@ -261,7 +260,6 @@ export function BooksPage() {
             <Award size={14} /> Set Reading Goal
           </button>
         )}
-        <ExportButton table="books" label="Books" />
         </div>
       </header>
 
