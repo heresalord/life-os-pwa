@@ -1,7 +1,8 @@
 import React from 'react'
+import { Sun, Moon } from 'lucide-react'
+import { useAppStore } from '../../store/useAppStore'
+import { haptic } from '../../lib/haptic'
 
-// Auth pages are always light — they render before any user theme preference
-// is loaded, so we force light colors, iOS frosted card and ambient gradient.
 export function AuthLayout({
   children,
   title,
@@ -11,52 +12,52 @@ export function AuthLayout({
   title?: string
   subtitle?: string
 }) {
+  const { theme, setTheme } = useAppStore()
+
+  const toggleTheme = () => {
+    haptic('light')
+    setTheme(theme === 'light' ? 'dark' : 'light')
+  }
+
   return (
-    <div
-      data-theme="light"
-      className="relative min-h-[100dvh] flex flex-col justify-between overflow-x-hidden selection:bg-accent/20"
-      style={{
-        background: 'radial-gradient(ellipse 80% 50% at 50% -10%, #faf5ec 0%, #f4ede2 40%, #eee5d7 100%)',
-      }}
-    >
+    <div className="relative min-h-[100dvh] flex flex-col justify-between overflow-x-hidden bg-bg text-text selection:bg-accent/20 transition-colors duration-300">
       {/* Decorative ambient background glows */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[540px] h-[340px] rounded-full blur-3xl opacity-50"
+        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[540px] h-[340px] rounded-full blur-3xl opacity-40 dark:opacity-20"
         style={{
-          background: 'radial-gradient(circle, rgba(223, 207, 176, 0.6) 0%, rgba(196, 176, 141, 0.2) 60%, transparent 80%)',
+          background: 'radial-gradient(circle, var(--theme-accent) 0%, transparent 70%)',
         }}
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-20 -right-20 w-80 h-80 rounded-full blur-3xl opacity-30"
+        className="pointer-events-none absolute -bottom-20 -right-20 w-80 h-80 rounded-full blur-3xl opacity-30 dark:opacity-15"
         style={{
-          background: 'radial-gradient(circle, rgba(210, 190, 155, 0.5) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--theme-accent) 0%, transparent 70%)',
         }}
       />
 
-      {/* Safe area status bar spacer */}
-      <div style={{ height: 'env(safe-area-inset-top, 0px)', flexShrink: 0 }} />
+      {/* Top action bar (theme switch & safe area spacer) */}
+      <header className="w-full max-w-lg mx-auto px-4 pt-4 flex items-center justify-end z-20">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          className="p-2 rounded-xl bg-surface/80 hover:bg-surface-2 border border-border/80 text-text-secondary hover:text-text transition-all duration-200 shadow-2xs cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-medium"
+        >
+          {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+          <span className="capitalize">{theme === 'light' ? 'Dark' : 'Light'}</span>
+        </button>
+      </header>
 
       {/* Scrollable card container */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12 z-10 w-full max-w-lg mx-auto">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-10 z-10 w-full max-w-lg mx-auto">
         {/* Frosted Glass Card */}
-        <div
-          className="w-full bg-white/90 backdrop-blur-2xl border border-white/80 rounded-[28px] p-6 sm:p-9 transition-all duration-300"
-          style={{
-            boxShadow: '0 24px 60px -12px rgba(176, 154, 117, 0.2), 0 8px 24px -4px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
-          }}
-        >
+        <div className="w-full bg-surface/90 backdrop-blur-2xl border border-border/80 rounded-[28px] p-6 sm:p-9 shadow-card dark:shadow-modal transition-all duration-300">
           {/* Brand Header */}
           <div className="flex flex-col items-center text-center mb-7">
             <div className="relative mb-3.5 group">
-              <div
-                className="w-14 h-14 rounded-2xl p-0.5 shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
-                style={{
-                  background: 'linear-gradient(135deg, #faeed9 0%, #c4b08d 100%)',
-                  boxShadow: '0 8px 20px -4px rgba(196, 176, 141, 0.4)',
-                }}
-              >
+              <div className="w-14 h-14 rounded-2xl p-0.5 shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105 bg-gradient-to-br from-accent/30 to-accent/10 border border-accent/30">
                 <img
                   src="/favicon.svg"
                   alt="Kairo"
@@ -65,13 +66,7 @@ export function AuthLayout({
               </div>
             </div>
 
-            <h1
-              style={{
-                fontFamily: "'Fraunces', Georgia, serif",
-                letterSpacing: '-0.03em',
-              }}
-              className="text-3xl font-normal text-[#1f1c16]"
-            >
+            <h1 className="text-3xl font-display font-bold text-text tracking-tight">
               Kairo
             </h1>
 

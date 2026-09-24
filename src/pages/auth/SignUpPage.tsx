@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { AuthLayout } from '../../components/auth/AuthLayout'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, User, Mail, Lock, Loader2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react'
+import { haptic } from '../../lib/haptic'
 
 export function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -10,11 +11,12 @@ export function SignUpPage() {
   const [name, setName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [msg, setMsg] = useState({ text: '', type: '' })
+  const [msg, setMsg] = useState<{ text: string; type: 'error' | 'success' | '' }>({ text: '', type: '' })
   const navigate = useNavigate()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+    haptic('light')
     setLoading(true)
     setMsg({ text: '', type: '' })
 
@@ -25,35 +27,52 @@ export function SignUpPage() {
     })
 
     if (error) {
+      haptic('error')
       setMsg({ text: error.message, type: 'error' })
     } else if (data.user && !data.session) {
       // Email confirmation required
+      haptic('success')
       setMsg({
         text: '✓ Account created! Check your email to confirm, then sign in.',
         type: 'success',
       })
     } else if (data.session) {
       // Auto-confirmed — navigate to onboarding directly
+      haptic('success')
       navigate('/onboarding', { replace: true })
     }
 
     setLoading(false)
   }
 
-  const msgColor =
-    msg.type === 'error'
-      ? 'bg-danger/10 border-danger/30 text-danger'
-      : 'bg-success/10 border-success/30 text-success'
-
   return (
     <AuthLayout title="Create an account" subtitle="Your calm personal OS awaits">
+      {/* Message Banner */}
       {msg.text && (
-        <div className={`p-3 rounded-lg mb-4 text-sm border ${msgColor}`}>{msg.text}</div>
+        <div
+          className={`p-3.5 rounded-2xl mb-5 text-xs sm:text-sm flex items-start gap-2.5 transition-all duration-200 ${
+            msg.type === 'error'
+              ? 'bg-danger/10 border border-danger/25 text-danger font-medium'
+              : 'bg-success/10 border border-success/25 text-success font-medium'
+          }`}
+        >
+          {msg.type === 'error' ? (
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
+          )}
+          <span className="leading-snug">{msg.text}</span>
+        </div>
       )}
 
       <form onSubmit={handleSignUp} className="space-y-4">
         <div>
-          <label className="block text-sm text-text-secondary mb-2">Display Name</label>
+          <label
+            htmlFor="signup-name"
+            className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary mb-1.5"
+          >
+            <User size={13} className="text-text-muted" /> Display Name
+          </label>
           <input
             id="signup-name"
             type="text"
@@ -62,11 +81,17 @@ export function SignUpPage() {
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="How should we call you?"
-            className="w-full bg-surface-2 border border-border rounded-lg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors"
+            className="w-full bg-surface-2/70 border border-border/80 rounded-xl px-4 py-3 text-sm text-text placeholder-text-muted focus:bg-surface focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition-all duration-150"
           />
         </div>
+
         <div>
-          <label className="block text-sm text-text-secondary mb-2">Email</label>
+          <label
+            htmlFor="signup-email"
+            className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary mb-1.5"
+          >
+            <Mail size={13} className="text-text-muted" /> Email Address
+          </label>
           <input
             id="signup-email"
             type="email"
@@ -74,11 +99,18 @@ export function SignUpPage() {
             autoComplete="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            className="w-full bg-surface-2 border border-border rounded-lg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors"
+            placeholder="name@example.com"
+            className="w-full bg-surface-2/70 border border-border/80 rounded-xl px-4 py-3 text-sm text-text placeholder-text-muted focus:bg-surface focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition-all duration-150"
           />
         </div>
+
         <div>
-          <label className="block text-sm text-text-secondary mb-2">Password</label>
+          <label
+            htmlFor="signup-password"
+            className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary mb-1.5"
+          >
+            <Lock size={13} className="text-text-muted" /> Password
+          </label>
           <div className="relative">
             <input
               id="signup-password"
@@ -89,34 +121,55 @@ export function SignUpPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Min. 6 characters"
-              className="w-full bg-surface-2 border border-border rounded-lg px-4 py-3 pr-11 text-text placeholder-text-muted focus:border-accent focus:outline-none transition-colors"
+              className="w-full bg-surface-2/70 border border-border/80 rounded-xl px-4 py-3 pr-11 text-sm text-text placeholder-text-muted focus:bg-surface focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition-all duration-150"
             />
             <button
               type="button"
-              onClick={() => setShowPassword(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+              onClick={() => {
+                haptic('light')
+                setShowPassword(v => !v)
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-text-secondary rounded-lg transition-colors cursor-pointer"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
         </div>
+
         <button
           type="submit"
           id="signup-submit"
           disabled={loading}
-          className="w-full bg-accent text-bg font-medium rounded-lg py-3 hover:bg-accent-dim transition-colors disabled:opacity-50 mt-2"
+          className="w-full h-11 sm:h-12 bg-accent text-bg font-semibold rounded-xl text-sm shadow-sm hover:bg-accent-dim active:scale-[0.98] transition-all disabled:opacity-50 mt-3 flex items-center justify-center gap-2 cursor-pointer"
         >
-          {loading ? 'Creating account...' : 'Sign Up'}
+          {loading ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              <span>Creating account…</span>
+            </>
+          ) : (
+            <>
+              <span>Sign Up</span>
+              <ArrowRight size={15} />
+            </>
+          )}
         </button>
       </form>
 
-      <p className="mt-8 text-center text-sm text-text-secondary">
-        Already have an account?{' '}
-        <Link to="/signin" className="text-accent hover:underline">
-          Sign in
-        </Link>
-      </p>
+      {/* Switch to Sign In */}
+      <div className="mt-8 pt-4 border-t border-border/50 text-center">
+        <p className="text-xs text-text-secondary">
+          Already have an account?{' '}
+          <Link
+            to="/signin"
+            onClick={() => haptic('light')}
+            className="font-semibold text-accent hover:text-accent-dim transition-colors inline-flex items-center gap-0.5 hover:underline cursor-pointer"
+          >
+            Sign in
+          </Link>
+        </p>
+      </div>
     </AuthLayout>
   )
 }
