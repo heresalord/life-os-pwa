@@ -10,6 +10,7 @@ import {
   Landmark, CreditCard, Wallet as WalletIcon, PiggyBank,
   Archive, RotateCcw
 } from 'lucide-react'
+import { haptic } from '../../../lib/haptic'
 import clsx from 'clsx'
 import * as Dialog from '@radix-ui/react-dialog'
 
@@ -345,7 +346,7 @@ export function AccountsTab({ currency }: { currency: string }) {
 
   const renderWalletList = (list: Wallet[], emptyMsg: string) => {
     if (list.length === 0) {
-      return <p className="text-sm text-text-muted text-center py-4 bg-surface border border-border rounded-xl">{emptyMsg}</p>
+      return <p className="text-xs text-text-muted text-center py-4 bg-surface border border-border rounded-2xl">{emptyMsg}</p>
     }
     return (
       <div className="grid grid-cols-2 gap-3">
@@ -358,22 +359,33 @@ export function AccountsTab({ currency }: { currency: string }) {
             ? balance.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 })
             : balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           return (
-            <div key={w.id} onClick={() => { setEditingWallet(w); setSheet('edit_account') }}
-              className="relative p-4 rounded-2xl border border-border overflow-hidden shadow-card group transition-all duration-300 hover:scale-[1.02] cursor-pointer select-none aspect-[1.5/1] flex flex-col justify-between"
+            <div
+              key={w.id}
+              onClick={() => {
+                haptic('light')
+                setEditingWallet(w)
+                setSheet('edit_account')
+              }}
+              className="relative p-4 rounded-[20px] border border-border/80 overflow-hidden shadow-xs group transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer select-none aspect-[1.5/1] flex flex-col justify-between"
               style={{ background: `linear-gradient(135deg, ${w.color ?? '#6366f1'}22, ${w.color ?? '#6366f1'}08)` }}
             >
               <div className="flex justify-between items-start w-full">
                 <TypeIcon size={16} className="mb-2" style={{ color: w.color ?? 'var(--color-accent)' }} />
-                <button onClick={(e) => {
-                  e.stopPropagation()
-                  setArchivingWallet(w)
-                }}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    haptic('light')
+                    setArchivingWallet(w)
+                  }}
                   title="Archive account"
-                  className="p-1 text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-accent/10"><Archive size={13} /></button>
+                  className="p-1 text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-accent/10 active:scale-90"
+                >
+                  <Archive size={13} />
+                </button>
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-end">
-                <p className="text-[10px] text-text-muted uppercase tracking-wider mb-0.5 font-semibold">{walletCurrency}</p>
-                <p className="text-xs text-text-muted mb-0.5 truncate">{w.name}</p>
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mb-0.5 font-bold">{walletCurrency}</p>
+                <p className="text-xs text-text-muted mb-0.5 truncate font-medium">{w.name}</p>
                 <p className="font-display text-xl font-bold text-text leading-tight truncate">
                   {formattedBalance}
                 </p>
@@ -388,94 +400,113 @@ export function AccountsTab({ currency }: { currency: string }) {
   return (
     <div className="space-y-6">
       {/* Unified Net balance summary */}
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-[var(--shadow-card)]">
-        <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Total Net Balance</p>
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-xs">
+        <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">Total Net Balance</p>
         <div className="flex items-baseline gap-2">
-          <p className={clsx('text-3xl font-display font-medium', netWorth >= 0 ? 'text-text' : 'text-danger')}>
+          <p className={clsx('text-3xl sm:text-4xl font-display font-bold tracking-tight', netWorth >= 0 ? 'text-text' : 'text-danger')}>
             {netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            <span className="text-lg text-text-muted ml-1">{primaryCurrency}</span>
+            <span className="text-base sm:text-lg text-text-muted font-body font-normal ml-1">{primaryCurrency}</span>
           </p>
         </div>
         {hasMixedCurrencies && (
-          <p className="text-[10px] text-text-muted mt-1 flex items-center gap-1">
-            <span className="w-1 h-1 rounded-full bg-warning inline-block" />
+          <p className="text-[10px] text-text-muted mt-1.5 flex items-center gap-1 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-warning inline-block" />
             Accounts span {uniqueCurrencies.length} currencies ({uniqueCurrencies.join(', ')}) — totals shown without FX conversion
           </p>
         )}
         <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-border/60 text-xs">
           <div>
-            <p className="text-text-muted text-[10px] uppercase tracking-wider">Liquid</p>
-            <p className="font-semibold text-text mt-0.5">{liquidBalance.toFixed(2)}</p>
+            <p className="text-text-muted text-[10px] uppercase tracking-wider font-bold">Liquid</p>
+            <p className="font-bold text-text mt-0.5">{liquidBalance.toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-text-muted text-[10px] uppercase tracking-wider">Savings</p>
-            <p className="font-semibold text-success mt-0.5">+{savingsBalance.toFixed(2)}</p>
+            <p className="text-text-muted text-[10px] uppercase tracking-wider font-bold">Savings</p>
+            <p className="font-bold text-success mt-0.5">+{savingsBalance.toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-text-muted text-[10px] uppercase tracking-wider">Liabilities</p>
-            <p className="font-semibold text-warning mt-0.5">-{debtBalance.toFixed(2)}</p>
+            <p className="text-text-muted text-[10px] uppercase tracking-wider font-bold">Liabilities</p>
+            <p className="font-bold text-warning mt-0.5">-{debtBalance.toFixed(2)}</p>
           </div>
         </div>
       </div>
 
-
       {/* Action buttons */}
       <div className="flex gap-2">
-        <button onClick={() => setSheet('add_account')}
-          className="flex-1 flex items-center justify-center gap-2 py-2 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors">
+        <button
+          onClick={() => {
+            haptic('light')
+            setSheet('add_account')
+          }}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-surface border border-border rounded-xl text-xs sm:text-sm font-semibold text-text-secondary hover:text-text hover:bg-surface-2 transition-all active:scale-95 shadow-xs cursor-pointer"
+        >
           <Plus size={16} /> New Account
         </button>
-        <button onClick={() => setSheet('transfer')} disabled={wallets.length < 2}
-          className="flex-1 flex items-center justify-center gap-2 py-2 bg-surface border border-border rounded-xl text-sm text-text-secondary hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-40">
+        <button
+          onClick={() => {
+            haptic('light')
+            setSheet('transfer')
+          }}
+          disabled={wallets.length < 2}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-surface border border-border rounded-xl text-xs sm:text-sm font-semibold text-text-secondary hover:text-text hover:bg-surface-2 transition-all active:scale-95 shadow-xs disabled:opacity-40 cursor-pointer"
+        >
           <ArrowLeftRight size={16} /> Transfer Funds
         </button>
       </div>
 
       {/* ── Category: Liquid Accounts ── */}
       <section className="space-y-3">
-        <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Cash & Bank Accounts</h2>
+        <h2 className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Cash & Bank Accounts</h2>
         {renderWalletList(liquidAccounts, 'No liquid accounts yet. Add one above.')}
       </section>
 
       {/* ── Category: Savings Accounts ── */}
       <section className="space-y-3">
-        <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Savings Accounts</h2>
+        <h2 className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Savings Accounts</h2>
         {renderWalletList(savingsAccounts, 'No savings accounts yet.')}
       </section>
 
       {/* ── Category: Debt Accounts ── */}
       <section className="space-y-3">
-        <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Debt & Credit Cards</h2>
+        <h2 className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Debt & Credit Cards</h2>
         {renderWalletList(debtAccounts, 'No debt accounts or credit cards yet.')}
       </section>
 
       {/* ── Category: Archived Accounts ── */}
       {archivedWallets.length > 0 && (
         <section className="space-y-3 pt-2">
-          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Archived Accounts</h2>
+          <h2 className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Archived Accounts</h2>
           <div className="space-y-2">
             {archivedWallets.map((w: Wallet) => {
               const TypeIcon = WALLET_TYPES.find(t => t.value === w.type)?.icon ?? WalletIcon
               return (
-                <div key={w.id}
-                  className="flex items-center gap-3 p-4 bg-surface/50 border border-border/65 rounded-xl group transition-all opacity-75 select-none">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: (w.color || '#4ade80') + '10' }}>
+                <div
+                  key={w.id}
+                  className="flex items-center gap-3 p-4 bg-surface/50 border border-border/65 rounded-2xl group transition-all opacity-75 select-none"
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: (w.color || '#4ade80') + '10' }}
+                  >
                     <TypeIcon size={18} style={{ color: w.color || '#4ade80' }} className="grayscale opacity-60" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-text-secondary truncate text-sm line-through decoration-text-muted">{w.name}</p>
+                    <p className="font-semibold text-text-secondary truncate text-sm line-through decoration-text-muted">{w.name}</p>
                     <p className="text-xs text-text-muted capitalize">Archived {w.type === 'credit' ? 'Debt / Credit' : w.type}</p>
                   </div>
                   <div className="text-right flex-shrink-0 pr-2">
-                    <p className="font-semibold text-sm text-text-muted">
+                    <p className="font-bold text-sm text-text-muted tabular-nums">
                       {w.type === 'credit' ? '-' : ''}{Number(w.balance).toFixed(2)}
                     </p>
-                    <p className="text-[10px] text-text-muted">{w.currency || currency}</p>
+                    <p className="text-[10px] text-text-muted font-medium">{w.currency || currency}</p>
                   </div>
-                  <button onClick={() => setUnarchivingWallet(w)}
+                  <button
+                    onClick={() => {
+                      haptic('light')
+                      setUnarchivingWallet(w)
+                    }}
                     title="Unarchive account"
-                    className="p-2 text-text-muted hover:text-accent rounded-lg hover:bg-accent/10 transition-colors">
+                    className="p-2 text-text-muted hover:text-accent rounded-lg hover:bg-accent/10 transition-colors active:scale-90"
+                  >
                     <RotateCcw size={14} />
                   </button>
                 </div>

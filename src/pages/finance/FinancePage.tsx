@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BarChart3, Landmark, List, Target, ChevronLeft, ChevronRight, Wallet as WalletIcon } from 'lucide-react'
+import { BarChart3, Landmark, List, Target, ChevronLeft, ChevronRight } from 'lucide-react'
+import { haptic } from '../../lib/haptic'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import { useWallets } from '../../hooks/useFinanceQueries'
 import type { Wallet } from '../../db/schema'
@@ -140,25 +141,16 @@ export function FinancePage() {
 
   return (
     <div className="space-y-4 lg:max-w-5xl lg:mx-auto">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between border-b border-border/40 pb-4">
         <div>
-          <h1 className="text-2xl font-display text-text">{t('finance.title', 'Finance')}</h1>
-        </div>
-      </header>
-
-      {/* Hero net worth balance card */}
-      <div className="bg-surface border border-border rounded-2xl p-4 shadow-[var(--shadow-card)] flex items-center justify-between">
-        <div>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">Total Net Balance</p>
-          <p className={clsx('text-2xl font-display font-bold mt-0.5', netWorth >= 0 ? 'text-text' : 'text-danger')}>
-            {netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            <span className="text-xs text-text-muted font-body font-normal ml-1">{primaryCurrency}</span>
+          <h1 className="font-display text-2xl font-bold text-text tracking-tight">{t('finance.title', 'Finance')}</h1>
+          <p className="text-xs text-text-secondary mt-0.5">
+            Net worth · <span className={clsx('font-semibold', netWorth >= 0 ? 'text-text' : 'text-danger')}>
+              {netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {primaryCurrency}
+            </span>
           </p>
         </div>
-        <div className="w-10 h-10 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
-          <WalletIcon size={18} />
-        </div>
-      </div>
+      </header>
 
       {/* ── Tab bar ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-1 p-1 bg-surface-2 border border-border rounded-2xl">
@@ -168,10 +160,13 @@ export function FinancePage() {
           return (
             <button
               key={tab.value}
-              onClick={() => setActive(tab.value)}
+              onClick={() => {
+                haptic('light')
+                setActive(tab.value)
+              }}
               className={clsx(
-                'flex items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all duration-200 font-medium w-full',
-                isActive ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
+                'flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl transition-all duration-200 font-semibold w-full active:scale-[0.98]',
+                isActive ? 'bg-surface text-text shadow-xs' : 'text-text-muted hover:text-text-secondary'
               )}
             >
               <Icon size={16} strokeWidth={isActive ? 2.5 : 1.75} />
@@ -193,13 +188,14 @@ export function FinancePage() {
               <button
                 key={p}
                 onClick={() => {
+                  haptic('light')
                   setPeriod(p)
                   if (p !== 'custom') setReferenceDate(today)
                   else { setCustomFrom(referenceDate); setCustomTo(referenceDate) }
                 }}
                 className={clsx(
-                  'px-3 py-2 rounded-lg text-xs font-semibold transition-colors capitalize whitespace-nowrap',
-                  period === p ? 'bg-bg text-text shadow-sm' : 'text-text-muted hover:text-text'
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize whitespace-nowrap active:scale-95 cursor-pointer',
+                  period === p ? 'bg-bg text-text shadow-xs' : 'text-text-muted hover:text-text'
                 )}
               >
                 {p === 'custom' ? 'Custom' : t(`finance.period_${p}`, p)}
@@ -211,16 +207,24 @@ export function FinancePage() {
           {period !== 'custom' && (
           <div className="flex items-center gap-1">
             <button
-              onClick={() => adjustPeriod('prev')}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-colors"
+              onClick={() => {
+                haptic('light')
+                adjustPeriod('prev')
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-all active:scale-90"
+              aria-label="Previous period"
             >
               <ChevronLeft size={15} />
             </button>
-            <span className="text-sm font-medium text-text min-w-[90px] text-center">{getPeriodLabel()}</span>
+            <span className="text-xs sm:text-sm font-semibold text-text min-w-[90px] text-center select-none">{getPeriodLabel()}</span>
             <button
-              onClick={() => adjustPeriod('next')}
+              onClick={() => {
+                haptic('light')
+                adjustPeriod('next')
+              }}
               disabled={isAtCurrentOrFuturePeriod}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-all active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+              aria-label="Next period"
             >
               <ChevronRight size={15} />
             </button>

@@ -7,9 +7,11 @@ import { TransactionItem } from '../../../components/finance/TransactionItem'
 import { AddTransactionModal } from '../../../components/finance/AddTransactionModal'
 import { EmptyState } from '../../../components/EmptyState'
 import { TransactionListSkeleton } from '../../../components/Skeleton'
-import { DollarSign, ChevronDown, Search } from 'lucide-react'
+import { DollarSign, Search, X } from 'lucide-react'
 import { useAppStore } from '../../../store/useAppStore'
 import { getUserLocalDate } from '../../../lib/dateUtils'
+import { haptic } from '../../../lib/haptic'
+import { SheetSelect } from '../../../components/SheetSelect'
 import type { Transaction } from '../../../db/schema'
 import clsx from 'clsx'
 
@@ -91,68 +93,95 @@ export function TransactionsTab({ currency, from, to, today, highlightId, addOpe
       <AddTransactionModal date={defaultAddDate} open={addOpen} onOpenChange={onAddOpenChange} />
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[140px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input
-            type="text"
-            placeholder="Search activity..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full bg-surface border border-border rounded-xl pl-9 pr-4 py-2 text-sm text-text placeholder-text-muted focus:border-accent/40 focus:bg-surface-2 transition-all outline-none"
-          />
+      <div className="bg-surface border border-border p-3.5 rounded-2xl space-y-3 shadow-xs">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input
+              type="text"
+              placeholder="Search activity..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full bg-surface-2 border border-border rounded-xl pl-8 pr-8 py-2 text-xs text-text placeholder-text-muted focus:outline-none focus:border-accent"
+            />
+            {search && (
+              <button
+                onClick={() => {
+                  haptic('light')
+                  setSearch('')
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text p-0.5"
+                aria-label="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {allCategories.length > 2 && (
+            <div className="w-36 sm:w-44 flex-shrink-0">
+              <SheetSelect
+                label="Category"
+                value={categoryFilter}
+                onChange={(cat) => {
+                  haptic('light')
+                  setCategoryFilter(cat)
+                }}
+                capitalize
+                options={allCategories.map(c => ({ value: c, label: c === 'all' ? 'All categories' : c }))}
+              />
+            </div>
+          )}
         </div>
 
-        <div className="flex bg-surface border border-border rounded-xl p-0.5">
+        {/* Type filter pills */}
+        <div className="flex gap-1 bg-surface-2 rounded-xl p-1 overflow-x-auto">
           {(['all', 'expense', 'income', 'adjustment'] as TypeFilter[]).map(t => (
             <button
               key={t}
-              onClick={() => setTypeFilter(t)}
+              onClick={() => {
+                haptic('light')
+                setTypeFilter(t)
+              }}
               className={clsx(
-                'px-3 py-2 text-xs font-medium rounded-lg capitalize transition-all',
-                typeFilter === t ? 'bg-surface-2 text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'
+                'flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold capitalize transition-all whitespace-nowrap active:scale-95 cursor-pointer text-center',
+                typeFilter === t ? 'bg-bg text-text shadow-xs' : 'text-text-muted hover:text-text'
               )}
             >
               {t}
             </button>
           ))}
         </div>
-
-        {allCategories.length > 2 && (
-          <div className="relative">
-            <select
-              value={categoryFilter}
-              onChange={e => setCategoryFilter(e.target.value)}
-              className="appearance-none bg-surface border border-border rounded-xl pl-3 pr-8 py-2 text-xs font-medium text-text capitalize focus:border-accent outline-none cursor-pointer"
-            >
-              {allCategories.map(c => (
-                <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          </div>
-        )}
       </div>
 
-      {/* Summary chips */}
+      {/* Summary card */}
       {filtered.length > 0 && (
-        <div className="flex flex-wrap gap-2 text-sm">
-          <span className="px-3 py-1 bg-danger/10 text-danger rounded-full font-medium">
-            −{totals.expense.toFixed(2)} {currency}
-          </span>
-          {totals.income > 0 && (
-            <span className="px-3 py-1 bg-success/10 text-success rounded-full font-medium">
-              +{totals.income.toFixed(2)} {currency}
-            </span>
-          )}
-          {totals.adjustment !== 0 && (
-            <span className="px-3 py-1 bg-amber-400/10 text-amber-400 rounded-full font-medium">
-              {totals.adjustment >= 0 ? '+' : ''}{totals.adjustment.toFixed(2)} {currency} adj.
-            </span>
-          )}
-          <span className="px-3 py-1 bg-surface-2 text-text-muted rounded-full">
-            {filtered.length} transaction{filtered.length !== 1 ? 's' : ''}
-          </span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-surface border border-border rounded-2xl p-4 shadow-xs">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Total Spent</span>
+            <p className="text-lg font-display font-bold text-danger mt-0.5">
+              −{totals.expense.toFixed(2)} <span className="text-xs font-normal text-text-muted font-body">{currency}</span>
+            </p>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Total Earned</span>
+            <p className="text-lg font-display font-bold text-success mt-0.5">
+              +{totals.income.toFixed(2)} <span className="text-xs font-normal text-text-muted font-body">{currency}</span>
+            </p>
+          </div>
+          <div className="col-span-2 sm:col-span-1 flex flex-col justify-center sm:border-l sm:border-border/50 sm:pl-3">
+            <div className="flex items-center justify-between sm:justify-start gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Activity</span>
+              <span className="px-2 py-0.5 rounded-full bg-surface-2 text-[10px] font-bold text-text-secondary">
+                {filtered.length} txn{filtered.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {totals.adjustment !== 0 && (
+              <span className={clsx('text-xs font-semibold mt-0.5', totals.adjustment >= 0 ? 'text-success' : 'text-danger')}>
+                {totals.adjustment >= 0 ? '+' : ''}{totals.adjustment.toFixed(2)} {currency} adj.
+              </span>
+            )}
+          </div>
         </div>
       )}
 
@@ -184,9 +213,9 @@ export function TransactionsTab({ currency, from, to, today, highlightId, addOpe
 
             return (
               <section key={date} className="relative">
-                <div className="flex items-center justify-between mb-2 px-1 sticky top-14 bg-bg/90 backdrop-blur-md py-2 z-10">
-                  <span className="text-xs font-medium text-text-muted uppercase tracking-wider">{dateLabel}</span>
-                  <span className={clsx('text-xs font-medium', dayTotal >= 0 ? 'text-success' : 'text-danger')}>
+                <div className="flex items-center justify-between mb-2 px-2 sticky top-14 bg-bg/90 backdrop-blur-md py-2 z-10">
+                  <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">{dateLabel}</span>
+                  <span className={clsx('text-xs font-semibold tabular-nums', dayTotal >= 0 ? 'text-success' : 'text-danger')}>
                     {dayTotal >= 0 ? '+' : ''}{dayTotal.toFixed(2)} {currency}
                   </span>
                 </div>

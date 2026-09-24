@@ -38,6 +38,7 @@ export function AddTransactionModal({
   const open = isControlled ? openProp : openState
   const [type, setType]             = useState<'expense' | 'income' | 'transfer'>('expense')
   const [amount, setAmount]         = useState('')
+  const [showFee, setShowFee]       = useState(false)
   const [fee, setFee]               = useState('')
   const [category, setCategory]     = useState(expCats[0])
   const [description, setDescription] = useState('')
@@ -53,6 +54,7 @@ export function AddTransactionModal({
     if (v) {
       setTxDate(date || todayStr())
       setTxTime(nowTimeStr())
+      setShowFee(false)
       const active = wallets.filter(w => !w.archived)
       setWalletId(active[0]?.id ?? '')
       setTransferToId(active[1]?.id ?? active[0]?.id ?? '')
@@ -123,55 +125,136 @@ export function AddTransactionModal({
       {!isControlled && (
         <Dialog.Trigger asChild>
           {isFAB ? (
-            <button className="w-14 h-14 rounded-full bg-accent text-bg shadow-xl flex items-center justify-center hover:bg-accent-dim transition-all duration-200 active:scale-95 border border-accent/20">
+            <button
+              onClick={() => haptic('light')}
+              className="w-14 h-14 rounded-full bg-accent text-bg shadow-xl flex items-center justify-center hover:bg-accent-dim transition-all duration-200 active:scale-95 border border-accent/20"
+            >
               <Plus size={24} className="text-bg" />
             </button>
           ) : (
-            <button className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-xl text-text-secondary hover:text-text hover:border-text-muted transition-colors text-sm font-medium">
+            <button
+              onClick={() => haptic('light')}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-surface-2 border border-dashed border-border rounded-2xl text-text-secondary hover:text-text hover:border-text-muted transition-all active:scale-[0.99] text-sm font-semibold shadow-xs"
+            >
               <Plus size={18} /> Add Transaction
             </button>
           )}
         </Dialog.Trigger>
       )}
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
-        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-2xl p-5 shadow-2xl overflow-y-auto max-h-[90dvh] sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-2xl sm:border"
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm animate-in fade-in duration-200" />
+        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-3xl p-5 shadow-2xl overflow-y-auto max-h-[90dvh] sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-2xl sm:border animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
           style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
           <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
-          <div className="flex items-center justify-between mb-5">
-            <Dialog.Title className="text-base font-semibold text-text">New Transaction</Dialog.Title>
-            <Dialog.Close className="text-text-muted hover:text-text transition-colors"><X size={18} /></Dialog.Close>
+          <div className="flex items-center justify-between mb-4">
+            <Dialog.Title className="text-base font-bold text-text">New Transaction</Dialog.Title>
+            <Dialog.Close
+              onClick={() => haptic('light')}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-muted hover:text-text transition-colors active:scale-90"
+            >
+              <X size={16} />
+            </Dialog.Close>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Type tabs (Expense / Income / Transfer) */}
-            <div className="flex p-1 bg-surface-2 rounded-lg gap-1">
-              <button type="button" onClick={() => { setType('expense'); setCategory(expCats[0]) }}
-                className={clsx('flex-1 py-2 text-xs font-medium rounded-md transition-colors', type === 'expense' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
+            {/* iOS Segmented Type Control */}
+            <div className="grid grid-cols-3 gap-1 p-1 bg-surface-2 border border-border/80 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('light')
+                  setType('expense')
+                  setCategory(expCats[0])
+                }}
+                className={clsx(
+                  'py-2 text-xs font-semibold rounded-xl transition-all duration-200 active:scale-95',
+                  type === 'expense' ? 'bg-surface text-text shadow-xs' : 'text-text-muted hover:text-text-secondary'
+                )}
+              >
                 Expense
               </button>
-              <button type="button" onClick={() => { setType('income'); setCategory(incCats[0]) }}
-                className={clsx('flex-1 py-2 text-xs font-medium rounded-md transition-colors', type === 'income' ? 'bg-success/20 text-success shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('light')
+                  setType('income')
+                  setCategory(incCats[0])
+                }}
+                className={clsx(
+                  'py-2 text-xs font-semibold rounded-xl transition-all duration-200 active:scale-95',
+                  type === 'income' ? 'bg-surface text-success shadow-xs' : 'text-text-muted hover:text-text-secondary'
+                )}
+              >
                 Income
               </button>
-              <button type="button" onClick={() => setType('transfer')}
-                className={clsx('flex-1 py-2 text-xs font-medium rounded-md transition-colors', type === 'transfer' ? 'bg-accent/20 text-accent shadow-sm' : 'text-text-muted hover:text-text-secondary')}>
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('light')
+                  setType('transfer')
+                }}
+                className={clsx(
+                  'py-2 text-xs font-semibold rounded-xl transition-all duration-200 active:scale-95',
+                  type === 'transfer' ? 'bg-surface text-accent shadow-xs' : 'text-text-muted hover:text-text-secondary'
+                )}
+              >
                 Transfer
               </button>
             </div>
 
-            {/* Amount / fee */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className={type === 'transfer' ? 'col-span-2' : ''}>
-                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Amount</label>
-                <input autoFocus type="number" step="0.01" min="0" required placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none" />
-              </div>
+            {/* Amount / fee hero box */}
+            <div className="bg-surface-2/80 border border-border/80 rounded-2xl p-4 text-center shadow-xs">
+              <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">Amount</label>
+              <input
+                autoFocus
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                placeholder="0.00"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                className="w-full text-center bg-transparent text-3xl font-display font-bold text-text placeholder-text-muted/50 focus:outline-none tracking-tight tabular-nums"
+              />
               {type !== 'transfer' && (
-                <div>
-                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Fee / Tax</label>
-                  <input type="number" step="0.01" min="0" placeholder="0.00" value={fee} onChange={e => setFee(e.target.value)}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none" />
+                <div className="mt-2 pt-2 border-t border-border/40">
+                  {!showFee && !fee ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptic('light')
+                        setShowFee(true)
+                      }}
+                      className="text-[11px] font-semibold text-text-muted hover:text-accent transition-colors"
+                    >
+                      + Add fee / tax
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Fee:</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={fee}
+                        onChange={e => setFee(e.target.value)}
+                        className="w-24 bg-surface border border-border rounded-lg px-2 py-1 text-xs text-center text-text focus:border-accent focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptic('light')
+                          setFee('')
+                          setShowFee(false)
+                        }}
+                        className="text-[11px] text-text-muted hover:text-danger px-1"
+                        title="Remove fee"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -179,21 +262,29 @@ export function AddTransactionModal({
             {/* Date + time */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Date</label>
-                <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+                <label className="block text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Date</label>
+                <input
+                  type="date"
+                  value={txDate}
+                  onChange={e => setTxDate(e.target.value)}
+                  className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-xs text-text focus:border-accent focus:outline-none"
+                />
               </div>
               <div>
-                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Time</label>
-                <input type="time" value={txTime} onChange={e => setTxTime(e.target.value)}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text focus:border-accent focus:outline-none" />
+                <label className="block text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Time</label>
+                <input
+                  type="time"
+                  value={txTime}
+                  onChange={e => setTxTime(e.target.value)}
+                  className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2.5 text-xs text-text focus:border-accent focus:outline-none"
+                />
               </div>
             </div>
 
             {/* Category (hidden for transfers) */}
             {type !== 'transfer' && (
               <div>
-                <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Category</label>
+                <label className="block text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Category</label>
                 <SheetSelect
                   label="Category"
                   value={category}
@@ -208,13 +299,12 @@ export function AddTransactionModal({
             {type === 'transfer' ? (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">From Account</label>
+                  <label className="block text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">From Account</label>
                   <SheetSelect
                     label="From Account"
                     value={walletId}
                     onChange={(newFrom) => {
                       setWalletId(newFrom)
-                      // If the new From would match To, pick the first other wallet
                       if (newFrom === transferToId) {
                         const fallback = activeWallets.find(w => w.id !== newFrom)
                         setTransferToId(fallback?.id ?? '')
@@ -224,7 +314,7 @@ export function AddTransactionModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">To Account</label>
+                  <label className="block text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">To Account</label>
                   <SheetSelect
                     label="To Account"
                     value={transferToId}
@@ -236,7 +326,7 @@ export function AddTransactionModal({
             ) : (
               activeWallets.length > 0 && (
                 <div>
-                  <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Account</label>
+                  <label className="block text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Account</label>
                   <SheetSelect
                     label="Account"
                     value={walletId}
@@ -250,14 +340,24 @@ export function AddTransactionModal({
 
             {/* Description */}
             <div>
-              <label className="block text-xs text-text-muted mb-2 uppercase tracking-wider">Description (optional)</label>
-              <input type="text" placeholder={type === 'transfer' ? 'e.g. Savings allocation' : 'What was this for?'} value={description} onChange={e => setDescription(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none" />
+              <label className="block text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Description (optional)</label>
+              <input
+                type="text"
+                placeholder={type === 'transfer' ? 'e.g. Savings allocation' : 'What was this for?'}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-xs text-text placeholder-text-muted focus:border-accent focus:outline-none"
+              />
             </div>
 
-            <button type="submit" disabled={!amount || addTransaction.isPending || justSaved}
-              className={clsx('w-full py-4 text-bg font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50',
-                justSaved ? 'bg-success' : type === 'income' ? 'bg-success hover:bg-success/90' : 'bg-accent hover:bg-accent-dim')}>
+            <button
+              type="submit"
+              disabled={!amount || addTransaction.isPending || justSaved}
+              className={clsx(
+                'w-full py-3.5 text-bg font-semibold rounded-2xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] shadow-sm disabled:opacity-50 cursor-pointer',
+                justSaved ? 'bg-success' : type === 'income' ? 'bg-success hover:bg-success/90' : 'bg-accent hover:bg-accent-dim'
+              )}
+            >
               {justSaved && <Check size={16} />}
               {justSaved ? 'Saved!' : addTransaction.isPending ? 'Saving…' : 'Save Transaction'}
             </button>
