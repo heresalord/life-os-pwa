@@ -441,18 +441,14 @@ export function DailyLogPage() {
     if (!user) return
     const title = journalNoteTitle(activeDate)
 
-    // Base: keep whatever is already in the note (preserves timestamped entries)
-    let content = (journalNoteForDate?.content as string | undefined) ?? ''
-    let noteId = journalNoteForDate?.id
-
-    // If not in state, check local Dexie directly
-    if (!noteId || !content) {
-      const local = await db.notes.where('date').equals(activeDate).filter(n => n.folder === 'Journal').first()
-      if (local) {
-        noteId = local.id
-        if (!content) content = local.content ?? ''
-      }
-    }
+    // Always read the freshest note directly from Dexie right before merging
+    // — journalNoteForDate (derived from the live query) can lag a beat behind
+    // writes made moments earlier in the same session, and merging against a
+    // stale copy would silently erase whatever was just saved by the other
+    // write path (wizard vs. the free-journal entry box).
+    const fresh = await db.notes.where('date').equals(activeDate).filter(n => n.folder === 'Journal').first()
+    let content = fresh?.content ?? ''
+    const noteId = fresh?.id
 
     if (morningText.trim()) content = upsertSection(content, 'Morning', morningText.trim())
     if (eveningText.trim()) content = upsertSection(content, 'Evening', eveningText.trim())
@@ -472,7 +468,7 @@ export function DailyLogPage() {
         folder: 'Journal',
       })
     }
-  }, [user, activeDate, journalNoteForDate, db.notes, addNote, updateNote])
+  }, [user, activeDate, db.notes, addNote, updateNote])
 
   // ─── Append a timestamped entry to the day's journal note ────────────
   // This is the "free journaling throughout the day" entry point — distinct
@@ -488,16 +484,12 @@ export function DailyLogPage() {
     setAddingEntry(true)
     haptic('light')
     try {
-      let baseContent = (journalNoteForDate?.content as string) ?? ''
-      let noteId = journalNoteForDate?.id
-
-      if (!noteId || !baseContent) {
-        const local = await db.notes.where('date').equals(activeDate).filter(n => n.folder === 'Journal').first()
-        if (local) {
-          noteId = local.id
-          if (!baseContent) baseContent = local.content ?? ''
-        }
-      }
+      // Same rule as saveJournalNote: always read fresh from Dexie right
+      // before merging, never from journalNoteForDate, to avoid clobbering a
+      // save that landed moments earlier via the wizard.
+      const fresh = await db.notes.where('date').equals(activeDate).filter(n => n.folder === 'Journal').first()
+      const baseContent = fresh?.content ?? ''
+      const noteId = fresh?.id
 
       const merged = insertTimestampedEntry(baseContent, text.trim())
       const hashtags = extractHashtags(merged)
@@ -520,7 +512,7 @@ export function DailyLogPage() {
     } finally {
       setAddingEntry(false)
     }
-  }, [user, activeDate, journalNoteForDate, db.notes, addNote, updateNote])
+  }, [user, activeDate, db.notes, addNote, updateNote])
 
   // §0 Fix: Completion Model & Save Fields Wrapper
   const handleSaveFields = useCallback(async (updates: Record<string, any>) => {
@@ -1130,21 +1122,11 @@ export function DailyLogPage() {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  haptic('success')
-                  handleSaveFields({ morning_complete: true })
-                }}
-                className="flex-1 flex items-center justify-center gap-2 h-11 bg-success text-bg rounded-xl font-semibold text-xs hover:bg-success/90 active:scale-98 transition-all shadow-sm"
-              >
-                <Check size={15} strokeWidth={2.5} /> Mark Morning Complete
-              </button>
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => startWizard('morning')}
-                className="flex-1 flex items-center justify-center gap-2 h-11 bg-amber-400 text-gray-900 rounded-xl font-semibold text-xs hover:bg-amber-300 active:scale-98 transition-all shadow-sm"
+                className="w-full flex items-center justify-center gap-2 h-11 bg-amber-400 text-gray-900 rounded-xl font-semibold text-xs hover:bg-amber-300 active:scale-98 transition-all shadow-sm"
               >
                 <Play size={14} className="fill-gray-900" /> Start Guided Wizard
                 {currentStreak > 0 && (

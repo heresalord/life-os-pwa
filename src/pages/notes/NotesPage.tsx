@@ -501,14 +501,17 @@ export function NotesPage() {
     setActiveFolder(name)
   }
 
+  // Apple Notes doesn't color-code folders per-folder — every regular folder
+  // uses the same tone, and only the special system folders (Pinned/Journal/
+  // Templates) get a distinct icon + color to signal they're not a plain
+  // user folder. A rainbow hash per custom folder name is decorative noise
+  // that real Apple Notes doesn't have; keep custom folders neutral instead.
   const folderColor = (f: string) => {
     if (f === 'All') return 'text-accent'
     if (f === 'Pinned') return 'text-amber-400'
     if (f === 'Journal') return 'text-success'
     if (f === 'Templates') return 'text-info'
-    const hash = f.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    const colors = ['text-red-400', 'text-orange-400', 'text-yellow-400', 'text-green-400', 'text-blue-400', 'text-indigo-400', 'text-purple-400', 'text-pink-400']
-    return colors[hash % colors.length]
+    return 'text-text-secondary'
   }
 
   const folderIcon = (f: string) => {
