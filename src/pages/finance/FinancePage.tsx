@@ -181,9 +181,8 @@ export function FinancePage() {
       {/* ── Timeframe selector ────────────────────────────────────── */}
       {(active === 'overview' || active === 'transactions') && (
         <div className="space-y-2 mb-1">
-          <div className="flex items-center justify-between gap-2">
-          {/* Period pills */}
-          <div className="flex gap-1 bg-surface-2 rounded-xl p-1 overflow-x-auto">
+          {/* Full-width segmented control */}
+          <div className="grid grid-cols-5 gap-1 bg-surface-2 border border-border/50 rounded-xl p-1">
             {(['day', 'week', 'month', 'year', 'custom'] as const).map(p => (
               <button
                 key={p}
@@ -194,7 +193,7 @@ export function FinancePage() {
                   else { setCustomFrom(referenceDate); setCustomTo(referenceDate) }
                 }}
                 className={clsx(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize whitespace-nowrap active:scale-95 cursor-pointer',
+                  'py-1.5 px-1 rounded-lg text-xs font-semibold transition-all capitalize text-center active:scale-95 cursor-pointer truncate',
                   period === p ? 'bg-bg text-text shadow-xs' : 'text-text-muted hover:text-text'
                 )}
               >
@@ -203,36 +202,35 @@ export function FinancePage() {
             ))}
           </div>
 
-          {/* Prev / label / next — hidden for custom ranges */}
-          {period !== 'custom' && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => {
-                haptic('light')
-                adjustPeriod('prev')
-              }}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-all active:scale-90"
-              aria-label="Previous period"
-            >
-              <ChevronLeft size={15} />
-            </button>
-            <span className="text-xs sm:text-sm font-semibold text-text min-w-[90px] text-center select-none">{getPeriodLabel()}</span>
-            <button
-              onClick={() => {
-                haptic('light')
-                adjustPeriod('next')
-              }}
-              disabled={isAtCurrentOrFuturePeriod}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-all active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
-              aria-label="Next period"
-            >
-              <ChevronRight size={15} />
-            </button>
-          </div>
-          )}
-          </div>
-
-          {period === 'custom' && (
+          {/* Prev / label / next (centered underneath) or Custom date pickers */}
+          {period !== 'custom' ? (
+            <div className="flex items-center justify-center gap-2 py-0.5">
+              <button
+                onClick={() => {
+                  haptic('light')
+                  adjustPeriod('prev')
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-all active:scale-90"
+                aria-label="Previous period"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-xs sm:text-sm font-semibold text-text min-w-[130px] text-center select-none">
+                {getPeriodLabel()}
+              </span>
+              <button
+                onClick={() => {
+                  haptic('light')
+                  adjustPeriod('next')
+                }}
+                disabled={isAtCurrentOrFuturePeriod}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-secondary transition-all active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+                aria-label="Next period"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          ) : (
             <div className="flex items-center gap-2 bg-surface border border-border rounded-xl p-2">
               <input
                 type="date"

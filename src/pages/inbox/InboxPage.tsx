@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useInboxQuery } from '../../hooks/useInboxQuery'
 import { useInboxMutations } from '../../hooks/useInboxMutations'
 import { useScrollToHighlight } from '../../hooks/useScrollToHighlight'
+import { useAuth } from '../../hooks/useAuth'
+import { useDraft } from '../../hooks/useDraft'
 import { InboxItemCard } from '../../components/inbox/InboxItemCard'
 import { EmptyState } from '../../components/EmptyState'
 import { InboxListSkeleton } from '../../components/Skeleton'
@@ -25,8 +27,13 @@ export function InboxPage() {
   const { deleteItem, addItem } = useInboxMutations()
   const [searchParams] = useSearchParams()
   const highlight = searchParams.get('highlight')
+  const { user } = useAuth()
 
-  const [captureText, setCaptureText] = useState('')
+  // A2: persist the capture box text across force-quit / WebView reclaim
+  const draftKey = user ? `draft:${user.id}:inbox-capture` : 'draft:anon:inbox-capture'
+  const [captureText, setCaptureText, clearCaptureDraft] = useDraft(draftKey, '')
+
+  // Filter state — intentionally NOT persisted (trivial to re-set, no data loss)
   const [activeFilter, setActiveFilter] = useState<FilterType>('all')
 
   useScrollToHighlight(highlight, !isLoading)
@@ -37,6 +44,7 @@ export function InboxPage() {
     haptic('success')
     addItem.mutate(captureText.trim())
     setCaptureText('')
+    clearCaptureDraft()
   }
 
   const filteredItems = useMemo(() => {

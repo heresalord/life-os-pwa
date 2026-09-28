@@ -15,6 +15,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { haptic } from '../../lib/haptic'
 import { checklistMarkdownComponents } from '../../lib/markdownChecklist'
+import { useDraft } from '../../hooks/useDraft'
 
 function computeWordCount(text: string) {
   const t = text.trim()
@@ -104,6 +105,14 @@ export function NoteEditorModal({
   const [showUnlockModal, setShowUnlockModal] = useState(false)
   const isLocked = !!note?.pin_hash && !isUnlocked
 
+  // A2: persist unsaved edits across force-quit / WebView reclaim.
+  // Draft is disabled for locked notes (content must not leak to localStorage).
+  const draftEnabled = !!note && open && !isLocked
+  const titleDraftKey = note ? `draft:note:${note.id}:title` : 'draft:note:none:title'
+  const bodyDraftKey  = note ? `draft:note:${note.id}:body`  : 'draft:note:none:body'
+  const [, setDraftTitle, clearTitleDraft] = useDraft(titleDraftKey, note?.title ?? '', { enabled: draftEnabled })
+  const [, setDraftBody,  clearBodyDraft]  = useDraft(bodyDraftKey,  note ? stripTags(note.content || '') : '', { enabled: draftEnabled })
+
   useEffect(() => {
     // Re-lock whenever a different note is opened, or this note is reopened
     // after being closed — unlocking never persists past a close.
@@ -117,12 +126,15 @@ export function NoteEditorModal({
 
   useEffect(() => {
     if (note && open && !isLocked) {
-      setTitle(note.title)
-      setBody(stripTags(note.content || ''))
+      // Seed from DB only when there's no pending draft (draft takes priority)
+      const savedTitle = localStorage.getItem(titleDraftKey)
+      const savedBody  = localStorage.getItem(bodyDraftKey)
+      setTitle(savedTitle !== null ? savedTitle : note.title)
+      setBody(savedBody   !== null ? savedBody  : stripTags(note.content || ''))
       setTags(extractTags(note.content || ''))
       setMode('write')
     }
-  }, [note, open, isLocked])
+  }, [note, open, isLocked]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildContent = (b = body, t = tags) => applyTags(b, t)
 
@@ -132,6 +144,9 @@ export function NoteEditorModal({
     if (title !== note.title || content !== note.content) {
       haptic('success')
       updateNote.mutate({ id: note.id, updates: { title, content } })
+      // Clear draft after a confirmed save
+      clearTitleDraft()
+      clearBodyDraft()
     }
   }
 
@@ -207,7 +222,7 @@ export function NoteEditorModal({
               <input
                 type="text"
                 value={title}
-                onChange={e => setTitle(e.target.value)}
+                onChange={e => { setTitle(e.target.value); setDraftTitle(e.target.value) }}
                 onBlur={() => handleSave()}
                 className="text-lg font-display text-text bg-transparent border-none focus:outline-none flex-1 min-w-0"
                 placeholder="Note Title"
@@ -272,7 +287,7 @@ export function NoteEditorModal({
                   ref={textareaRef}
                   autoFocus
                   value={body}
-                  onChange={e => setBody(e.target.value)}
+                  onChange={e => { setBody(e.target.value); setDraftBody(e.target.value) }}
                   onBlur={e => handleSave(e.target.value)}
                   onSelect={checkSelection}
                   onMouseUp={checkSelection}

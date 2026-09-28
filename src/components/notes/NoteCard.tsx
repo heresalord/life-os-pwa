@@ -141,9 +141,6 @@ export function NoteCard({
           {/* Header row */}
           <div className="flex items-start justify-between mb-2 gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              {(note as any).pinned && (
-                <Pin size={11} className="text-amber-400 flex-shrink-0 fill-amber-400" />
-              )}
               {isLocked && (
                 <Lock size={11} className="text-accent flex-shrink-0" />
               )}

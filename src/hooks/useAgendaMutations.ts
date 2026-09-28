@@ -11,6 +11,19 @@ async function writeAgenda(op: 'insert' | 'update' | 'delete', payload: Record<s
   await enqueueSync('agenda_blocks', op, payload)
 }
 
+export function getActualBlockId(id: string): string {
+  if (id.startsWith('virtual__')) {
+    const parts = id.split('__')
+    return parts[1] || id
+  }
+  // Check for legacy virtual ID formatted as uuid-YYYY-MM-DD
+  const legacyMatch = id.match(/^([0-9a-fA-F-]{36})-\d{4}-\d{2}-\d{2}$/)
+  if (legacyMatch) {
+    return legacyMatch[1]
+  }
+  return id
+}
+
 export function useAgendaMutations(date: string) {
   const db = useDb()
   const { user } = useAuth()
@@ -61,7 +74,7 @@ export function useAgendaMutations(date: string) {
 
   const updateBlock = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
-      const originalId = id.split('-')[0]
+      const originalId = getActualBlockId(id)
       await db.agenda_blocks.update(originalId, updates as Partial<Parameters<typeof db.agenda_blocks.put>[0]>)
       const updated = await db.agenda_blocks.get(originalId)
       if (updated) await writeAgenda('update', updated as Record<string, unknown>)
@@ -69,8 +82,9 @@ export function useAgendaMutations(date: string) {
     onMutate: async ({ id, updates }) => {
       await qc.cancelQueries({ queryKey })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      const originalId = getActualBlockId(id)
       qc.setQueryData<AnyItem[]>(queryKey, old =>
-        (old ?? []).map(b => b.id === id ? { ...b, ...updates } : b)
+        (old ?? []).map(b => (b.id === id || getActualBlockId(b.id) === originalId) ? { ...b, ...updates } : b)
       )
       return { previous }
     },
@@ -82,14 +96,15 @@ export function useAgendaMutations(date: string) {
 
   const deleteBlock = useMutation({
     mutationFn: async (id: string) => {
-      const originalId = id.split('-')[0]
+      const originalId = getActualBlockId(id)
       await db.agenda_blocks.delete(originalId)
       await writeAgenda('delete', { id: originalId })
     },
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
-      qc.setQueryData<AnyItem[]>(queryKey, old => (old ?? []).filter(b => b.id !== id))
+      const originalId = getActualBlockId(id)
+      qc.setQueryData<AnyItem[]>(queryKey, old => (old ?? []).filter(b => b.id !== id && getActualBlockId(b.id) !== originalId))
       return { previous }
     },
     onError: (_err, _vars, ctx) => {

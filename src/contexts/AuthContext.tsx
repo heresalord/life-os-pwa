@@ -28,12 +28,58 @@ import type { UserProfile } from '../db/schema'
  *   4. DbProvider opens LifeOSDB_${userId}, runs legacy migration if needed,
  *      and starts the sync engine.
  *   5. All subsequent data reads use useDb() from DbContext — no Dexie access here.
+ *
+ * Offline resilience (A1):
+ *   - profileStatus distinguishes between "server confirmed no row" (missing)
+ *     and "network failed, don't know" (unknown).
+ *   - On `unknown`, AuthGuard uses the cached profile from localStorage so the
+ *     user lands on Today with data instead of being redirected to onboarding.
+ *   - We never call signOut or clear state on a network error. Only an explicit
+ *     SIGNED_OUT event or a genuinely auth-rejected refresh does that.
  */
+
+/** Prefix for all localStorage keys — stable even if the app is renamed. */
+const LS_PREFIX = 'kairo'
+
+function profileCacheKey(userId: string) {
+  return `${LS_PREFIX}:profile:${userId}`
+}
+
+const LAST_USER_KEY = `${LS_PREFIX}:lastUserId`
+
+function readCachedProfile(userId: string): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(profileCacheKey(userId))
+    return raw ? (JSON.parse(raw) as UserProfile) : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedProfile(profile: UserProfile) {
+  try {
+    localStorage.setItem(profileCacheKey(profile.id), JSON.stringify(profile))
+    localStorage.setItem(LAST_USER_KEY, profile.id)
+  } catch {
+    // Storage full or private-mode restriction — not fatal
+  }
+}
+
+/**
+ * profileStatus:
+ *   'loading'  — waiting for the first server response
+ *   'ready'    — server confirmed a profile row exists
+ *   'missing'  — server answered and there is no row → redirect to onboarding
+ *   'unknown'  — network failure; may have a cached profile
+ */
+export type ProfileStatus = 'loading' | 'ready' | 'missing' | 'unknown'
 
 interface AuthContextValue {
   session:        Session | null
   user:           User | null
   profile:        UserProfile | null
+  profileStatus:  ProfileStatus
+  /** @deprecated Use profileStatus instead of loading for routing decisions */
   loading:        boolean
   signOut:        () => Promise<void>
   refreshProfile: () => Promise<UserProfile | null>
@@ -43,6 +89,7 @@ const AuthContext = createContext<AuthContextValue>({
   session:        null,
   user:           null,
   profile:        null,
+  profileStatus:  'loading',
   loading:        true,
   signOut:        async () => {},
   refreshProfile: () => Promise.resolve(null),
@@ -52,19 +99,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user,    setUser]    = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>('loading')
+
+  // loading is derived so existing consumers that check it still work
+  const loading = profileStatus === 'loading'
 
   /**
    * Fetch the user profile from Supabase with exponential back-off.
+   *
+   * On success: writes to state + localStorage cache, status → 'ready'.
+   * On "row not found" after all retries: status → 'missing' (go to onboarding).
+   * On network/unexpected error: status → 'unknown'; AuthGuard uses cached profile.
    *
    * We intentionally do NOT read from Dexie here. The first Supabase
    * response typically takes < 200 ms on a good connection, and reading
    * from Dexie would require opening a parallel LifeOSDatabase instance
    * before DbProvider has had a chance to open its own instance — leading
    * to multiple unclosed handles on the same IndexedDB database.
-   *
-   * Offline resilience is provided by the 8-second safety timer below,
-   * which unblocks the UI even if Supabase never responds.
    */
   const fetchProfile = useCallback(async (userId: string, retries = 5): Promise<UserProfile | null> => {
     for (let i = 0; i < retries; i++) {
@@ -76,28 +127,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .maybeSingle()
 
         if (data) {
-          setProfile(data as UserProfile)
-          setLoading(false)
-          return data as UserProfile
+          const profileData = data as UserProfile
+          setProfile(profileData)
+          setProfileStatus('ready')
+          writeCachedProfile(profileData)
+          return profileData
         }
 
         // PGRST116 = row not found — profile hasn't been created yet.
         // Retry with back-off so the onboarding trigger has time to run.
         const isNotFound = !error || error.code === 'PGRST116'
         if (!isNotFound) {
-          console.warn('[AuthContext] fetchProfile error:', error)
-          break
+          // Supabase returned a real error (not just "no row"). Treat as unknown
+          // so we don't falsely redirect to onboarding.
+          console.warn('[AuthContext] fetchProfile API error:', error)
+          const cached = readCachedProfile(userId)
+          if (cached) setProfile(cached)
+          setProfileStatus('unknown')
+          return cached
         }
       } catch (err) {
-        console.warn('[AuthContext] fetchProfile fetch failed:', err)
-        break
+        // Network failure (fetch threw) — distinguish from API errors below
+        console.warn('[AuthContext] fetchProfile network error:', err)
+        const cached = readCachedProfile(userId)
+        if (cached) {
+          setProfile(cached)
+        }
+        setProfileStatus('unknown')
+        return cached
       }
 
       // Exponential back-off: 400 ms, 800 ms, 1200 ms, 1600 ms, 2000 ms
       await new Promise(r => setTimeout(r, 400 * (i + 1)))
     }
 
-    setLoading(false)
+    // All retries exhausted and every response said "no row" → genuinely missing
+    setProfileStatus('missing')
     return null
   }, [])
 
@@ -107,9 +172,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
+        // Immediately show cached profile so AuthGuard doesn't flash the spinner
+        // for users who are offline but have cached data.
+        const cached = readCachedProfile(session.user.id)
+        if (cached) {
+          setProfile(cached)
+          // Keep status 'loading' so we still attempt a server fetch,
+          // but AuthGuard can unblock with the cached value while we wait.
+        }
         void fetchProfile(session.user.id)
       } else {
-        setLoading(false)
+        setProfileStatus('missing')
       }
     })
 
@@ -119,22 +192,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        if (event === 'SIGNED_IN') setLoading(true)
+        if (event === 'SIGNED_IN') setProfileStatus('loading')
         void fetchProfile(session.user.id)
-      } else {
-        // SIGNED_OUT — clear profile state.
-        // DbProvider will unmount automatically (it's inside AuthGuard which
-        // checks `user`), closing its LifeOSDB_${userId} Dexie instance.
-        // The next login opens a fresh scoped database for the new user.
+      } else if (event === 'SIGNED_OUT') {
+        // Only SIGNED_OUT (explicit or auth-rejected) clears profile state.
+        // A network error will NOT reach here, so we never falsely log the user out.
         setProfile(null)
-        setLoading(false)
+        setProfileStatus('missing')
       }
+      // TOKEN_REFRESHED, USER_UPDATED, etc. — do nothing extra.
     })
 
     // Safety timer: if Supabase never responds (e.g., truly offline with no
-    // cached session), unblock the UI after 8 s so the user sees the sign-in
-    // screen rather than an infinite spinner.
-    const safetyTimer = setTimeout(() => setLoading(false), 8_000)
+    // cached session), unblock the UI after 8 s.
+    // If we already have a cached profile, we don't need to wait.
+    const safetyTimer = setTimeout(() => {
+      setProfileStatus(prev => {
+        if (prev === 'loading') {
+          // We timed out waiting — treat as unknown so AuthGuard
+          // uses the cached profile if one exists.
+          return 'unknown'
+        }
+        return prev
+      })
+    }, 8_000)
 
     return () => {
       subscription.unsubscribe()
@@ -154,7 +235,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // never silently expires while the app is backgrounded.
           supabase.auth.startAutoRefresh()
           supabase.auth.refreshSession().catch(() => {
-            // Ignore — onAuthStateChange fires SIGNED_OUT if genuinely invalid
+            // Network failure during refresh — do NOT sign out.
+            // onAuthStateChange only fires SIGNED_OUT if the server explicitly
+            // rejects the refresh token (401/403). A network timeout is silent.
           })
         } else {
           supabase.auth.stopAutoRefresh()
@@ -186,7 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, profileStatus, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

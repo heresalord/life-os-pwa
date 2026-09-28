@@ -26,6 +26,7 @@ import { useDailyLogStreak } from '../../hooks/useDailyLogStreak'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 import { useNotesQuery } from '../../hooks/useNotesQuery'
 import { applyTags } from '../../lib/noteTagUtils'
+import { useDraft } from '../../hooks/useDraft'
 
 const MOOD_ICONS = [Frown, Annoyed, Meh, Smile, Laugh]
 const MOOD_LABELS = ['Low', 'Difficult', 'Okay', 'Good', 'Great']
@@ -296,19 +297,57 @@ export function DailyLogPage() {
 
   // --- Morning state ---
   const [energyAm, setEnergyAm] = useState<number>(3)
-  const [morningJournal, setMorningJournal] = useState<string>('')
-  const [intention, setIntention] = useState<string>('')
-  const [gratitude, setGratitude] = useState<string[]>(['', '', ''])
+
+  // A2: draft persistence for all wizard text fields
+  // Key format: draft:<userId>:<date>:<field>  — scoped per user per date
+  const draftUid  = user?.id ?? 'anon'
+  const draftDate = activeDate
+  const draftKey  = (field: string) => `draft:${draftUid}:${draftDate}:${field}`
+
+  const [morningJournal, setMorningJournal, clearMorningJournal] = useDraft(draftKey('morning-journal'), '')
+  const [intention,      setIntention,      clearIntention]      = useDraft(draftKey('intention'),       '')
+  const [gratitude0,     setGratitude0,     clearGratitude0]     = useDraft(draftKey('gratitude-0'),    '')
+  const [gratitude1,     setGratitude1,     clearGratitude1]     = useDraft(draftKey('gratitude-1'),    '')
+  const [gratitude2,     setGratitude2,     clearGratitude2]     = useDraft(draftKey('gratitude-2'),    '')
+  // Compose gratitude array from three separate draft slots
+  const gratitude = [gratitude0, gratitude1, gratitude2]
+  const setGratitude = (next: string[]) => {
+    setGratitude0(next[0] ?? '')
+    setGratitude1(next[1] ?? '')
+    setGratitude2(next[2] ?? '')
+  }
   const [newTaskTitle, setNewTaskTitle] = useState<string>('')
 
   // --- Evening state ---
   const [mood, setMood] = useState<number>(3)
   const [energyPm, setEnergyPm] = useState<number>(3)
-  const [nightJournal, setNightJournal] = useState<string>('')
-  const [winOfDay, setWinOfDay] = useState<string>('')
-  const [wentWell, setWentWell] = useState<string>('')
-  const [doDifferently, setDoDifferently] = useState<string>('')
-  const [tomorrowFocus, setTomorrowFocus] = useState<string>('')
+  const [nightJournal,    setNightJournal,    clearNightJournal]    = useDraft(draftKey('night-journal'),    '')
+  const [winOfDay,        setWinOfDay,        clearWinOfDay]        = useDraft(draftKey('win-of-day'),       '')
+  const [wentWell,        setWentWell,        clearWentWell]        = useDraft(draftKey('went-well'),        '')
+  const [doDifferently,   setDoDifferently,   clearDoDifferently]   = useDraft(draftKey('do-differently'),   '')
+  const [tomorrowFocus,   setTomorrowFocus,   clearTomorrowFocus]   = useDraft(draftKey('tomorrow-focus'),   '')
+
+  // Helper: clear all morning drafts after a successful morning wizard finish
+  const clearMorningDrafts = () => {
+    clearMorningJournal(); clearIntention()
+    clearGratitude0(); clearGratitude1(); clearGratitude2()
+  }
+  // Helper: clear all evening drafts after a successful evening wizard finish
+  const clearEveningDrafts = () => {
+    clearNightJournal(); clearWinOfDay(); clearWentWell()
+    clearDoDifferently(); clearTomorrowFocus()
+  }
+
+  // --- Wizard step (persisted so force-quit returns to same step) ---
+  const [wizardStepStr, setWizardStepStr, clearWizardStepDraft] = useDraft(draftKey('wizard-step'), '1')
+  const wizardStep    = Number(wizardStepStr) || 1
+  const setWizardStep = useCallback((action: number | ((prev: number) => number)) => {
+    setWizardStepStr(prevStr => {
+      const prev = Number(prevStr) || 1
+      const next = typeof action === 'function' ? action(prev) : action
+      return String(next)
+    })
+  }, [setWizardStepStr])
 
   // --- Free Journal state ---
   // NOTE: the standalone `journal` free-text field (daily_records.journal)
@@ -320,18 +359,16 @@ export function DailyLogPage() {
   // --- UI Save Indicator ---
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'saving' | 'error'>('idle')
 
-  // --- Guided Wizard Step ---
-  const [wizardStep, setWizardStep] = useState<number>(1)
-
   // Voice-to-text for morning / evening guided wizard
   const morningVoice = useVoiceInput((t) => setMorningJournal(prev => prev ? prev + ' ' + t : t))
   const nightVoice = useVoiceInput((t) => setNightJournal(prev => prev ? prev + ' ' + t : t))
 
-  // Reset to step 1 whenever the wizard type changes
+  // Reset to step 1 and clear step draft whenever the wizard type changes
   useEffect(() => {
-    setWizardStep(1)
+    setWizardStepStr('1')
+    clearWizardStepDraft()
     setWizardCelebration(false)
-  }, [guidedMode])
+  }, [guidedMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset early-unlock state when navigating to a different date
   useEffect(() => {
@@ -346,20 +383,29 @@ export function DailyLogPage() {
     populatedDateRef.current = activeDate
 
     if (record.energy_am !== null && record.energy_am !== undefined) setEnergyAm(record.energy_am)
-    if (record.intent !== null && record.intent !== undefined) setIntention(record.intent)
+    // Only populate text fields from DB when no draft exists for them
+    if (record.intent !== null && record.intent !== undefined) {
+      if (!localStorage.getItem(draftKey('intention'))) setIntention(record.intent)
+    }
     if (Array.isArray(record.gratitude)) {
-      setGratitude([
-        typeof record.gratitude[0] === 'string' ? record.gratitude[0] : '',
-        typeof record.gratitude[1] === 'string' ? record.gratitude[1] : '',
-        typeof record.gratitude[2] === 'string' ? record.gratitude[2] : ''
-      ])
+      if (!localStorage.getItem(draftKey('gratitude-0'))) setGratitude0(typeof record.gratitude[0] === 'string' ? record.gratitude[0] : '')
+      if (!localStorage.getItem(draftKey('gratitude-1'))) setGratitude1(typeof record.gratitude[1] === 'string' ? record.gratitude[1] : '')
+      if (!localStorage.getItem(draftKey('gratitude-2'))) setGratitude2(typeof record.gratitude[2] === 'string' ? record.gratitude[2] : '')
     }
     if (record.mood !== null && record.mood !== undefined) setMood(record.mood)
     if (record.energy_pm !== null && record.energy_pm !== undefined) setEnergyPm(record.energy_pm)
-    if (record.win_of_day !== null && record.win_of_day !== undefined) setWinOfDay(record.win_of_day)
-    if (record.went_well !== null && record.went_well !== undefined) setWentWell(record.went_well)
-    if (record.do_differently !== null && record.do_differently !== undefined) setDoDifferently(record.do_differently)
-    if (record.tomorrow_focus !== null && record.tomorrow_focus !== undefined) setTomorrowFocus(record.tomorrow_focus)
+    if (record.win_of_day !== null && record.win_of_day !== undefined) {
+      if (!localStorage.getItem(draftKey('win-of-day'))) setWinOfDay(record.win_of_day)
+    }
+    if (record.went_well !== null && record.went_well !== undefined) {
+      if (!localStorage.getItem(draftKey('went-well'))) setWentWell(record.went_well)
+    }
+    if (record.do_differently !== null && record.do_differently !== undefined) {
+      if (!localStorage.getItem(draftKey('do-differently'))) setDoDifferently(record.do_differently)
+    }
+    if (record.tomorrow_focus !== null && record.tomorrow_focus !== undefined) {
+      if (!localStorage.getItem(draftKey('tomorrow-focus'))) setTomorrowFocus(record.tomorrow_focus)
+    }
   }, [record, activeDate])
 
   // Populate morning/night journal from Notes Journal folder
@@ -374,13 +420,13 @@ export function DailyLogPage() {
   useEffect(() => {
     if (!journalNoteForDate) return
     const content = journalNoteForDate.content as string ?? ''
-    // Extract morning section
+    // Extract morning section — only if no draft exists
     const morningMatch = content.match(/## Morning[^\n]*\n([\s\S]*?)(?=\n## |$)/)
-    if (morningMatch) setMorningJournal(morningMatch[1].trim())
-    // Extract evening section
+    if (morningMatch && !localStorage.getItem(draftKey('morning-journal'))) setMorningJournal(morningMatch[1].trim())
+    // Extract evening section — only if no draft exists
     const eveningMatch = content.match(/## Evening[^\n]*\n([\s\S]*?)(?=\n## |$)/)
-    if (eveningMatch) setNightJournal(eveningMatch[1].trim())
-  }, [journalNoteForDate])
+    if (eveningMatch && !localStorage.getItem(draftKey('night-journal'))) setNightJournal(eveningMatch[1].trim())
+  }, [journalNoteForDate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize night journal with preset sections if empty
   useEffect(() => {
@@ -577,6 +623,8 @@ export function DailyLogPage() {
       })
       await saveJournalNote(morningJournal, nightJournal)
       haptic('success')
+      clearMorningDrafts()
+      clearWizardStepDraft()
       setWizardCelebration(true)
       setTimeout(() => {
         setWizardCelebration(false)
@@ -601,6 +649,8 @@ export function DailyLogPage() {
       })
       await saveJournalNote(morningJournal, nightJournal)
       haptic('success')
+      clearEveningDrafts()
+      clearWizardStepDraft()
       setWizardCelebration(true)
       setTimeout(() => {
         setWizardCelebration(false)

@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
         name: 'Kairo',
@@ -27,6 +27,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: false,
+        clientsClaim: false,
         importScripts: ['push-sw.js'],
         // Wipe caches from previous broken SW builds so stale files don't
         // cause a blank screen after a new deployment.

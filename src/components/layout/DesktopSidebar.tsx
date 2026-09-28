@@ -187,8 +187,7 @@ export function DesktopSidebar() {
           <div className={clsx(flexLabelClass, 'flex-col min-w-0')}>
             <span className="text-xs text-text font-medium truncate w-28 group-hover/profile-footer:text-accent transition-colors">{displayName}</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <SyncStatusDot />
-              <span className="text-[10px] text-text-muted truncate">Synced</span>
+              <SyncStatusDot showLabel />
             </div>
           </div>
         </NavLink>

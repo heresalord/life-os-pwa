@@ -1,13 +1,15 @@
 import { useRef, useState } from 'react'
-import { Trash2, GripVertical, Repeat } from 'lucide-react'
+import { Trash2, GripVertical, Repeat, Pencil } from 'lucide-react'
 import type { AgendaBlock as AgendaBlockType } from '../../db/schema'
 import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import { useNowMinutes } from '../../hooks/useNowMinutes'
+import { EditBlockModal } from './AddBlockModal'
 import clsx from 'clsx'
 
 interface AgendaBlockProps {
   block: AgendaBlockType
   onDelete: (id: string) => void
+  onEdit?: (block: AgendaBlockType) => void
   dragHandleProps?: DraggableProvidedDragHandleProps | null
 }
 
@@ -17,8 +19,9 @@ function toMins(t: string) {
   return h * 60 + m
 }
 
-export function AgendaBlock({ block, onDelete, dragHandleProps }: AgendaBlockProps) {
+export function AgendaBlock({ block, onDelete, onEdit, dragHandleProps }: AgendaBlockProps) {
   const [swiped, setSwiped] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const nowMins = useNowMinutes()
 
@@ -53,85 +56,124 @@ export function AgendaBlock({ block, onDelete, dragHandleProps }: AgendaBlockPro
     return m > 0 ? `${h}h ${m}m` : `${h}h`
   }
 
+  const handleBlockClick = () => {
+    if (swiped) {
+      setSwiped(false)
+      return
+    }
+    if (onEdit) {
+      onEdit(block)
+    } else {
+      setEditOpen(true)
+    }
+  }
+
   return (
-    <div className={clsx(
-      'relative overflow-hidden rounded-xl border group',
-      isActive ? 'border-accent/50 shadow-md shadow-accent/10' : 'border-border'
-    )}>
-      {/* Swipe delete background */}
-      <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
-        <button onClick={() => onDelete(block.id)}
-          className="p-2 text-danger hover:bg-danger/10 rounded-full transition-colors">
-          <Trash2 size={18} />
-        </button>
+    <>
+      <div className={clsx(
+        'relative overflow-hidden rounded-xl border group cursor-pointer transition-all hover:border-accent/40',
+        isActive ? 'border-accent/50 shadow-md shadow-accent/10' : 'border-border'
+      )}>
+        {/* Swipe delete background */}
+        <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-danger/20 px-4 w-full">
+          <button onClick={() => onDelete(block.id)}
+            className="p-2 text-danger hover:bg-danger/10 rounded-full transition-colors cursor-pointer">
+            <Trash2 size={18} />
+          </button>
+        </div>
+
+        <div
+          onClick={handleBlockClick}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className={clsx(
+            'relative flex items-center p-3 bg-surface transition-transform duration-200 ease-out gap-2',
+            isActive ? 'border-l-4 border-l-accent' : 'border-l-4 border-l-transparent',
+            swiped ? '-translate-x-16' : 'translate-x-0'
+          )}
+        >
+          {/* Drag handle */}
+          {dragHandleProps && (
+            <div
+              {...dragHandleProps}
+              onClick={(e) => e.stopPropagation()}
+              className="text-text-muted hover:text-text-secondary transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+            >
+              <GripVertical size={16} />
+            </div>
+          )}
+
+          {/* Time column or All Day badge */}
+          {isAllDay ? (
+            <div className="w-24 flex-shrink-0 flex items-center pr-2 border-r border-border/50 mr-1">
+              <span className="text-[10px] font-bold text-accent bg-accent/10 border border-accent/15 px-2 py-0.5 rounded-lg flex-shrink-0 uppercase tracking-wider">
+                All Day
+              </span>
+            </div>
+          ) : (
+            <div className="w-24 flex-shrink-0 flex flex-col items-start pr-2 border-r border-border/50 mr-1">
+              <span className={clsx('text-sm font-semibold', isActive ? 'text-accent' : 'text-text')}>
+                {formatTime(block.start_time)}
+              </span>
+              <span className="text-xs text-text-muted">{formatTime(block.end_time)}</span>
+            </div>
+          )}
+
+          {/* Description + duration + now badge + recurrence */}
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className={clsx('text-sm font-medium truncate', isActive ? 'text-accent' : 'text-text')}>
+                {block.description}
+              </span>
+              {isActive && (
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/20 text-accent flex-shrink-0 animate-pulse">
+                  NOW
+                </span>
+              )}
+              {block.recurrence && (
+                <span className="text-text-muted/70 flex items-center gap-1 text-[11px]" title={`Repeats: ${(block.recurrence as any).type}`}>
+                  <Repeat size={11} className="stroke-[2.5]" />
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-text-muted mt-0.5">
+              {isAllDay ? 'All-day event' : getDuration()}
+            </span>
+          </div>
+
+          {/* Quick Edit icon */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleBlockClick()
+            }}
+            className="w-7 h-7 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 flex items-center justify-center opacity-0 group-hover:opacity-100 sm:transition-opacity shrink-0"
+            title="Edit block"
+          >
+            <Pencil size={13} />
+          </button>
+        </div>
+
+        {/* Progress bar for active block */}
+        {isActive && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent/20">
+            <div
+              className="h-full bg-accent transition-all duration-60000"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
       </div>
 
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        className={clsx(
-          'relative flex items-center p-3 bg-surface transition-transform duration-200 ease-out gap-2',
-          isActive ? 'border-l-4 border-l-accent' : 'border-l-4 border-l-transparent',
-          swiped ? '-translate-x-16' : 'translate-x-0'
-        )}
-      >
-        {/* Drag handle */}
-        {dragHandleProps && (
-          <div {...dragHandleProps}
-            className="text-text-muted hover:text-text-secondary transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none">
-            <GripVertical size={16} />
-          </div>
-        )}
-
-        {/* Time column or All Day badge */}
-        {isAllDay ? (
-          <div className="w-24 flex-shrink-0 flex items-center pr-2 border-r border-border/50 mr-1">
-            <span className="text-[10px] font-bold text-accent bg-accent/10 border border-accent/15 px-2 py-0.5 rounded-lg flex-shrink-0 uppercase tracking-wider">
-              All Day
-            </span>
-          </div>
-        ) : (
-          <div className="w-24 flex-shrink-0 flex flex-col items-start pr-2 border-r border-border/50 mr-1">
-            <span className={clsx('text-sm font-medium', isActive ? 'text-accent' : 'text-text')}>
-              {formatTime(block.start_time)}
-            </span>
-            <span className="text-xs text-text-muted">{formatTime(block.end_time)}</span>
-          </div>
-        )}
-
-        {/* Description + duration + now badge + recurrence */}
-        <div className="flex flex-col min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={clsx('text-sm font-medium truncate', isActive ? 'text-accent' : 'text-text')}>
-              {block.description}
-            </span>
-            {isActive && (
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/20 text-accent flex-shrink-0 animate-pulse">
-                NOW
-              </span>
-            )}
-            {block.recurrence && (
-              <span className="text-text-muted/60 flex items-center" title={`Repeats: ${(block.recurrence as any).type}`}>
-                <Repeat size={11} className="stroke-[2.5]" />
-              </span>
-            )}
-          </div>
-          <span className="text-xs text-text-muted mt-0.5">
-            {isAllDay ? 'All-day event' : getDuration()}
-          </span>
-        </div>
-      </div>
-
-      {/* Progress bar for active block */}
-      {isActive && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent/20">
-          <div
-            className="h-full bg-accent transition-all duration-60000"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
-    </div>
+      {/* Edit Modal */}
+      <EditBlockModal
+        date={block.date}
+        block={block}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
   )
 }
