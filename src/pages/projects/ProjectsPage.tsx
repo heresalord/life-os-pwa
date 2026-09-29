@@ -1,12 +1,10 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useContextualAdd } from '../../hooks/useContextualAdd'
 import { useQuery } from '@tanstack/react-query'
-import * as Dialog from '@radix-ui/react-dialog'
 import {
   Folder,
   Plus,
-  X,
   ChevronDown,
   Trash2,
   Archive,
@@ -20,36 +18,28 @@ import { useAuth } from '../../hooks/useAuth'
 import { useDb } from '../../db/DbContext'
 import { EmptyState } from '../../components/EmptyState'
 import { PageSkeleton } from '../../components/Skeleton'
+import { ProjectActionSheet } from '../../components/projects/ProjectActionSheet'
+import { CreateProjectModal, PRESET_COLORS } from '../../components/projects/CreateProjectModal'
+import { JoinProjectModal } from '../../components/projects/JoinProjectModal'
 import clsx from 'clsx'
 
 type ProjectFilter = 'active' | 'archived'
-
-const PRESET_COLORS = [
-  { name: 'Red', hex: '#ef4444', bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-500' },
-  { name: 'Orange', hex: '#f97316', bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-500' },
-  { name: 'Amber', hex: '#f59e0b', bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-500' },
-  { name: 'Green', hex: '#10b981', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-500' },
-  { name: 'Blue', hex: '#3b82f6', bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-500' },
-  { name: 'Indigo', hex: '#6366f1', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-500' },
-  { name: 'Purple', hex: '#8b5cf6', bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-500' },
-  { name: 'Pink', hex: '#ec4899', bg: 'bg-pink-500/10', border: 'border-pink-500/20', text: 'text-pink-500' },
-]
 
 export function ProjectsPage() {
   const db = useDb()
   const { user } = useAuth()
   const [filter, setFilter] = useState<ProjectFilter>('active')
-  const [open, setOpen] = useState(false)
 
-  useContextualAdd(() => setOpen(true))
+  // Modals / Action Sheet states
+  const [actionSheetOpen, setActionSheetOpen] = useState(false)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [joinModalOpen, setJoinModalOpen] = useState(false)
 
-  // Form State
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[4].hex) // Default to blue
+  // Single contextual "+" handler: opens the action sheet
+  useContextualAdd(() => setActionSheetOpen(true))
 
   const { data: projects = [], isLoading: projectsLoading } = useProjectsQuery()
-  const { addProject, updateProject, deleteProject } = useProjectMutations()
+  const { updateProject, deleteProject } = useProjectMutations()
 
   // Query all tasks and goals for offline metric calculation
   const { data: statsData, isLoading: statsLoading } = useQuery({
@@ -98,23 +88,6 @@ export function ProjectsPage() {
     return stats
   }, [projects, statsData])
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) return
-
-    await addProject.mutateAsync({
-      name: name.trim(),
-      description: description.trim() || null,
-      color: selectedColor
-    })
-
-    // Reset Form
-    setName('')
-    setDescription('')
-    setSelectedColor(PRESET_COLORS[4].hex)
-    setOpen(false)
-  }
-
   const handleToggleArchive = async (id: string, currentlyArchived: boolean) => {
     await updateProject.mutateAsync({
       id,
@@ -137,133 +110,58 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-6 lg:max-w-5xl pb-10">
-      {/* Dialog root wrapping header buttons & float FAB */}
-      <Dialog.Root open={open} onOpenChange={setOpen}>
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-display text-text">Projects</h1>
-            <p className="text-xs text-text-muted mt-0.5">Manage tasks and goals grouped by areas of focus</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Desktop New Project trigger */}
-            <div className="hidden md:block">
-              <Dialog.Trigger asChild>
-                <button className="flex items-center gap-2 px-4 py-2 bg-accent text-bg text-xs font-bold rounded-xl hover:bg-accent-dim active:scale-95 transition-all shadow-[var(--shadow-card)]">
-                  <Plus size={16} strokeWidth={2.5} /> New Project
-                </button>
-              </Dialog.Trigger>
-            </div>
-
-            {/* State Filter dropdown */}
-            <div className="relative group">
-              <select
-                value={filter}
-                onChange={e => setFilter(e.target.value as ProjectFilter)}
-                className="appearance-none bg-surface border border-border rounded-xl pl-4 pr-8 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer transition-colors shadow-sm"
-              >
-                <option value="active">Active Projects</option>
-                <option value="archived">Archived</option>
-              </select>
-              <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted" />
-            </div>
-          </div>
-        </header>
-
-        {/* Floating FAB on Mobile */}
-        <div className="fixed bottom-24 right-4 z-20 md:hidden">
-          <Dialog.Trigger asChild>
-            <button
-              className="w-14 h-14 rounded-full bg-accent text-bg flex items-center justify-center shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:bg-accent-dim active:scale-95 transition-all"
-              aria-label="New Project"
-            >
-              <Plus size={24} strokeWidth={2.5} />
-            </button>
-          </Dialog.Trigger>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display text-text">Projects</h1>
+          <p className="text-xs text-text-muted mt-0.5">Manage tasks and goals grouped by areas of focus</p>
         </div>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm animate-in fade-in duration-200" />
-          <Dialog.Content
-            className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border rounded-t-3xl p-5 shadow-2xl overflow-y-auto max-h-[85vh] sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:rounded-2xl sm:border animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
-            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
-          >
-            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" />
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <Dialog.Title className="text-base font-semibold text-text">Create New Project</Dialog.Title>
-                <Dialog.Description className="text-xs text-text-muted mt-0.5">
-                  Organize your related goals and tasks together
-                </Dialog.Description>
-              </div>
-              <Dialog.Close className="p-2 rounded-full hover:bg-surface-2 text-text-muted hover:text-text transition-colors">
-                <X size={16} />
-              </Dialog.Close>
-            </div>
 
-            <form onSubmit={handleCreateProject} className="space-y-4">
-              {/* Name */}
-              <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Project Name</label>
-                <input
-                  autoFocus
-                  type="text"
-                  required
-                  placeholder="e.g. Health & Fitness Goals"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text placeholder-text-muted focus:outline-none transition-colors"
-                />
-              </div>
+        <div className="flex items-center gap-3">
+          {/* Desktop New Project trigger opens the single Action Sheet */}
+          <div className="hidden md:block">
+            <button
+              type="button"
+              onClick={() => setActionSheetOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-bg text-xs font-bold rounded-xl hover:bg-accent-dim active:scale-95 transition-all shadow-[var(--shadow-card)]"
+            >
+              <Plus size={16} strokeWidth={2.5} /> New Project
+            </button>
+          </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Description (optional)</label>
-                <textarea
-                  rows={3}
-                  placeholder="Describe the main focus or boundaries of this project..."
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  className="w-full bg-surface-2 border border-border focus:border-accent rounded-xl px-4 py-2 text-sm text-text placeholder-text-muted focus:outline-none transition-colors resize-none"
-                />
-              </div>
+          {/* State Filter dropdown */}
+          <div className="relative group">
+            <select
+              value={filter}
+              onChange={e => setFilter(e.target.value as ProjectFilter)}
+              className="appearance-none bg-surface border border-border rounded-xl pl-4 pr-8 py-2 text-xs font-semibold text-text focus:outline-none focus:border-accent cursor-pointer transition-colors shadow-sm"
+            >
+              <option value="active">Active Projects</option>
+              <option value="archived">Archived</option>
+            </select>
+            <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted" />
+          </div>
+        </div>
+      </header>
 
-              {/* Color highlights */}
-              <div>
-                <label className="block text-[10px] font-bold text-text-secondary mb-2 uppercase tracking-wider">Highlight Color</label>
-                <div className="flex flex-wrap gap-3">
-                  {PRESET_COLORS.map(c => {
-                    const isSelected = selectedColor === c.hex
-                    return (
-                      <button
-                        key={c.hex}
-                        type="button"
-                        onClick={() => setSelectedColor(c.hex)}
-                        title={c.name}
-                        className={clsx(
-                          'w-7 h-7 rounded-full border transition-all flex items-center justify-center',
-                          isSelected
-                            ? 'ring-2 ring-offset-2 ring-offset-bg ring-accent border-transparent scale-110'
-                            : 'border-border opacity-75 hover:opacity-100'
-                        )}
-                        style={{ backgroundColor: c.hex }}
-                      />
-                    )
-                  })}
-                </div>
-              </div>
+      {/* Action Sheet offering Create project or Join with code */}
+      <ProjectActionSheet
+        isOpen={actionSheetOpen}
+        onClose={() => setActionSheetOpen(false)}
+        onCreateProject={() => setCreateModalOpen(true)}
+        onJoinWithCode={() => setJoinModalOpen(true)}
+      />
 
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={!name.trim() || addProject.isPending}
-                className="w-full bg-accent text-bg font-semibold rounded-xl py-3 hover:bg-accent-dim active:scale-[0.99] transition-all disabled:opacity-50 text-sm shadow-sm"
-              >
-                {addProject.isPending ? 'Creating...' : 'Create Project'}
-              </button>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+      />
+
+      {/* Join Project Modal */}
+      <JoinProjectModal
+        isOpen={joinModalOpen}
+        onClose={() => setJoinModalOpen(false)}
+      />
 
       {isLoading ? (
         <PageSkeleton />

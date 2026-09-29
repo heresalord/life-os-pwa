@@ -7,6 +7,7 @@ import { haptic } from '../../lib/haptic'
 import { useInboxMutations } from '../../hooks/useInboxMutations'
 import { useAppStore } from '../../store/useAppStore'
 import clsx from 'clsx'
+import { formatEditedAt } from '../../lib/dateUtils'
 
 export function InboxItemCard({ item, onDelete }: { item: InboxItem, onDelete: (id: string) => void }) {
   const [dragX, setDragX] = useState(0)
@@ -93,7 +94,7 @@ export function InboxItemCard({ item, onDelete }: { item: InboxItem, onDelete: (
             </span>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-text-muted">
-                {new Date(item.captured_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {formatEditedAt(item.captured_at)}
               </span>
               <span
                 onClick={(e) => {

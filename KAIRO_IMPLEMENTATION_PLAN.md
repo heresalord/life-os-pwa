@@ -128,9 +128,9 @@ had this backwards.) One helper, `formatEditedAt(iso)`:
 
 Use it in `NoteCard` and inbox item cards.
 
-### B3. Projects: one "+" that offers Create or Join — **S**
-There are two "+" buttons today. Keep one. It opens a small action sheet:
-**Create project** · **Join with code**. The sheet component is reused in Phase D.
+### B3. Projects: one "+" that offers Create or Join — **Done**
+Removed duplicate mobile FAB. Desktop header button and global contextual FAB now open a unified action sheet (`ProjectActionSheet`):
+**Create project** (opens `CreateProjectModal`) · **Join with code** (opens `JoinProjectModal` with invite code redemption). Reusable for Phase D.
 
 ### B4. Notes: drop the Write/Preview toggle — **M**
 Apple Notes has no preview mode, so the toggle reads as a developer tool.

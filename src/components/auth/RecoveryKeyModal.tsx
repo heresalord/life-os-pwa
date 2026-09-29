@@ -72,7 +72,7 @@ export function RecoveryKeyModal({
   }
 
   const handleDownload = () => {
-    const content = `LIFE OS - MASTER RECOVERY KEY
+    const content = `KAIRO - MASTER RECOVERY KEY
 Generated: ${new Date().toLocaleDateString()}
 Account: ${email}
 
@@ -87,7 +87,7 @@ Never share these words with anyone.
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `life-os-recovery-key-${email.split('@')[0]}.txt`
+    a.download = `kairo-recovery-key-${email.split('@')[0]}.txt`
     a.click()
     URL.revokeObjectURL(url)
     haptic('medium')

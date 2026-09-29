@@ -1,5 +1,5 @@
 // ============================================================================
-// database.ts — Life OS Supabase type definitions
+// database.ts — Kairo Supabase type definitions
 //
 // Manually maintained until `npm run types:supabase` is wired with a valid
 // SUPABASE_PROJECT_ID secret in CI (see .github/workflows/build-apk.yml).

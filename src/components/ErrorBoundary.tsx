@@ -29,7 +29,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('[LifeOS] Uncaught render error:', error.message, info.componentStack)
+    console.error('[Kairo] Uncaught render error:', error.message, info.componentStack)
   }
 
   render() {

@@ -1,4 +1,4 @@
-# Life OS
+# Kairo
 
 A beautiful, mobile-first, offline-first Progressive Web App (PWA) designed to be your ultimate "calm" productivity operating system. 
 
@@ -16,7 +16,7 @@ Built with React, Vite, Tailwind CSS v4, Dexie (IndexedDB), and Supabase.
 - 🗓️ **Time-Blocked Agenda**: Plan your day out in chunks.
 - 📥 **Inbox & Notes**: Capture passing thoughts instantly and process them later into tasks or freewriting markdown notes.
 - 🔍 **Global Search**: Instantly find tasks, notes, books, and thoughts across the entire system.
-- 💾 **Data Ownership**: Export your entire Life OS as a JSON backup or CSV at any time.
+- 💾 **Data Ownership**: Export your entire Kairo data as a JSON backup or CSV at any time.
 
 ## Tech Stack
 

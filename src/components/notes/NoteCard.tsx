@@ -7,6 +7,7 @@ import { extractTags, stripTags } from '../../lib/noteTagUtils'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 import { useAppStore } from '../../store/useAppStore'
 import { getUserLocalDate } from '../../lib/dateUtils'
+import { formatEditedAt } from '../../lib/dateUtils'
 import { NotePinSetModal, NotePinUnlockModal } from './NotePinModal'
 import clsx from 'clsx'
 
@@ -295,7 +296,7 @@ export function NoteCard({
           {/* Footer */}
           <div className="flex items-center justify-between mt-2">
             <div className="text-[10px] text-text-muted">
-              {new Date(note.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {formatEditedAt(note.updated_at)}
             </div>
             {!isLocked && wordCount !== undefined && wordCount > 0 && (
               <div className="text-[10px] text-text-muted">
