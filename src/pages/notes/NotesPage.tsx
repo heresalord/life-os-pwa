@@ -17,7 +17,7 @@ import { NoteCardSkeleton } from '../../components/Skeleton'
 import { extractTags, stripTags, applyTags, collectAllTags, cleanTaskTitle } from '../../lib/noteTagUtils'
 import { SheetSelect } from '../../components/SheetSelect'
 import {
-  FileText, Plus, Search, X, Eye, Edit3,
+  FileText, Plus, Search, X, Edit3,
   FolderOpen, FolderPlus,
   Folder, Pin, BookText, LayoutTemplate, FolderTree, ListTodo,
   Maximize2, Minimize2, Lock, Unlock, Flame,
@@ -70,7 +70,8 @@ function DesktopNoteEditor({
   const [body, setBody]         = useState(stripTags(note.content || ''))
   const [tags, setTags]         = useState<string[]>(extractTags(note.content || ''))
   const [tagInput, setTagInput] = useState('')
-  const [mode, setMode]         = useState<'write' | 'preview'>('write')
+  // Apple Notes pattern: open rendered, tap body → edit mode, Done → rendered
+  const [isEditing, setIsEditing] = useState(() => !stripTags(note.content || '').trim())
   const [showUnlockModal, setShowUnlockModal] = useState(false)
   const { updateNote } = useNoteMutations()
   const { timezone } = useAppStore()
@@ -92,10 +93,12 @@ function DesktopNoteEditor({
   }, [onToggleFocusMode])
 
   useEffect(() => {
+    const newBody = stripTags(note.content || '')
     setTitle(note.title)
-    setBody(stripTags(note.content || ''))
+    setBody(newBody)
     setTags(extractTags(note.content || ''))
-    setMode('write')
+    // Open in edit mode when note has no content yet, otherwise open rendered
+    setIsEditing(!newBody.trim())
   }, [note.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLocked) {
@@ -196,7 +199,7 @@ function DesktopNoteEditor({
 
   return (
     <div className="flex flex-col bg-surface border border-border rounded-2xl overflow-hidden" style={{ minHeight: '60vh' }}>
-      {/* Title + mode toggle */}
+      {/* Title + action buttons */}
       <div className="flex items-center gap-3 px-5 py-3 border-b border-border flex-shrink-0">
         <input
           type="text"
@@ -206,25 +209,34 @@ function DesktopNoteEditor({
           className="text-lg font-display text-text bg-transparent border-none focus:outline-none flex-1 min-w-0"
           placeholder="Note title"
         />
-        <div className="flex bg-surface-2 rounded-lg p-0.5 flex-shrink-0">
-          <button onClick={() => setMode('write')} className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'write' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
-            <Edit3 size={12} /> Write
-          </button>
-          <button onClick={() => setMode('preview')} className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'preview' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
-            <Eye size={12} /> Preview
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isEditing ? (
+            <button
+              onClick={() => { save(); setIsEditing(false) }}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
+            >
+              Done
+            </button>
+          ) : (
+            <button
+              onClick={() => { setIsEditing(true); setTimeout(() => textareaRef.current?.focus(), 50) }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-text-secondary hover:text-text hover:bg-surface-2 transition-colors"
+            >
+              <Edit3 size={13} /> Edit
+            </button>
+          )}
+          <button
+            onClick={onToggleFocusMode}
+            title={isFocusMode ? 'Exit focus mode (⌘⇧F)' : 'Focus mode (⌘⇧F)'}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+          >
+            {isFocusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
         </div>
-        <button
-          onClick={onToggleFocusMode}
-          title={isFocusMode ? 'Exit focus mode (⌘⇧F)' : 'Focus mode (⌘⇧F)'}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-muted hover:text-text transition-colors flex-shrink-0"
-        >
-          {isFocusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        </button>
       </div>
 
-      {/* Rich text toolbar (write mode) */}
-      {mode === 'write' && (
+      {/* Rich text toolbar — only visible while editing */}
+      {isEditing && (
         <div className="relative">
           <RichTextToolbar
             textareaRef={textareaRef}
@@ -235,15 +247,15 @@ function DesktopNoteEditor({
           {taskFeedback && (
             <div className="absolute top-full right-3 mt-2 z-10 flex items-center gap-2 px-3 py-2 bg-surface border border-accent/30 rounded-lg shadow-lg text-xs text-text animate-in fade-in slide-in-from-top-1 duration-150">
               <ListTodo size={12} className="text-accent flex-shrink-0" />
-              <span className="truncate max-w-[220px]">Added “{taskFeedback}” to Tasks</span>
+              <span className="truncate max-w-[220px]">Added "{taskFeedback}" to Tasks</span>
             </div>
           )}
         </div>
       )}
 
-      {/* Editor / Preview */}
+      {/* Body: rendered (tap to edit) or textarea */}
       <div className="flex-1 overflow-hidden flex flex-col bg-bg/20 relative">
-        {mode === 'write' ? (
+        {isEditing ? (
           <>
             <textarea
               ref={textareaRef}
@@ -263,12 +275,21 @@ function DesktopNoteEditor({
             />
           </>
         ) : (
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div
+            className="flex-1 overflow-y-auto px-6 py-5 cursor-text"
+            onClick={e => {
+              const target = e.target as HTMLElement
+              if (target.closest('input[type="checkbox"], a, button')) return
+              setIsEditing(true)
+              setTimeout(() => textareaRef.current?.focus(), 50)
+            }}
+          >
             <article className="prose prose-invert prose-p:text-text-secondary prose-headings:text-text max-w-none">
-              {body
-                ? <>{renderPreviewParts(body)}</>
-                : <p className="text-text-muted italic">Nothing written yet.</p>
-              }
+              {body.trim() ? (
+                <>{renderPreviewParts(body)}</>
+              ) : (
+                <p className="text-text-muted italic select-none">Nothing written yet. Click to start writing…</p>
+              )}
             </article>
           </div>
         )}

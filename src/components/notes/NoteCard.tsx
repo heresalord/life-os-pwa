@@ -55,6 +55,8 @@ export function NoteCard({
   folders = [],
   isActive = false,
   searchTerm = '',
+  isUnlocked = false,
+  onUnlock,
 }: {
   note: Note
   onClick: () => void
@@ -62,6 +64,8 @@ export function NoteCard({
   folders?: string[]
   isActive?: boolean
   searchTerm?: string
+  isUnlocked?: boolean
+  onUnlock?: (id: string) => void
 }) {
   const [swiped, setSwiped] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -72,7 +76,7 @@ export function NoteCard({
   const { timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
 
-  const isLocked = !!(note as any).pin_hash
+  const isLocked = !!(note as any).pin_hash && !isUnlocked
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
   const handleTouchMove  = (e: React.TouchEvent) => {
@@ -232,7 +236,7 @@ export function NoteCard({
                       className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-2 cursor-pointer outline-none"
                       onSelect={() => setPinSetOpen(true)}
                     >
-                      {isLocked
+                      {(note as any).pin_hash
                         ? <><Unlock size={13} className="text-text-muted" /> Change / Remove PIN</>
                         : <><Lock size={13} className="text-text-muted" /> Lock with PIN</>
                       }
@@ -270,12 +274,11 @@ export function NoteCard({
             </div>
           </div>
 
-          {/* Locked overlay — show in place of snippet */}
+          {/* Locked overlay — subtle text without duplicate lock icon */}
           {isLocked ? (
-            <div className="flex items-center gap-2 text-xs text-text-muted py-1">
-              <Lock size={11} />
-              <span>Tap to unlock and view</span>
-            </div>
+            <p className="text-xs text-text-muted italic py-0.5">
+              Protected note — tap to unlock
+            </p>
           ) : (
             <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
               {highlightText(snippet, searchTerm)}
@@ -293,7 +296,7 @@ export function NoteCard({
             </div>
           )}
 
-          {/* Footer */}
+          {/* Footer — lock icon removed per B5 spec (padlock beside title is kept) */}
           <div className="flex items-center justify-between mt-2">
             <div className="text-[10px] text-text-muted">
               {formatEditedAt(note.updated_at)}
@@ -301,11 +304,6 @@ export function NoteCard({
             {!isLocked && wordCount !== undefined && wordCount > 0 && (
               <div className="text-[10px] text-text-muted">
                 {wordCount} {wordCount === 1 ? 'word' : 'words'}
-              </div>
-            )}
-            {isLocked && (
-              <div className="flex items-center gap-1 text-[10px] text-accent font-medium">
-                <Lock size={9} /> Locked
               </div>
             )}
           </div>
@@ -346,10 +344,13 @@ export function NoteCard({
       {/* PIN Set/Change modal */}
       <NotePinSetModal
         open={pinSetOpen}
-        hasExistingPin={isLocked}
+        hasExistingPin={!!(note as any).pin_hash}
         onClose={() => setPinSetOpen(false)}
-        onSet={async (pin) => { await setPinHash.mutateAsync({ id: note.id, pin }) }}
-        onRemove={isLocked ? async () => { await clearPinHash.mutateAsync(note.id) } : undefined}
+        onSet={async (pin) => {
+          await setPinHash.mutateAsync({ id: note.id, pin })
+          onUnlock?.(note.id)
+        }}
+        onRemove={(note as any).pin_hash ? async () => { await clearPinHash.mutateAsync(note.id) } : undefined}
       />
 
       {/* PIN Unlock gate */}
@@ -357,7 +358,11 @@ export function NoteCard({
         open={pinUnlockOpen}
         noteTitle={note.title}
         pinHash={(note as any).pin_hash ?? ''}
-        onUnlocked={() => { setPinUnlockOpen(false); onClick() }}
+        onUnlocked={() => {
+          setPinUnlockOpen(false)
+          onUnlock?.(note.id)
+          onClick()
+        }}
         onClose={() => setPinUnlockOpen(false)}
       />
     </>

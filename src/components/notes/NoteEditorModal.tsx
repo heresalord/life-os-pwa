@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Maximize2, Minimize2, Plus, ListTodo, Lock } from 'lucide-react'
+import { X, Maximize2, Minimize2, Plus, ListTodo, Lock, Edit3 } from 'lucide-react'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import { useAppStore } from '../../store/useAppStore'
@@ -24,7 +24,7 @@ function computeWordCount(text: string) {
 }
 
 // Custom renderer: replace [[title]] with linked spans in preview + interactive checklists
-function NoteLinkedMarkdown({
+export function NoteLinkedMarkdown({
   body,
   notes,
   onOpenNote,
@@ -71,17 +71,21 @@ export function NoteEditorModal({
   open,
   onOpenChange,
   onOpenNote,
+  isUnlocked: isUnlockedProp = false,
+  onUnlock,
 }: {
   note: Note | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onOpenNote?: (id: string) => void
+  isUnlocked?: boolean
+  onUnlock?: (id: string) => void
 }) {
   const [title, setTitle]       = useState('')
   const [body, setBody]         = useState('')
   const [tags, setTags]         = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
-  const [mode, setMode]         = useState<'write' | 'preview'>('write')
+  const [isEditing, setIsEditing] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const { updateNote } = useNoteMutations()
   const { data: allNotes = [] } = useNotesQuery()
@@ -97,12 +101,10 @@ export function NoteEditorModal({
   const [customDateVal, setCustomDateVal] = useState(today)
   const [hasSelection, setHasSelection] = useState(false)
 
-  // ── PIN lock gate ── defense in depth: NoteCard already intercepts clicks on
-  // locked notes before this modal ever opens, but this modal can also be
-  // reached via deep links (e.g. search results), so it must independently
-  // refuse to render a locked note's content until the PIN is verified.
-  const [isUnlocked, setIsUnlocked] = useState(false)
+  // ── PIN lock gate ── defense in depth
+  const [localUnlocked, setLocalUnlocked] = useState(false)
   const [showUnlockModal, setShowUnlockModal] = useState(false)
+  const isUnlocked = isUnlockedProp || localUnlocked
   const isLocked = !!note?.pin_hash && !isUnlocked
 
   // A2: persist unsaved edits across force-quit / WebView reclaim.
@@ -114,9 +116,7 @@ export function NoteEditorModal({
   const [, setDraftBody,  clearBodyDraft]  = useDraft(bodyDraftKey,  note ? stripTags(note.content || '') : '', { enabled: draftEnabled })
 
   useEffect(() => {
-    // Re-lock whenever a different note is opened, or this note is reopened
-    // after being closed — unlocking never persists past a close.
-    if (open) setIsUnlocked(false)
+    if (open) setLocalUnlocked(false)
   }, [note?.id, open])
 
   const checkSelection = () => {
@@ -129,12 +129,14 @@ export function NoteEditorModal({
       // Seed from DB only when there's no pending draft (draft takes priority)
       const savedTitle = localStorage.getItem(titleDraftKey)
       const savedBody  = localStorage.getItem(bodyDraftKey)
+      const initialBody = savedBody !== null ? savedBody : stripTags(note.content || '')
       setTitle(savedTitle !== null ? savedTitle : note.title)
-      setBody(savedBody   !== null ? savedBody  : stripTags(note.content || ''))
+      setBody(initialBody)
       setTags(extractTags(note.content || ''))
-      setMode('write')
+      // Open rendered by default unless the note has no body text yet
+      setIsEditing(!initialBody.trim())
     }
-  }, [note, open, isLocked]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [note?.id, open, isLocked]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildContent = (b = body, t = tags) => applyTags(b, t)
 
@@ -230,17 +232,35 @@ export function NoteEditorModal({
             )}
             <div className="flex items-center gap-2 flex-shrink-0">
               {!isLocked && (
-              <div className="flex bg-surface-2 rounded-lg p-0.5">
-                <button onClick={() => setMode('write')} className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'write' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>Write</button>
-                <button onClick={() => setMode('preview')} className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${mode === 'preview' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>Preview</button>
-              </div>
+                isEditing ? (
+                  <button
+                    onClick={() => {
+                      handleSave()
+                      setIsEditing(false)
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
+                  >
+                    Done
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsEditing(true)
+                      setTimeout(() => textareaRef.current?.focus(), 50)
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-text-secondary hover:text-text hover:bg-surface-2 transition-colors"
+                  >
+                    <Edit3 size={13} />
+                    <span>Edit</span>
+                  </button>
+                )
               )}
               {!isLocked && (
-              <button onClick={() => setFullscreen(!fullscreen)} className="text-text-muted hover:text-text hidden sm:block">
+              <button onClick={() => setFullscreen(!fullscreen)} className="text-text-muted hover:text-text hidden sm:block p-1.5">
                 {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
               </button>
               )}
-              <button onClick={handleClose} className="text-text-muted hover:text-text">
+              <button onClick={handleClose} className="text-text-muted hover:text-text p-1.5">
                 <X size={20} />
               </button>
             </div>
@@ -261,8 +281,8 @@ export function NoteEditorModal({
             </div>
           ) : (
           <>
-          {/* Rich text toolbar (write mode only) */}
-          {mode === 'write' && (
+          {/* Rich text toolbar (editing mode only) */}
+          {isEditing && (
             <div className="relative">
               <RichTextToolbar
                 textareaRef={textareaRef}
@@ -279,9 +299,9 @@ export function NoteEditorModal({
             </div>
           )}
 
-          {/* Editor / Preview */}
+          {/* Note content: Editor or Rendered */}
           <div className="flex-1 overflow-hidden flex flex-col bg-bg/30 relative">
-            {mode === 'write' ? (
+            {isEditing ? (
               <>
                 <textarea
                   ref={textareaRef}
@@ -303,9 +323,17 @@ export function NoteEditorModal({
                 />
               </>
             ) : (
-              <div className="flex-1 overflow-y-auto p-6">
+              <div
+                className="flex-1 overflow-y-auto p-6 cursor-text"
+                onClick={e => {
+                  const target = e.target as HTMLElement
+                  if (target.closest('input[type="checkbox"], a, button')) return
+                  setIsEditing(true)
+                  setTimeout(() => textareaRef.current?.focus(), 50)
+                }}
+              >
                 <article className="prose prose-invert prose-p:text-text-secondary prose-headings:text-text max-w-none">
-                  {body ? (
+                  {body.trim() ? (
                     <NoteLinkedMarkdown
                       body={body}
                       notes={allNotes as Note[]}
@@ -313,7 +341,7 @@ export function NoteEditorModal({
                       onBodyChange={b => { setBody(b); handleSave(b) }}
                     />
                   ) : (
-                    <p className="text-text-muted italic">Nothing written yet.</p>
+                    <p className="text-text-muted italic select-none">Nothing written yet. Tap to start writing…</p>
                   )}
                 </article>
               </div>
@@ -367,7 +395,12 @@ export function NoteEditorModal({
         open={showUnlockModal}
         noteTitle={note.title || 'Untitled'}
         pinHash={note.pin_hash || ''}
-        onUnlocked={() => { setShowUnlockModal(false); setIsUnlocked(true); haptic('success') }}
+        onUnlocked={() => {
+          setShowUnlockModal(false)
+          setLocalUnlocked(true)
+          if (note) onUnlock?.(note.id)
+          haptic('success')
+        }}
         onClose={() => setShowUnlockModal(false)}
       />
     )}

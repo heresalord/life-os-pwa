@@ -36,9 +36,20 @@ export function useNotesQuery(date?: string) {
               ? db.notes.where('date').equals(date).toArray()
               : db.notes.toArray()
             )
-            const serverIds = new Set(data.map((n: any) => n.id))
-            const localOnly = localNotes.filter(n => !serverIds.has(n.id))
-            const merged = [...(data as Note[]), ...localOnly]
+            const serverIdSet = new Set((data as Note[]).map(n => n.id))
+            const localMap = new Map(localNotes.map(n => [n.id, n]))
+            // Notes that exist locally but haven't reached the server yet
+            // (created while offline). Keep them so they aren't wiped out by
+            // a background sync before their enqueueSync write completes.
+            const localOnly = localNotes.filter(n => !serverIdSet.has(n.id))
+            const serverWithPreserved = (data as Note[]).map(serverNote => {
+              const local = localMap.get(serverNote.id)
+              if (local && (local as any).pin_hash && !(serverNote as any).pin_hash) {
+                return { ...serverNote, pin_hash: (local as any).pin_hash }
+              }
+              return serverNote
+            })
+            const merged = [...serverWithPreserved, ...localOnly]
             const reconciled = await reconcilePendingSync(db, 'notes', merged)
             await db.notes.bulkPut(reconciled)
             const sorted = reconciled.sort(

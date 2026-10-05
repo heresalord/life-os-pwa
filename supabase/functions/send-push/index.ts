@@ -131,7 +131,7 @@ serve(async (req) => {
     const payloadData = (body as any).record || body
     const { user_id, user_ids, title, body: messageText, message, action_url, url } = payloadData as any
     
-    const actualTitle = title || "Life OS"
+    const actualTitle = title || "Kairo"
     const actualBody = messageText || message || "You have a new update."
     const actualUrl = action_url || url || "/"
     

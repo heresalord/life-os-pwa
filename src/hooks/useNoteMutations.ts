@@ -188,12 +188,14 @@ export function useNoteMutations() {
       await db.notes.update(id, { pin_hash, updated_at: new Date().toISOString() })
       const updated = await db.notes.get(id)
       if (updated) await write('update', updated as Record<string, unknown>)
+      return { id, pin_hash }
     },
-    onMutate: async ({ id }) => {
+    onMutate: async ({ id, pin }) => {
       await qc.cancelQueries({ queryKey })
       const previous = qc.getQueryData<AnyItem[]>(queryKey)
+      const pin_hash = await hashPin(pin)
       qc.setQueryData<AnyItem[]>(queryKey, old =>
-        (old ?? []).map(n => n.id === id ? { ...n, pin_hash: '(pending)' } : n)
+        (old ?? []).map(n => n.id === id ? { ...n, pin_hash } : n)
       )
       return { previous }
     },
