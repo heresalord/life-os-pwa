@@ -13,21 +13,28 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Helper to insert notifications into the db
-    async function insertNotification(userId: string, title: string, body: string, type: string, actionUrl: string) {
-      const { error } = await supabaseClient
-        .from('notifications')
-        .insert({
-          user_id: userId,
-          title,
-          body,
-          type,
-          action_url: actionUrl
-        })
+    /**
+     * Dispatches a notification via the notify() DB function.
+     * This respects user preferences (in_app / email / push) and
+     * records payload for downstream delivery — unlike a raw INSERT.
+     */
+    async function dispatchNotification(
+      userId: string,
+      type: string,
+      title: string,
+      body: string,
+      actionUrl: string,
+      extra: Record<string, unknown> = {}
+    ) {
+      const { error } = await supabaseClient.rpc('notify', {
+        p_user_id: userId,
+        p_type: type,
+        p_payload: { title, body, action_url: actionUrl, ...extra }
+      })
       if (error) {
-        console.error(`Error inserting notification for user ${userId}:`, error)
+        console.error(`[notify] Error dispatching "${type}" for user ${userId}:`, error)
       } else {
-        console.log(`Inserted notification of type "${type}" for user ${userId}`)
+        console.log(`[notify] Dispatched "${type}" for user ${userId}`)
       }
     }
 
@@ -123,11 +130,11 @@ serve(async (req) => {
         if (!morningComplete) {
           const morningCopies = [
             "Rise and shine! Ready to crush your goals today? ☀️",
-            "Don''t let yesterday win. Tap to set your morning intent!",
-            "Morning! Ready for a fresh start? Let''s check in."
+            "Don't let yesterday win. Tap to set your morning intent!",
+            "Morning! Ready for a fresh start? Let's check in."
           ]
           const body = morningCopies[Math.floor(Math.random() * morningCopies.length)]
-          await insertNotification(profile.id, 'Good morning! ✦', body, 'morning_reminder', '/day?guided=morning')
+          await dispatchNotification(profile.id, 'morning_reminder', 'Good morning! ✦', body, '/day?guided=morning')
         }
       }
 
@@ -135,12 +142,12 @@ serve(async (req) => {
       if (prefs.evening_reminder !== false && hour === eveningHour) {
         if (!eveningComplete) {
           const eveningCopies = [
-            "Before you drift off, let''s lock in your wins. 🌙",
+            "Before you drift off, let's lock in your wins. 🌙",
             "How did today go? Write down that win of the day!",
-            "Just checking in. Let''s do your evening review before bed."
+            "Just checking in. Let's do your evening review before bed."
           ]
           const body = eveningCopies[Math.floor(Math.random() * eveningCopies.length)]
-          await insertNotification(profile.id, 'Time to reflect', body, 'evening_reminder', '/day?guided=evening')
+          await dispatchNotification(profile.id, 'evening_reminder', 'Time to reflect', body, '/day?guided=evening')
         }
       }
 
@@ -160,7 +167,7 @@ serve(async (req) => {
             `Today's checklist is waiting. Tap to see what's on the menu (count: ${count}). 📝`
           ]
           const body = taskDueCopies[Math.floor(Math.random() * taskDueCopies.length)]
-          await insertNotification(profile.id, 'Tasks for today', body, 'task_due_today', '/tasks')
+          await dispatchNotification(profile.id, 'task.reminder', 'Tasks for today', body, '/tasks', { task_count: count })
         }
       }
 
@@ -180,7 +187,7 @@ serve(async (req) => {
             `Remember me? Your ${count} overdue tasks do! Let's get back on track.`
           ]
           const body = overdueCopies[Math.floor(Math.random() * overdueCopies.length)]
-          await insertNotification(profile.id, 'Overdue tasks', body, 'task_overdue', '/tasks')
+          await dispatchNotification(profile.id, 'task.reminder', 'Overdue tasks', body, '/tasks', { task_count: count, overdue: true })
         }
       }
 
@@ -218,7 +225,7 @@ serve(async (req) => {
             `Don't let your "${habitStr}" streak go cold tonight!`
           ]
           const body = streakCopies[Math.floor(Math.random() * streakCopies.length)]
-          await insertNotification(profile.id, 'Streak at risk!', body, 'streak_alert', '/goals')
+          await dispatchNotification(profile.id, 'streak_alert', 'Streak at risk!', body, '/goals', { habits: uncheckedHabits })
         }
       }
 
@@ -229,7 +236,7 @@ serve(async (req) => {
           "Ready for your weekly wrap-up? Tap to review your progress. 📊"
         ]
         const body = weeklyCopies[Math.floor(Math.random() * weeklyCopies.length)]
-        await insertNotification(profile.id, 'Weekly Review', body, 'weekly_review', '/day/history')
+        await dispatchNotification(profile.id, 'weekly_review', 'Weekly Review', body, '/day/history')
       }
     }
 

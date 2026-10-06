@@ -4,7 +4,7 @@ import webpush from "https://esm.sh/web-push@3.6.6"
 
 const VAPID_PUBLIC = Deno.env.get("VAPID_PUBLIC") || ""
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE") || ""
-const VAPID_SUBJECT = "mailto:admin@lifeos.app"
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:admin@kairoapp.com"
 
 if (VAPID_PUBLIC && VAPID_PRIVATE) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
@@ -182,20 +182,33 @@ serve(async (req) => {
     const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT")
     
     if (serviceAccountJson) {
-      const { data: fcmTokens, error: tokenError } = await supabaseClient
-        .from('fcm_tokens')
-        .select('*')
-        .in('user_id', targetUsers)
+      const [{ data: fcmTokens }, { data: deviceTokens }] = await Promise.all([
+        supabaseClient.from('fcm_tokens').select('*').in('user_id', targetUsers),
+        supabaseClient.from('devices').select('*').in('user_id', targetUsers).in('platform', ['android', 'ios'])
+      ])
 
-      if (tokenError) throw tokenError
+      // Deduplicate push tokens across both tables
+      const allTokens = new Map<string, { token: string; fcmId?: string; deviceId?: string }>()
+      if (fcmTokens) {
+        for (const t of fcmTokens) {
+          allTokens.set(t.token, { token: t.token, fcmId: t.id })
+        }
+      }
+      if (deviceTokens) {
+        for (const d of deviceTokens) {
+          const existing = allTokens.get(d.push_token) || { token: d.push_token }
+          existing.deviceId = d.id
+          allTokens.set(d.push_token, existing)
+        }
+      }
 
-      if (fcmTokens && fcmTokens.length > 0) {
+      if (allTokens.size > 0) {
         try {
           const serviceAccount = JSON.parse(serviceAccountJson)
           const projectId = serviceAccount.project_id
           const accessToken = await getFcmAccessToken(serviceAccount)
 
-          fcmResults = await Promise.all(fcmTokens.map(async (tok) => {
+          fcmResults = await Promise.all(Array.from(allTokens.values()).map(async (tok) => {
             try {
               const res = await sendFcmNotification(
                 accessToken,
@@ -208,10 +221,11 @@ serve(async (req) => {
 
               if (!res.ok) {
                 const errData = await res.json()
-                console.error(`FCM send failed for token ${tok.id}:`, errData)
+                console.error(`FCM send failed for token ${tok.token}:`, errData)
                 // If token is invalid or inactive (404/410), clean it up
                 if (res.status === 404 || res.status === 410 || errData.error?.status === 'UNREGISTERED') {
-                  await supabaseClient.from('fcm_tokens').delete().eq('id', tok.id)
+                  if (tok.fcmId) await supabaseClient.from('fcm_tokens').delete().eq('id', tok.fcmId)
+                  if (tok.deviceId) await supabaseClient.from('devices').delete().eq('id', tok.deviceId)
                 }
                 return { type: 'fcm', token: tok.token, success: false, error: errData }
               }

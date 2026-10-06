@@ -1,0 +1,122 @@
+Viewed KAIRO_IMPLEMENTATION_PLAN.md:1-250
+Viewed KAIRO_IMPLEMENTATION_PLAN.md:245-300
+Ran command: `find src supabase -name "*notif*" -o -name "*Notif*" -o -name "*push*" 2>/dev/null`
+Viewed 20260606_module7_notifications.sql:1-200
+Viewed 20260606_module7_notifications.sql:198-214
+Viewed NotificationContext.tsx:1-200
+Viewed NotificationContext.tsx:201-311
+Viewed NotificationCenter.tsx:1-250
+Viewed NotificationCenter.tsx:250-283
+Viewed index.ts:1-200
+Viewed index.ts:201-248
+Viewed index.ts:1-150
+Viewed index.ts:151-247
+Viewed pushNotifications.ts:1-100
+Viewed schema.ts:45-45
+Viewed schema.ts:1-45
+Ran command: `ls -la supabase/migrations`
+Viewed 20260621_sharing.sql:1-108
+Ran command: `git status`
+Viewed task-190.log:1-5
+Viewed database.ts:1-100
+Searched for "notifications:"
+Ran command: `grep -rn "notifications" src/db/`
+Viewed task-199.log:1-8
+Viewed index.ts:50-80
+Viewed index.ts:380-406
+Viewed package.json:1-50
+Ran command: `npm run verify`
+Ran command: `which node || which bun || find /Users/durockkoumassi/.nvm /Users/durockkoumassi/.bun /opt/homebrew/bin /usr/local/bin -name npm 2>/dev/null`
+Ran command: `export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -1)/bin:$PATH" && which node && which npm`
+Viewed task-214.log:1-3
+Ran command: `export PATH="/usr/local/bin:$PATH" && npx tsc --noEmit`
+Viewed task-219.log
+Used tool: manage_task
+Viewed task-219.log
+Used tool: manage_task
+Created 20261005_phase_c_notification_pipeline.sql
+Used tool: manage_task
+Used tool: manage_task
+Ran command: `/usr/local/bin/node ./node_modules/typescript/bin/tsc --noEmit`
+Viewed schema.ts:30-45
+Edited schema.ts
+Viewed database.ts:980-1027
+Edited database.ts
+Created notifications.ts
+Searched for "@capacitor/push-notifications"
+Viewed useCapacitorPush.ts:1-87
+Edited useCapacitorPush.ts
+Viewed pushNotifications.ts:45-65
+Viewed pushNotifications.ts:60-80
+Edited pushNotifications.ts
+Viewed NotificationContext.tsx:100-175
+Edited NotificationContext.tsx
+Viewed NotificationCenter.tsx:1-80
+Edited NotificationCenter.tsx
+Viewed index.ts:140-200
+Viewed index.ts:180-235
+Edited index.ts
+Ran command: `export PATH="/usr/local/bin:$PATH" && npx tsc --noEmit && npx eslint src && npx vite build`
+Viewed task-275.log
+Used tool: manage_task
+Viewed task-275.log
+Ran command: `ps aux | grep -E "node|tsc|eslint|vite" | grep -v grep`
+Viewed task-283.log:1-10
+Viewed task-275.log
+Ran command: `ps aux | grep -E "eslint|vite" | grep -v grep`
+Viewed KAIRO_IMPLEMENTATION_PLAN.md:220-285
+Ran command: `ps aux | grep -E "eslint|vite" | grep -v grep`
+Viewed task-295.log:1-4
+Used tool: manage_task
+Viewed task-275.log
+Ran command: `ps aux | grep -E "eslint|vite" | grep -v grep`
+Viewed task-304.log:1-4
+Viewed KAIRO_IMPLEMENTATION_PLAN.md:220-285
+Viewed task-275.log
+Used tool: manage_task
+Ran command: `ps aux | grep -E "eslint|vite" | grep -v grep`
+Viewed task-315.log:1-4
+Used tool: manage_task
+Edited KAIRO_IMPLEMENTATION_PLAN.md
+Viewed KAIRO_IMPLEMENTATION_PLAN.md:245-275
+Edited KAIRO_IMPLEMENTATION_PLAN.md
+Ran command: `git status --short`
+
+### Phase C — Notification Core Implementation Complete
+
+We have implemented the unified event-driven notification pipeline per the [KAIRO_IMPLEMENTATION_PLAN.md](file:///Users/durockkoumassi/Life%20OS/KAIRO_IMPLEMENTATION_PLAN.md) specifications.
+
+---
+
+### What Was Built:
+
+1. **Database Schema & Pipeline Migration** ([`20261005_phase_c_notification_pipeline.sql`](file:///Users/durockkoumassi/Life%20OS/supabase/migrations/20261005_phase_c_notification_pipeline.sql)):
+   - **`notifications` Reconciliation:** Added `payload JSONB` and `read_at TIMESTAMPTZ` with a trigger (`trg_sync_notification_read`) that keeps boolean `read` and `read_at` timestamps in bidirectional sync.
+   - **`notification_preferences` Table:** Granular per-user, per-event preferences for `in_app`, `email`, and `push` with RLS.
+   - **`devices` Table:** Unified push device registry supporting `'ios'`, `'android'`, `'web'`, and `'pwa'` with unique token constraints and RLS.
+   - **`notify(user_id, event_type, payload)` Dispatcher:** Database function that validates user preferences against catalog defaults and automatically writes in-app notifications.
+   - **Domain Triggers:**
+     - `project.member_joined` emitted when project invite status transitions to `'accepted'`.
+     - `share.invited` emitted when new collaboration items are assigned to a recipient.
+     - `finance.budget_warning` migrated to emit with structured spending & budget payload.
+
+2. **Event Catalog & Client API** ([`notifications.ts`](file:///Users/durockkoumassi/Life%20OS/src/lib/notifications.ts)):
+   - Defined `EVENT_CATALOG` with default channels for all C2 events (`project.member_joined`, `share.invited`, `friend.request_received`, `friend.request_accepted`, `note.shared`, `book.recommended`, `finance.budget_warning`, `task.reminder`).
+   - Helpers: `getMergedNotificationPreferences()`, `updateNotificationPreference()`, `registerDeviceToken()`, `unregisterDeviceToken()`, and `sendNotification()`.
+
+3. **In-App Delivery & UI** ([`NotificationCenter.tsx`](file:///Users/durockkoumassi/Life%20OS/src/components/notifications/NotificationCenter.tsx), [`NotificationContext.tsx`](file:///Users/durockkoumassi/Life%20OS/src/contexts/NotificationContext.tsx)):
+   - Added tailored icons, backgrounds, and styling badges for all C2 event types.
+   - Updated `markAsRead` and `markAllAsRead` mutations to record `read_at` timestamps locally in Dexie and sync to Supabase.
+
+4. **Multi-Platform Push Integration** ([`useCapacitorPush.ts`](file:///Users/durockkoumassi/Life%20OS/src/hooks/useCapacitorPush.ts), [`pushNotifications.ts`](file:///Users/durockkoumassi/Life%20OS/src/lib/pushNotifications.ts), [`send-push/index.ts`](file:///Users/durockkoumassi/Life%20OS/supabase/functions/send-push/index.ts)):
+   - Web/PWA and native Capacitor push registrations automatically sync to the `devices` table.
+   - `send-push` Edge function queries both `devices` and legacy token tables, with automatic cleanup of deactivated/stale tokens (404/410/UNREGISTERED).
+
+5. **Type Safety** ([`schema.ts`](file:///Users/durockkoumassi/Life%20OS/src/db/schema.ts), [`database.ts`](file:///Users/durockkoumassi/Life%20OS/src/types/database.ts)):
+   - Strongly typed `Notification`, `NotificationPreference`, and `Device` tables and models.
+
+---
+
+### Suggested Next Steps:
+- Apply the migration in your Supabase project: `supabase db push` or execute [`20261005_phase_c_notification_pipeline.sql`](file:///Users/durockkoumassi/Life%20OS/supabase/migrations/20261005_phase_c_notification_pipeline.sql) in the Supabase SQL Editor.
+- Proceed to **Phase D (Projects Redesign)**, the first direct consumer of the `project.member_joined` notification event!

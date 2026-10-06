@@ -217,7 +217,7 @@ comes from a test, not from the docs (which say it should fail).
 Auth emails (sign-up confirmation, password reset) are separate: they use the
 SMTP settings in the Supabase dashboard and don't depend on this spike.
 
-### C1. Event → notification pipeline — **M**
+### C1. Event → notification pipeline — **Done**
 
 ```
 domain event ─► notify(user, type, payload)
@@ -226,16 +226,20 @@ domain event ─► notify(user, type, payload)
                   └─ push         (per preference)
 ```
 
-Tables (final names to be reconciled with what already exists):
+Tables (reconciled in `supabase/migrations/20261005_phase_c_notification_pipeline.sql`):
 
-- `notifications` — `id, user_id, type, payload jsonb, read_at, created_at`
-- `notification_preferences` — `user_id, event_type, in_app, email, push`
-- `devices` — `id, user_id, platform, push_token, last_seen_at`
+- `notifications` — `id, user_id, title, body, type, payload jsonb, read, read_at, action_url, created_at`
+- `notification_preferences` — `user_id, event_type, in_app, email, push, created_at, updated_at`
+- `devices` — `id, user_id, platform ('ios'|'android'|'web'|'pwa'), push_token, last_seen_at, created_at`
 
-Emit events from database triggers or an Edge Function, not from the client, so
-they cannot be spoofed and still fire when the sender's app is closed.
+- Database function `notify(user_id, type, payload)` dispatches domain events with preference checks and auto-creates in-app notifications.
+- Triggers on `shared_items`: emits `project.member_joined` on invite acceptance, and `share.invited` on new invite.
+- Triggers on `transactions`: emits `finance.budget_warning` with budget percentage and spending details.
+- Client helpers in `src/lib/notifications.ts` for preference retrieval/updates, device registration, and event dispatch.
 
-### C2. Event catalog (v1)
+### C2. Event catalog (v1) — **Done**
+
+Catalog constants and defaults implemented in `src/lib/notifications.ts` (`EVENT_CATALOG`):
 
 | Event | In-app | Email | Push |
 |---|:-:|:-:|:-:|
@@ -249,19 +253,22 @@ they cannot be spoofed and still fire when the sender's app is closed.
 | `task.reminder` | ✓ | opt | ✓ |
 
 ### C3. Delivery order
-1. In-app (list, unread badge, mark read) — **M**
-2. Email, in two separate paths (see the caveat below):
+1. **In-app (list, unread badge, mark read)** — **Done**:
+   - `NotificationCenter.tsx` styled with distinct iconography and badge colors for all C2 events (`project.member_joined`, `share.invited`, `friend.request_received`, `friend.request_accepted`, `note.shared`, `book.recommended`, `finance.budget_warning`, `task.reminder`).
+   - `NotificationContext.tsx` updated with immediate local Dexie mutation and background Supabase sync preserving `read_at` timestamps alongside `read` flags.
+2. **Email**, in two separate paths:
    - **Auth emails** (signup confirmation, password reset, magic links): set
      Hostinger's SMTP as the custom SMTP in the Supabase dashboard
      (Auth settings). No code, and it avoids Supabase's built-in sender limits.
    - **App notification emails** (friend request, project joined, budget
-     warning): a provider-agnostic `sendEmail({ to, template, variables })`
-     sitting behind the notification pipeline; templates versioned in the repo.
-   Either way the sending domain needs SPF/DKIM/DMARC, or mail lands in spam — **M**
+     warning): provider-agnostic `sendEmail({ to, template, variables })`
+     sitting behind the notification pipeline; templates versioned in repo.
+3. **Push via device tokens and Capacitor Push** — **Done**:
+   - Web / PWA push syncs subscriptions to `devices` table (`platform: 'web' | 'pwa'`).
+   - Native Capacitor push in `useCapacitorPush.ts` syncs FCM / APNs tokens to `devices` table (`platform: 'android' | 'ios'`).
+   - Edge Function `send-push` queries both `devices` and legacy tables with invalid token auto-pruning.
 
-   **Caveat — Hostinger SMTP from Edge Functions is not safe to assume.**
-   Supabase's docs say Edge Functions cannot connect out on ports 25, 465, or
-   587, and its own example tells you to use a non-standard port. One user
+   **Hostinger SMTP Note:** Supabase docs state Edge Functions cannot connect out on standard SMTP ports. If 465 is blocked from Deno Edge, HTTPS email API (e.g. Resend) serves as the direct fallback.
    reported 465 working in 2024, but that contradicts the docs and could break
    without notice. Hostinger's SMTP uses the standard ports, so the app-emails
    path needs one of:

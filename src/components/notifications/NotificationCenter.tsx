@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '../../hooks/useNotifications'
 import {
   Bell, Sun, Moon, CheckSquare, Flame, AlertTriangle,
-  Trophy, CalendarDays, Check, Circle, Sparkles, X
+  Trophy, CalendarDays, Check, Circle, Sparkles, X,
+  FolderGit2, UserPlus, UserCheck, Share2, BookOpen, Clock
 } from 'lucide-react'
 import { formatDistanceToNow, isToday, isYesterday } from 'date-fns'
 import clsx from 'clsx'
@@ -11,6 +12,55 @@ import clsx from 'clsx'
 // Helper to map notification type to icon and colors
 const getNotificationMeta = (type: string) => {
   switch (type) {
+    case 'project.member_joined':
+      return {
+        icon: FolderGit2,
+        bgColor: 'bg-primary/10 border-primary/20',
+        iconColor: 'text-primary'
+      }
+    case 'share.invited':
+      return {
+        icon: UserPlus,
+        bgColor: 'bg-accent/10 border-accent/20',
+        iconColor: 'text-accent'
+      }
+    case 'friend.request_received':
+      return {
+        icon: UserPlus,
+        bgColor: 'bg-info/10 border-info/20',
+        iconColor: 'text-info'
+      }
+    case 'friend.request_accepted':
+      return {
+        icon: UserCheck,
+        bgColor: 'bg-success/10 border-success/20',
+        iconColor: 'text-success'
+      }
+    case 'note.shared':
+      return {
+        icon: Share2,
+        bgColor: 'bg-amber-500/10 border-amber-500/20',
+        iconColor: 'text-amber-500'
+      }
+    case 'book.recommended':
+      return {
+        icon: BookOpen,
+        bgColor: 'bg-purple-500/10 border-purple-500/20',
+        iconColor: 'text-purple-500'
+      }
+    case 'finance.budget_warning':
+    case 'budget_alert':
+      return {
+        icon: AlertTriangle,
+        bgColor: 'bg-danger/15 border-danger/30',
+        iconColor: 'text-danger'
+      }
+    case 'task.reminder':
+      return {
+        icon: Clock,
+        bgColor: 'bg-accent/10 border-accent/20',
+        iconColor: 'text-accent'
+      }
     case 'morning_reminder':
       return {
         icon: Sun,
@@ -40,12 +90,6 @@ const getNotificationMeta = (type: string) => {
         icon: Flame,
         bgColor: 'bg-orange-500/10 border-orange-500/20',
         iconColor: 'text-orange-500'
-      }
-    case 'budget_alert':
-      return {
-        icon: AlertTriangle,
-        bgColor: 'bg-danger/15 border-danger/30',
-        iconColor: 'text-danger'
       }
     case 'goal_milestone':
       return {

@@ -45,14 +45,25 @@ export async function subscribeToPush(userId: string): Promise<PushResult> {
     })
 
     const subJson = sub.toJSON()
+    const isPwa = window.matchMedia('(display-mode: standalone)').matches
+    const platform = isPwa ? 'pwa' : 'web'
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sbAny = supabase as any
-    await sbAny.from('push_subscriptions').upsert({
-      user_id: userId,
-      endpoint: subJson.endpoint,
-      keys: subJson.keys,
-      user_agent: navigator.userAgent,
-    }, { onConflict: 'endpoint' })
+    await Promise.allSettled([
+      sbAny.from('push_subscriptions').upsert({
+        user_id: userId,
+        endpoint: subJson.endpoint,
+        keys: subJson.keys,
+        user_agent: navigator.userAgent,
+      }, { onConflict: 'endpoint' }),
+      sbAny.from('devices').upsert({
+        user_id: userId,
+        platform,
+        push_token: subJson.endpoint,
+        last_seen_at: new Date().toISOString()
+      }, { onConflict: 'user_id,push_token' })
+    ])
 
     return { ok: true }
   } catch (e) {
@@ -68,10 +79,16 @@ export async function unsubscribeFromPush(userId: string): Promise<void> {
     if (sub) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sbAny = supabase as any
-      await sbAny.from('push_subscriptions')
-        .delete()
-        .eq('user_id', userId)
-        .eq('endpoint', sub.endpoint)
+      await Promise.allSettled([
+        sbAny.from('push_subscriptions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('endpoint', sub.endpoint),
+        sbAny.from('devices')
+          .delete()
+          .eq('user_id', userId)
+          .eq('push_token', sub.endpoint)
+      ])
       await sub.unsubscribe()
     }
   } catch (e) {

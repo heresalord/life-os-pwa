@@ -1015,6 +1015,108 @@ export interface Database {
         Relationships: []
       }
 
+      // ── notifications ─────────────────────────────────────────────────────
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          body: string
+          type: string
+          read: boolean
+          read_at: string | null
+          action_url: string | null
+          payload: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          body: string
+          type: string
+          read?: boolean
+          read_at?: string | null
+          action_url?: string | null
+          payload?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          body?: string
+          type?: string
+          read?: boolean
+          read_at?: string | null
+          action_url?: string | null
+          payload?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── notification_preferences ──────────────────────────────────────────
+      notification_preferences: {
+        Row: {
+          user_id: string
+          event_type: string
+          in_app: boolean
+          email: boolean
+          push: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          event_type: string
+          in_app?: boolean
+          email?: boolean
+          push?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          event_type?: string
+          in_app?: boolean
+          email?: boolean
+          push?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── devices ───────────────────────────────────────────────────────────
+      devices: {
+        Row: {
+          id: string
+          user_id: string
+          platform: 'ios' | 'android' | 'web' | 'pwa'
+          push_token: string
+          last_seen_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          platform: 'ios' | 'android' | 'web' | 'pwa'
+          push_token: string
+          last_seen_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          platform?: 'ios' | 'android' | 'web' | 'pwa'
+          push_token?: string
+          last_seen_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+
     }
 
     // Supabase client requires these sections even if unused

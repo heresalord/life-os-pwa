@@ -99,10 +99,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const markAsRead = useMutation({
     mutationFn: async (id: string) => {
+      const nowIso = new Date().toISOString()
       // 1. Always update Dexie immediately (instant UI feedback)
       const local = await db.notifications.get(id)
       if (local) {
-        await db.notifications.put({ ...local, read: true })
+        await db.notifications.put({ ...local, read: true, read_at: nowIso })
       }
 
       // 2. Try to sync to Supabase; if it fails queue it for later
@@ -110,7 +111,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         try {
           const { error } = await (supabase as any)
             .from('notifications')
-            .update({ read: true })
+            .update({ read: true, read_at: nowIso })
             .eq('id', id)
           if (error) throw error
         } catch (err) {
@@ -119,7 +120,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             id: crypto.randomUUID(),
             table: 'notifications',
             operation: 'update' as const,
-            payload: { id, read: true },
+            payload: { id, read: true, read_at: nowIso },
             created_at: Date.now(),
             retries: 0,
             synced: false
@@ -131,7 +132,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           id: crypto.randomUUID(),
           table: 'notifications',
           operation: 'update' as const,
-          payload: { id, read: true },
+          payload: { id, read: true, read_at: nowIso },
           created_at: Date.now(),
           retries: 0,
           synced: false
@@ -148,12 +149,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const markAllAsRead = useMutation({
     mutationFn: async () => {
       if (!user) return
+      const nowIso = new Date().toISOString()
 
       // 1. Always update all unread in Dexie immediately
       const allLocal = await db.notifications.toArray()
       const toUpdate = allLocal.filter(n => !n.read)
       for (const notif of toUpdate) {
-        await db.notifications.put({ ...notif, read: true })
+        await db.notifications.put({ ...notif, read: true, read_at: nowIso })
       }
 
       // 2. Try to sync to Supabase; if it fails queue each for later
@@ -161,7 +163,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         try {
           const { error } = await (supabase as any)
             .from('notifications')
-            .update({ read: true })
+            .update({ read: true, read_at: nowIso })
             .eq('user_id', user.id)
             .eq('read', false)
           if (error) throw error
@@ -172,7 +174,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               id: crypto.randomUUID(),
               table: 'notifications',
               operation: 'update' as const,
-              payload: { id: notif.id, read: true },
+              payload: { id: notif.id, read: true, read_at: nowIso },
               created_at: Date.now(),
               retries: 0,
               synced: false
@@ -186,7 +188,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             id: crypto.randomUUID(),
             table: 'notifications',
             operation: 'update' as const,
-            payload: { id: notif.id, read: true },
+            payload: { id: notif.id, read: true, read_at: nowIso },
             created_at: Date.now(),
             retries: 0,
             synced: false

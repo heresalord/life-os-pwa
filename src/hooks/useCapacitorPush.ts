@@ -35,22 +35,33 @@ export function useCapacitorPush(userId: string | undefined) {
         
         try {
           const platform = Capacitor.getPlatform() // 'android' or 'ios'
-          const { error } = await (supabase as any)
-            .from('fcm_tokens')
-            .upsert(
-              {
-                user_id: userId,
-                token: token.value,
-                device: platform,
-              },
-              { onConflict: 'token' }
-            )
+          const devicePlatform = platform === 'ios' ? 'ios' : 'android'
           
-          if (error) {
-            console.error('[FCM] Failed to sync FCM token to Supabase:', error)
-          } else {
-            console.log('[FCM] FCM token synced to Supabase')
-          }
+          await Promise.allSettled([
+            (supabase as any)
+              .from('fcm_tokens')
+              .upsert(
+                {
+                  user_id: userId,
+                  token: token.value,
+                  device: platform,
+                },
+                { onConflict: 'token' }
+              ),
+            (supabase as any)
+              .from('devices')
+              .upsert(
+                {
+                  user_id: userId,
+                  platform: devicePlatform,
+                  push_token: token.value,
+                  last_seen_at: new Date().toISOString()
+                },
+                { onConflict: 'user_id,push_token' }
+              )
+          ])
+
+          console.log('[FCM] FCM token synced to Supabase devices & fcm_tokens')
         } catch (dbErr) {
           console.error('[FCM] Exception saving FCM token:', dbErr)
         }

@@ -38,7 +38,28 @@ export interface Notification {
   body: string
   type: string
   read: boolean
+  read_at?: string | null
   action_url: string | null
+  payload?: Record<string, any> | null
   created_at: string
+}
+
+export interface NotificationPreference {
+  user_id: string
+  event_type: string
+  in_app: boolean
+  email: boolean
+  push: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface Device {
+  id: string
+  user_id: string
+  platform: 'ios' | 'android' | 'web' | 'pwa'
+  push_token: string
+  last_seen_at?: string
+  created_at?: string
 }
 
