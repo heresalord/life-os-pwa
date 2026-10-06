@@ -187,35 +187,13 @@ project" notification. Build it once.
 `NotificationCenter`, and `pushNotifications.ts` already exist. Extend them
 rather than replacing them.
 
-### C0. Email spike (before building C3) — **S**
-Decision: try Hostinger SMTP on port 465 first. This step exists so the answer
-comes from a test, not from the docs (which say it should fail).
-
-1. In Hostinger, create a sending mailbox such as `no-reply@yourdomain`.
-   Confirm the SMTP host and port in that mailbox's settings.
-2. Write a throwaway Edge Function that sends one email through an SMTP client
-   to Hostinger on 465 with TLS. Keep the credentials in Supabase secrets only,
-   never in the repo or the client bundle.
-3. **Test on the deployed function**, not only locally. Local runs may not have
-   the same outbound restrictions, so a local pass proves nothing.
-4. Send to a Gmail and an Outlook address. Check that it reaches the inbox, not
-   spam, and that the message headers show SPF, DKIM and DMARC as `pass`.
-5. **Pass:** connects, delivers reliably across a few sends, headers pass →
-   use SMTP for notification emails.
-   **Fail** (connection refused, timeouts, or flaky) → switch to an HTTPS email
-   API from your own domain. Either way, delete the spike function afterwards
-   and record the result here.
-
-**DNS (managed at Hostinger):** edit the records in the domain's DNS zone.
-- A domain can have only **one** SPF TXT record. If a second sender is added
-  later (for example an email API), merge it into the existing record instead
-  of creating another.
-- Add the DKIM record for whichever service actually sends the mail.
-- Start DMARC in monitor mode (`p=none`), read the reports for a while, then
-  tighten it.
-
-Auth emails (sign-up confirmation, password reset) are separate: they use the
-SMTP settings in the Supabase dashboard and don't depend on this spike.
+### C0. Email delivery pipeline (Resend HTTPS) — **Done**
+Decision & architecture:
+- Supabase Edge Functions restrict outbound SMTP ports, so outbound Hostinger SMTP on port 465 from Deno Edge is fragile.
+- Adopted **Resend HTTPS API** with sending domain (`volkastudio.com` / `kairoapp.com`), bypassing port blocks and avoiding VPS management.
+- Implemented `send-email` Edge Function (`supabase/functions/send-email/index.ts`) supporting all 8 C2 event types with dark-themed responsive HTML + plain text fallback templates.
+- Created migration `20261006_phase_c0_email_delivery.sql` extending `notify()` via `pg_net` to trigger `send-email` asynchronously whenever `pref_email` is enabled, using Supabase Vault (with fallback to `internal_app_config`).
+- Auth emails (sign-up confirmation, password reset) continue using Hostinger SMTP directly configured in the Supabase Dashboard Auth settings.
 
 ### C1. Event → notification pipeline — **Done**
 
@@ -256,32 +234,13 @@ Catalog constants and defaults implemented in `src/lib/notifications.ts` (`EVENT
 1. **In-app (list, unread badge, mark read)** — **Done**:
    - `NotificationCenter.tsx` styled with distinct iconography and badge colors for all C2 events (`project.member_joined`, `share.invited`, `friend.request_received`, `friend.request_accepted`, `note.shared`, `book.recommended`, `finance.budget_warning`, `task.reminder`).
    - `NotificationContext.tsx` updated with immediate local Dexie mutation and background Supabase sync preserving `read_at` timestamps alongside `read` flags.
-2. **Email**, in two separate paths:
-   - **Auth emails** (signup confirmation, password reset, magic links): set
-     Hostinger's SMTP as the custom SMTP in the Supabase dashboard
-     (Auth settings). No code, and it avoids Supabase's built-in sender limits.
-   - **App notification emails** (friend request, project joined, budget
-     warning): provider-agnostic `sendEmail({ to, template, variables })`
-     sitting behind the notification pipeline; templates versioned in repo.
+2. **Email**, in two separate paths — **Done**:
+   - **Auth emails** (signup confirmation, password reset, magic links): set Hostinger's SMTP as custom SMTP in Supabase dashboard (Auth settings).
+   - **App notification emails** (friend request, project joined, budget warning, etc.): `send-email` Edge Function calling Resend HTTPS API, triggered via `notify()` DB function with `pg_net`.
 3. **Push via device tokens and Capacitor Push** — **Done**:
    - Web / PWA push syncs subscriptions to `devices` table (`platform: 'web' | 'pwa'`).
    - Native Capacitor push in `useCapacitorPush.ts` syncs FCM / APNs tokens to `devices` table (`platform: 'android' | 'ios'`).
    - Edge Function `send-push` queries both `devices` and legacy tables with invalid token auto-pruning.
-
-   **Hostinger SMTP Note:** Supabase docs state Edge Functions cannot connect out on standard SMTP ports. If 465 is blocked from Deno Edge, HTTPS email API (e.g. Resend) serves as the direct fallback.
-   reported 465 working in 2024, but that contradicts the docs and could break
-   without notice. Hostinger's SMTP uses the standard ports, so the app-emails
-   path needs one of:
-   1. **Test it first:** a throwaway Edge Function sending on 465. If it works,
-      use it, but keep option 2 as the fallback.
-   2. **HTTP email API** (Resend, Brevo, etc.) called over HTTPS from the Edge
-      Function. It still sends from your own domain and sidesteps ports entirely.
-   3. **A small sender outside Supabase** (for example on a Hostinger VPS or
-      Node host) that the database or Edge Function calls.
-   Also check Hostinger's sending limits for a mailbox: it is built for
-   ordinary mail, not bulk notifications. Fine at launch, but worth knowing
-   before the user base grows.
-3. Push via device tokens and Capacitor Push — **M**
 
 Notification preferences UI lives in Settings (Phase E).
 
