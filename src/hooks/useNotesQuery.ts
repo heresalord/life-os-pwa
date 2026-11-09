@@ -14,6 +14,7 @@ export function useNotesQuery(date?: string) {
     queryKey: QK.notes(date, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       // updated_at is not a Dexie index — always fetch all and sort in JS
       const all = await (date
@@ -44,7 +45,14 @@ export function useNotesQuery(date?: string) {
             const localOnly = localNotes.filter(n => !serverIdSet.has(n.id))
             const serverWithPreserved = (data as Note[]).map(serverNote => {
               const local = localMap.get(serverNote.id)
-              if (local && (local as any).pin_hash && !(serverNote as any).pin_hash) {
+              if (!local) return serverNote
+              // Phase 0.5: Skip server row when local row has a newer updated_at
+              const localTime = new Date(local.updated_at).getTime()
+              const serverTime = new Date(serverNote.updated_at).getTime()
+              if (localTime > serverTime) {
+                return local
+              }
+              if ((local as any).pin_hash && !(serverNote as any).pin_hash) {
                 return { ...serverNote, pin_hash: (local as any).pin_hash }
               }
               return serverNote

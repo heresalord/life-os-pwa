@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useUserSettings } from '../../hooks/useUserSettings'
-import { exportAllDataToJson, exportTableCSV } from '../../lib/exportUtils'
+import { exportAllDataToJson, exportTableCSV, importAllDataFromJson } from '../../lib/exportUtils'
 import { useDb } from '../../db/DbContext'
 import { useAppStore } from '../../store/useAppStore'
 import { ALL_NAV_OPTIONS } from '../../lib/constants'
 import { useTranslation } from '../../i18n'
 import { haptic } from '../../lib/haptic'
+import { useSyncStore } from '../../store/useSyncStore'
+import { retryBlockedItems, exportOfflineQueue } from '../../lib/sync'
 import {
   User,
   Palette,
@@ -35,6 +37,7 @@ import {
   Globe,
   ShieldCheck,
   Key,
+  RefreshCw,
 } from 'lucide-react'
 import { ACCENT_PRESETS, type AccentPreset } from '../../lib/colorUtils'
 import {
@@ -374,6 +377,8 @@ export function SettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
   const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false)
+  const { isOnline, isSyncing, pendingCount, blockedCount, lastError } = useSyncStore()
+  const [retryingSync, setRetryingSync] = useState(false)
 
   // ── Profile
   const [displayName, setDisplayName] = useState('')
@@ -620,6 +625,10 @@ export function SettingsPage() {
       ]
       if (!knownKeys.some(k => k in parsed))
         throw new Error("Doesn't look like a valid Kairo backup file.")
+
+      // 1. Restore locally into Dexie first (instant local availability)
+      await importAllDataFromJson(db, parsed, user.id)
+
       const transformed = transformPayload(parsed, user.id)
       let totalImported = 0
       const warnings: string[] = []
@@ -1389,6 +1398,78 @@ export function SettingsPage() {
 
   const renderData = () => (
     <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Sync Diagnostics (Phase 0.5) */}
+      <SectionGroup title="Sync Diagnostics">
+        <div className="p-4 sm:p-5 space-y-4">
+          <p className="text-xs text-text-muted leading-relaxed">
+            Status of offline write queues and synchronization with the server.
+          </p>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="p-3 bg-surface-2 border border-border/80 rounded-xl text-center">
+              <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider block">Network</span>
+              <span className={clsx("text-xs font-semibold mt-1 inline-flex items-center gap-1.5", isOnline ? "text-success" : "text-text-muted")}>
+                <span className={clsx("w-2 h-2 rounded-full", isOnline ? "bg-success" : "bg-text-muted")} />
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+
+            <div className="p-3 bg-surface-2 border border-border/80 rounded-xl text-center">
+              <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider block">Pending</span>
+              <span className="text-xs font-semibold text-text mt-1 block tabular-nums">
+                {pendingCount} item{pendingCount === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            <div className="p-3 bg-surface-2 border border-border/80 rounded-xl text-center">
+              <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider block">Blocked</span>
+              <span className={clsx("text-xs font-semibold mt-1 block tabular-nums", blockedCount > 0 ? "text-danger" : "text-text")}>
+                {blockedCount} item{blockedCount === 1 ? '' : 's'}
+              </span>
+            </div>
+          </div>
+
+          {lastError && (
+            <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-xs text-danger space-y-1">
+              <span className="font-semibold block">Last Sync Error:</span>
+              <p className="font-mono text-[11px] break-all">{lastError}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              disabled={retryingSync || isSyncing}
+              onClick={async () => {
+                haptic('light')
+                setRetryingSync(true)
+                try {
+                  await retryBlockedItems()
+                } finally {
+                  setRetryingSync(false)
+                }
+              }}
+              className="flex items-center justify-center gap-2 py-2.5 bg-accent text-bg font-semibold rounded-xl text-xs hover:bg-accent-dim active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw size={13} className={clsx((retryingSync || isSyncing) && "animate-spin")} />
+              <span>Retry now</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                haptic('light')
+                exportOfflineQueue()
+              }}
+              className="flex items-center justify-center gap-2 py-2.5 bg-surface-2 text-text font-semibold rounded-xl text-xs hover:bg-surface-3 border border-border/80 active:scale-95 transition-all cursor-pointer"
+            >
+              <Download size={13} />
+              <span>Export queue</span>
+            </button>
+          </div>
+        </div>
+      </SectionGroup>
+
       {/* Export Group */}
       <SectionGroup title="Data Export">
         <div className="p-4 sm:p-5 space-y-3">

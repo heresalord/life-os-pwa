@@ -14,6 +14,7 @@ export function useInboxQuery(processedOnly = false) {
     queryKey: QK.inbox(processedOnly, user?.id ?? ''),
     enabled: !!user,
     staleTime: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const local = await db.inbox_items
         .where('processed').equals(processedOnly ? 1 : 0)

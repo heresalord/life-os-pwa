@@ -2,69 +2,165 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { App as CapacitorApp } from '@capacitor/app'
 
+export interface DraftEnvelope {
+  value: string
+  baseUpdatedAt?: string | null
+}
+
+export interface UseDraftOptions {
+  enabled?: boolean
+  baseUpdatedAt?: string | null
+}
+
+export interface UseDraftMeta {
+  isDirty: boolean
+  hasDraft: boolean
+  discardDraft: () => void
+  reset: (newValue?: string) => void
+}
+
+/**
+ * Helper to parse a draft from localStorage.
+ * Handles both the new { value, baseUpdatedAt } envelope and legacy raw strings.
+ */
+function parseStoredDraft(
+  key: string,
+  initial: string,
+  baseUpdatedAt?: string | null
+): { value: string; hasDraft: boolean } {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw === null) return { value: initial, hasDraft: false }
+
+    let parsedVal: string | null = null
+    let parsedBase: string | null | undefined = undefined
+
+    try {
+      const obj = JSON.parse(raw)
+      if (obj && typeof obj === 'object' && typeof obj.value === 'string') {
+        parsedVal = obj.value
+        parsedBase = obj.baseUpdatedAt
+      }
+    } catch {
+      // Legacy raw string format
+      parsedVal = raw
+    }
+
+    if (parsedVal === null) return { value: initial, hasDraft: false }
+
+    // If caller provided baseUpdatedAt (e.g. note editing):
+    // Stale draft check: draft is only offered if baseUpdatedAt matches exactly
+    if (baseUpdatedAt !== undefined) {
+      if (parsedBase !== baseUpdatedAt || !parsedVal.trim() || parsedVal === initial) {
+        // Discard stale or redundant draft
+        try { localStorage.removeItem(key) } catch { /* ignore */ }
+        return { value: initial, hasDraft: false }
+      }
+      return { value: parsedVal, hasDraft: true }
+    }
+
+    // For non-versioned drafts (inbox capture, wizard inputs):
+    if (parsedVal !== initial && parsedVal.trim()) {
+      return { value: parsedVal, hasDraft: true }
+    }
+
+    return { value: initial, hasDraft: false }
+  } catch {
+    return { value: initial, hasDraft: false }
+  }
+}
+
 /**
  * useDraft — persist in-progress text to localStorage so it survives
  * WebView reclaim, force-quit, and SW-triggered page reloads.
  *
- * Usage:
- *   const [value, setValue] = useDraft('draft:uid:2026-09-28:morning-journal', '')
- *
- * The hook:
- *   - Restores the saved draft on mount (returns saved value as the initial state).
- *   - Writes debounced (~300 ms) on every change.
- *   - Flushes immediately on visibilitychange → hidden, pagehide, and
- *     Capacitor appStateChange → inactive.
- *   - Exposes `clearDraft()` for callers to call after a successful save or
- *     explicit discard.
- *
- * @param key     Unique storage key. Must be stable across remounts.
- *                Recommended format: `draft:<uid>:<YYYY-MM-DD>:<surface>`.
- * @param initial Fallback value when no draft is stored.
- * @param enabled Set to false to skip all storage reads/writes (e.g. for
- *                locked notes, non-editable views). Defaults to true.
+ * Requirements (Phase 0.3):
+ * 1. Stored as { value, baseUpdatedAt }.
+ * 2. Only writes when user actually edited (isDirty flag). Backgrounding with no edits writes nothing.
+ * 3. Keyed: resets internal value and isDirty flag on key change. Never writes note A's text under note B's key.
+ * 4. Stale drafts are discarded on open if baseUpdatedAt !== note.updated_at.
+ * 5. Returns tuple [value, setValue, clearDraft, meta] preserving backwards compatibility.
  */
 export function useDraft(
   key: string,
   initial: string,
-  { enabled = true }: { enabled?: boolean } = {}
-): [string, (action: string | ((prev: string) => string)) => void, () => void] {
-  // ── Initialise from cache on first render ────────────────────────────────
-  const [value, setValueRaw] = useState<string>(() => {
-    if (!enabled) return initial
-    try {
-      const stored = localStorage.getItem(key)
-      return stored !== null ? stored : initial
-    } catch {
-      return initial
-    }
+  options: UseDraftOptions = {}
+): [string, (action: string | ((prev: string) => string)) => void, () => void, UseDraftMeta] {
+  const { enabled = true, baseUpdatedAt } = options
+
+  // Initial state derived from storage if valid
+  const [{ value, hasDraft }, setState] = useState(() => {
+    if (!enabled) return { value: initial, hasDraft: false }
+    return parseStoredDraft(key, initial, baseUpdatedAt)
   })
 
-  const valueRef      = useRef(value)
-  const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const enabledRef    = useRef(enabled)
-  const keyRef        = useRef(key)
+  const [isDirty, setIsDirty] = useState(false)
 
-  // Keep refs in sync
-  useEffect(() => { valueRef.current = value },   [value])
+  const valueRef = useRef(value)
+  const isDirtyRef = useRef(isDirty)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const enabledRef = useRef(enabled)
+  const keyRef = useRef(key)
+  const baseUpdatedAtRef = useRef(baseUpdatedAt)
+  const initialRef = useRef(initial)
+
+  useEffect(() => { valueRef.current = value }, [value])
+  useEffect(() => { isDirtyRef.current = isDirty }, [isDirty])
   useEffect(() => { enabledRef.current = enabled }, [enabled])
-  useEffect(() => { keyRef.current = key },         [key])
+  useEffect(() => { baseUpdatedAtRef.current = baseUpdatedAt }, [baseUpdatedAt])
+  useEffect(() => { initialRef.current = initial }, [initial])
 
-  // ── Flush helper — writes the current value immediately ─────────────────
+  // ── Flush helper — writes ONLY when dirty and enabled ────────────────────
   const flush = useCallback(() => {
-    if (!enabledRef.current) return
+    if (!enabledRef.current || !isDirtyRef.current) return
     try {
-      localStorage.setItem(keyRef.current, valueRef.current)
+      const envelope: DraftEnvelope = {
+        value: valueRef.current,
+        baseUpdatedAt: baseUpdatedAtRef.current ?? null,
+      }
+      localStorage.setItem(keyRef.current, JSON.stringify(envelope))
     } catch {
-      // Storage full / private-mode restriction — not fatal
+      // Storage full or private mode — non-fatal
     }
   }, [])
 
-  // ── Debounced write on every state change ────────────────────────────────
+  // ── Re-keying: reset state when key or baseUpdatedAt changes ────────────
+  const prevKeyRef = useRef(key)
+  const prevBaseRef = useRef(baseUpdatedAt)
+
+  useEffect(() => {
+    if (prevKeyRef.current !== key || prevBaseRef.current !== baseUpdatedAt) {
+      // Key or note version changed
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+      prevKeyRef.current = key
+      prevBaseRef.current = baseUpdatedAt
+      keyRef.current = key
+
+      // Reset dirty flag
+      setIsDirty(false)
+      isDirtyRef.current = false
+
+      if (!enabled) {
+        setState({ value: initial, hasDraft: false })
+      } else {
+        const next = parseStoredDraft(key, initial, baseUpdatedAt)
+        setState(next)
+      }
+    }
+  }, [key, baseUpdatedAt, enabled, initial])
+
+  // ── Debounced write on user edit ─────────────────────────────────────────
   const setValue = useCallback((action: string | ((prev: string) => string)) => {
-    setValueRaw(prev => {
-      const next = typeof action === 'function' ? action(prev) : action
-      valueRef.current = next
-      return next
+    setIsDirty(true)
+    isDirtyRef.current = true
+
+    setState(prev => {
+      const nextVal = typeof action === 'function' ? action(prev.value) : action
+      valueRef.current = nextVal
+      return { value: nextVal, hasDraft: true }
     })
 
     if (!enabledRef.current) return
@@ -114,9 +210,14 @@ export function useDraft(
     }
   }, [])
 
-  // ── clearDraft — call after a successful save or discard ─────────────────
+  // ── clearDraft — call after successful save ─────────────────────────────
   const clearDraft = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current)
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    setIsDirty(false)
+    isDirtyRef.current = false
     try {
       localStorage.removeItem(keyRef.current)
     } catch {
@@ -124,5 +225,24 @@ export function useDraft(
     }
   }, [])
 
-  return [value, setValue, clearDraft]
+  // ── discardDraft — revert to initial value and delete storage ────────────
+  const discardDraft = useCallback(() => {
+    clearDraft()
+    setState({ value: initialRef.current, hasDraft: false })
+  }, [clearDraft])
+
+  // ── reset — programmatically set clean value ─────────────────────────────
+  const reset = useCallback((newValue?: string) => {
+    clearDraft()
+    setState({ value: newValue ?? initialRef.current, hasDraft: false })
+  }, [clearDraft])
+
+  const meta: UseDraftMeta = {
+    isDirty,
+    hasDraft,
+    discardDraft,
+    reset,
+  }
+
+  return [value, setValue, clearDraft, meta]
 }

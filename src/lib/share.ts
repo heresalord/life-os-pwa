@@ -23,7 +23,10 @@ export async function createShareCode(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Authentication required to share items')
 
-  const rand = Math.random().toString(36).substring(2, 8).toUpperCase()
+  // Cryptographically secure code generation (Phase 0.6)
+  const bytes = new Uint8Array(6)
+  crypto.getRandomValues(bytes)
+  const rand = Array.from(bytes, b => (b % 36).toString(36)).join('').toUpperCase()
   const code = `SHARE-${rand}`
 
   const { error } = await supabase
@@ -53,6 +56,19 @@ export async function redeemShareCode(code: string): Promise<SharedItem> {
   if (!user) throw new Error('Authentication required to redeem share codes')
 
   const cleanCode = code.trim().toUpperCase()
+
+  // Phase 0.6: Try secure RPC first
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('redeem_share_code', {
+      p_code: cleanCode,
+    })
+    if (!rpcError && rpcData) {
+      return rpcData as SharedItem
+    }
+  } catch {
+    // Fall back to table update if RPC not yet created in DB
+  }
 
   const { data: pendingShare, error: fetchError } = await supabase
     .from('shared_items')

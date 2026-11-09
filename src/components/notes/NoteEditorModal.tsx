@@ -81,9 +81,8 @@ export function NoteEditorModal({
   isUnlocked?: boolean
   onUnlock?: (id: string) => void
 }) {
-  const [title, setTitle]       = useState('')
-  const [body, setBody]         = useState('')
   const [tags, setTags]         = useState<string[]>([])
+  const [tagsDirty, setTagsDirty] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
@@ -107,13 +106,21 @@ export function NoteEditorModal({
   const isUnlocked = isUnlockedProp || localUnlocked
   const isLocked = !!note?.pin_hash && !isUnlocked
 
-  // A2: persist unsaved edits across force-quit / WebView reclaim.
+  // A2 / Phase 0.3: persist unsaved edits across force-quit / WebView reclaim.
   // Draft is disabled for locked notes (content must not leak to localStorage).
   const draftEnabled = !!note && open && !isLocked
   const titleDraftKey = note ? `draft:note:${note.id}:title` : 'draft:note:none:title'
   const bodyDraftKey  = note ? `draft:note:${note.id}:body`  : 'draft:note:none:body'
-  const [, setDraftTitle, clearTitleDraft] = useDraft(titleDraftKey, note?.title ?? '', { enabled: draftEnabled })
-  const [, setDraftBody,  clearBodyDraft]  = useDraft(bodyDraftKey,  note ? stripTags(note.content || '') : '', { enabled: draftEnabled })
+  const [title, setTitle, clearTitleDraft, { isDirty: isTitleDirty }] = useDraft(
+    titleDraftKey,
+    note?.title ?? '',
+    { enabled: draftEnabled, baseUpdatedAt: note?.updated_at }
+  )
+  const [body, setBody, clearBodyDraft, { isDirty: isBodyDirty }] = useDraft(
+    bodyDraftKey,
+    note ? stripTags(note.content || '') : '',
+    { enabled: draftEnabled, baseUpdatedAt: note?.updated_at }
+  )
 
   useEffect(() => {
     if (open) setLocalUnlocked(false)
@@ -126,29 +133,35 @@ export function NoteEditorModal({
 
   useEffect(() => {
     if (note && open && !isLocked) {
-      // Seed from DB only when there's no pending draft (draft takes priority)
-      const savedTitle = localStorage.getItem(titleDraftKey)
-      const savedBody  = localStorage.getItem(bodyDraftKey)
-      const initialBody = savedBody !== null ? savedBody : stripTags(note.content || '')
-      setTitle(savedTitle !== null ? savedTitle : note.title)
-      setBody(initialBody)
       setTags(extractTags(note.content || ''))
+      setTagsDirty(false)
       // Open rendered by default unless the note has no body text yet
-      setIsEditing(!initialBody.trim())
+      setIsEditing(!stripTags(note.content || '').trim())
     }
   }, [note?.id, open, isLocked]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildContent = (b = body, t = tags) => applyTags(b, t)
 
-  const handleSave = (b = body, t = tags) => {
+  const handleSave = (b = body, t = tags, ttl = title) => {
     if (!note) return
+    const isDirty = isTitleDirty || isBodyDirty || tagsDirty
+    if (!isDirty) return
+
+    // Explicit deletion safety (Phase 0.3):
+    // If the original note had content and new body is empty, only save if explicitly dirtied
+    const origText = note.content ? stripTags(note.content).trim() : ''
+    if (origText.length > 0 && b.trim() === '' && !isBodyDirty) {
+      return
+    }
+
     const content = buildContent(b, t)
-    if (title !== note.title || content !== note.content) {
+    if (ttl !== note.title || content !== note.content) {
       haptic('success')
-      updateNote.mutate({ id: note.id, updates: { title, content } })
+      updateNote.mutate({ id: note.id, updates: { title: ttl, content } })
       // Clear draft after a confirmed save
       clearTitleDraft()
       clearBodyDraft()
+      setTagsDirty(false)
     }
   }
 
@@ -163,6 +176,7 @@ export function NoteEditorModal({
     haptic('light')
     const next = [...tags, val]
     setTags(next)
+    setTagsDirty(true)
     setTagInput('')
     handleSave(body, next)
   }
@@ -170,6 +184,7 @@ export function NoteEditorModal({
   const removeTag = (tag: string) => {
     const next = tags.filter(t => t !== tag)
     setTags(next)
+    setTagsDirty(true)
     handleSave(body, next)
   }
 
@@ -224,7 +239,7 @@ export function NoteEditorModal({
               <input
                 type="text"
                 value={title}
-                onChange={e => { setTitle(e.target.value); setDraftTitle(e.target.value) }}
+                onChange={e => setTitle(e.target.value)}
                 onBlur={() => handleSave()}
                 className="text-lg font-display text-text bg-transparent border-none focus:outline-none flex-1 min-w-0"
                 placeholder="Note Title"
@@ -307,7 +322,7 @@ export function NoteEditorModal({
                   ref={textareaRef}
                   autoFocus
                   value={body}
-                  onChange={e => { setBody(e.target.value); setDraftBody(e.target.value) }}
+                  onChange={e => setBody(e.target.value)}
                   onBlur={e => handleSave(e.target.value)}
                   onSelect={checkSelection}
                   onMouseUp={checkSelection}

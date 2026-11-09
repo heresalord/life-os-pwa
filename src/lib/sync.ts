@@ -1,45 +1,48 @@
 /**
- * sync.ts — Phase 3 simplified sync engine
+ * sync.ts — Phase 0.5 sync engine with safety hotfixes
  *
- * Previous model: write to Dexie → add to sync_queue Dexie table →
- *   processSyncQueue polls every 30s and pushes to Supabase.
- *
- * New model: write to Dexie (local-first) → push to Supabase immediately
- *   when online, OR queue to localStorage when offline →
- *   drainOfflineQueue() runs on reconnect and on foreground.
- *
- * API surface kept intentionally stable so callers (DbContext, SyncStatusDot)
- * need no changes:
- *   startSyncEngine(db?)  — sets up listeners (db param ignored, kept for compat)
- *   stopSyncEngine()      — tears down listeners
- *   processSyncQueue(db?) — alias for drainOfflineQueue (db param ignored)
- *
- * The only remaining `supabase as any` cast in this file is required because
- * syncWrite receives table names as runtime strings, which the TypeScript
- * generic client cannot resolve statically. This is intentional and isolated
- * to this one file. All other callers use the fully-typed supabase client.
+ * Hotfixes implemented:
+ * 1. Single-flight drain: module-level drainPromise prevents overlapping drains.
+ * 2. Never overwrite the queue: removes only items that succeeded; keeps mid-drain additions.
+ * 3. Preserve order: appends to queue instead of pushing directly if older writes for the same row are queued.
+ * 4. Never drop: after MAX_RETRIES, marks item 'blocked' with last error and exponential backoff.
+ * 5. Make failures visible: tracks pending, blocked, and lastError in useSyncStore.
  */
 
 import { supabase } from './supabase'
 import { useSyncStore } from '../store/useSyncStore'
+import { Capacitor } from '@capacitor/core'
+import { App as CapacitorApp } from '@capacitor/app'
+import { queryClient } from './queryClient'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface OfflineQueueItem {
-  id:      string
-  table:   string
-  op:      'insert' | 'update' | 'delete'
-  payload: Record<string, unknown>
-  ts:      number
-  retries: number
+  id:            string
+  table:         string
+  op:            'insert' | 'update' | 'delete'
+  payload:       Record<string, unknown>
+  ts:            number
+  retries:       number
+  status?:       'pending' | 'blocked'
+  last_error?:   string
+  next_retry_at?: number
 }
 
 const QUEUE_KEY = 'lifeos-offline-queue'
 const MAX_RETRIES = 5
 
+// Exponential backoff curve: 5s, 30s, 2m, 10m
+function getBackoffMs(retries: number): number {
+  if (retries <= 1) return 5_000
+  if (retries === 2) return 30_000
+  if (retries === 3) return 120_000
+  return 600_000
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-function readQueue(): OfflineQueueItem[] {
+export function readQueue(): OfflineQueueItem[] {
   try {
     return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]')
   } catch {
@@ -51,11 +54,37 @@ function writeQueue(q: OfflineQueueItem[]): void {
   localStorage.setItem(QUEUE_KEY, JSON.stringify(q))
 }
 
-function addToQueue(table: string, op: OfflineQueueItem['op'], payload: Record<string, unknown>): void {
+function syncStoreWithQueue(q = readQueue()): void {
+  const pending = q.filter(i => i.status !== 'blocked').length
+  const blocked = q.filter(i => i.status === 'blocked').length
+  const lastErr = q.find(i => i.last_error)?.last_error ?? null
+  useSyncStore.getState().setSyncCounts({
+    pendingCount: pending,
+    blockedCount: blocked,
+    lastError: lastErr,
+  })
+}
+
+function addToQueue(
+  table: string,
+  op: OfflineQueueItem['op'],
+  payload: Record<string, unknown>,
+  lastError?: string
+): void {
   const q = readQueue()
-  q.push({ id: crypto.randomUUID(), table, op, payload, ts: Date.now(), retries: 0 })
+  q.push({
+    id: crypto.randomUUID(),
+    table,
+    op,
+    payload,
+    ts: Date.now(),
+    retries: 0,
+    status: 'pending',
+    last_error: lastError,
+    next_retry_at: 0,
+  })
   writeQueue(q)
-  useSyncStore.getState().setPendingCount(q.length)
+  syncStoreWithQueue(q)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,59 +103,124 @@ async function pushToSupabase(item: OfflineQueueItem): Promise<void> {
 
 // ── Public: offline queue helpers (used by localFirst.ts) ────────────────────
 
-/**
- * Returns all queued items for a given table — used by reconcileWithQueue
- * in localFirst.ts to avoid overwriting locally-pending data with stale
- * server responses during a background sync.
- */
 export function getQueuedItemsForTable(table: string): OfflineQueueItem[] {
   return readQueue().filter(i => i.table === table)
 }
 
-/** True if there are any items in the offline queue. */
 export function hasPendingSync(): boolean {
-  return readQueue().length > 0
+  return readQueue().some(i => i.status !== 'blocked')
 }
 
-// ── Public: drain the queue ───────────────────────────────────────────────────
+export function hasBlockedSync(): boolean {
+  return readQueue().some(i => i.status === 'blocked')
+}
 
-export async function drainOfflineQueue(): Promise<void> {
-  if (!navigator.onLine) return
+// ── Public: single-flight drain ───────────────────────────────────────────────
 
-  const q = readQueue()
-  if (q.length === 0) return
+let drainPromise: Promise<void> | null = null
 
-  useSyncStore.getState().setIsSyncing(true)
+export async function drainOfflineQueue(force = false): Promise<void> {
+  if (drainPromise) return drainPromise
 
-  const failed: OfflineQueueItem[] = []
-
-  for (const item of q) {
-    if (item.retries >= MAX_RETRIES) {
-      console.warn(`[sync] Dropping item after ${MAX_RETRIES} retries:`, item.table, item.id)
-      continue
-    }
+  drainPromise = (async () => {
     try {
-      await pushToSupabase(item)
-    } catch (err) {
-      console.warn(`[sync] Failed to sync ${item.table} (attempt ${item.retries + 1}):`, err)
-      failed.push({ ...item, retries: item.retries + 1 })
-    }
-  }
+      if (!navigator.onLine) {
+        syncStoreWithQueue()
+        return
+      }
 
-  writeQueue(failed)
-  useSyncStore.getState().setPendingCount(failed.length)
-  useSyncStore.getState().setIsSyncing(false)
+      const q = readQueue()
+      if (q.length === 0) {
+        syncStoreWithQueue(q)
+        return
+      }
+
+      useSyncStore.getState().setIsSyncing(true)
+
+      const now = Date.now()
+      const succeededIds = new Set<string>()
+      const failedUpdates = new Map<string, Partial<OfflineQueueItem>>()
+
+      for (const item of q) {
+        // Skip blocked items unless manually forced (e.g. from Diagnostics "Retry now")
+        if (item.status === 'blocked' && !force) continue
+        // Skip items in exponential backoff window unless forced
+        if (item.next_retry_at && item.next_retry_at > now && !force) continue
+
+        try {
+          await pushToSupabase(item)
+          succeededIds.add(item.id)
+        } catch (err: any) {
+          const errMsg = err?.message || String(err)
+          console.warn(`[sync] Failed to sync ${item.table} (attempt ${item.retries + 1}):`, errMsg)
+          const newRetries = item.retries + 1
+          const isBlocked = newRetries >= MAX_RETRIES
+          const nextRetryAt = Date.now() + getBackoffMs(newRetries)
+
+          failedUpdates.set(item.id, {
+            retries: newRetries,
+            status: isBlocked ? 'blocked' : 'pending',
+            last_error: errMsg,
+            next_retry_at: nextRetryAt,
+          })
+        }
+      }
+
+      // Re-read queue from storage so items enqueued mid-drain are NEVER lost!
+      const latestQueue = readQueue()
+      const newQueue = latestQueue
+        .filter(item => !succeededIds.has(item.id))
+        .map(item => {
+          const update = failedUpdates.get(item.id)
+          return update ? { ...item, ...update } : item
+        })
+
+      writeQueue(newQueue)
+      syncStoreWithQueue(newQueue)
+    } finally {
+      useSyncStore.getState().setIsSyncing(false)
+      drainPromise = null
+    }
+  })()
+
+  return drainPromise
 }
 
-// ── Public: the main write function used by syncQueue.ts ─────────────────────
+// ── Diagnostics actions ──────────────────────────────────────────────────────
 
 /**
- * Push a write to Supabase immediately (online) or queue it (offline).
- *
- * The local write (Dexie) has ALREADY happened before this is called —
- * syncQueue.enqueueSync is responsible for the Dexie write. This function
- * only handles the Supabase push or offline queuing.
+ * Resets blocked items and triggers an immediate drain.
  */
+export async function retryBlockedItems(): Promise<void> {
+  const q = readQueue()
+  const resetQueue = q.map(i => ({
+    ...i,
+    status: 'pending' as const,
+    retries: 0,
+    next_retry_at: 0,
+  }))
+  writeQueue(resetQueue)
+  await drainOfflineQueue(true)
+}
+
+/**
+ * Export offline queue as JSON for debugging or backup.
+ */
+export function exportOfflineQueue(): void {
+  const q = readQueue()
+  const blob = new Blob([JSON.stringify(q, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `kairo_offline_queue_${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// ── Public: write function with write-order preservation ─────────────────────
+
 export async function syncToSupabase(
   table: string,
   op:    OfflineQueueItem['op'],
@@ -137,28 +231,46 @@ export async function syncToSupabase(
     return
   }
 
-  try {
-    await pushToSupabase({ id: '', table, op, payload, ts: Date.now(), retries: 0 })
-  } catch (err) {
-    console.warn(`[sync] Direct push failed for ${table}, queuing:`, err)
+  // Preserve order: if an older write for the same row is already queued,
+  // append this write to the queue and drain instead of pushing directly.
+  const rowId = payload?.id
+  const currentQueue = readQueue()
+  const hasOlder = rowId && currentQueue.some(
+    item => item.table === table && item.payload?.id === rowId
+  )
+
+  if (hasOlder) {
     addToQueue(table, op, payload)
+    void drainOfflineQueue()
+    return
+  }
+
+  try {
+    await pushToSupabase({
+      id: crypto.randomUUID(),
+      table,
+      op,
+      payload,
+      ts: Date.now(),
+      retries: 0,
+    })
+  } catch (err: any) {
+    const errMsg = err?.message || String(err)
+    console.warn(`[sync] Direct push failed for ${table}, queuing:`, errMsg)
+    addToQueue(table, op, payload, errMsg)
   }
 }
 
-// ── Public: engine lifecycle (API-compatible with old sync.ts) ───────────────
+// ── Public: engine lifecycle ────────────────────────────────────────────────
 
 let intervalId: ReturnType<typeof setInterval> | null = null
 let onOnlineHandler:  (() => void) | null = null
 let onOfflineHandler: (() => void) | null = null
+let onFocusHandler:   (() => void) | null = null
+let appStateHandle:   { remove: () => void } | null = null
 
-/**
- * startSyncEngine — sets up the online/offline listeners and a 60s drain
- * interval. The `db` parameter is accepted for backward compatibility but
- * is no longer used — the new engine reads/writes from localStorage.
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function startSyncEngine(_db?: unknown): void {
-  if (intervalId) return // already running
+export function startSyncEngine(): void {
+  if (intervalId) return
 
   // Drain immediately in case there are queued items from a previous session
   void drainOfflineQueue()
@@ -175,26 +287,43 @@ export function startSyncEngine(_db?: unknown): void {
   onOfflineHandler = () => {
     useSyncStore.getState().setOnlineStatus(false)
   }
+  onFocusHandler = () => {
+    if (navigator.onLine) {
+      queryClient.invalidateQueries({ queryKey: ['notes'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox'] })
+      void drainOfflineQueue()
+    }
+  }
 
   window.addEventListener('online',  onOnlineHandler)
   window.addEventListener('offline', onOfflineHandler)
+  window.addEventListener('focus',    onFocusHandler)
 
-  // Update pending count from localStorage on start
-  useSyncStore.getState().setPendingCount(readQueue().length)
+  // Capacitor foreground refresh
+  if (Capacitor.isNativePlatform()) {
+    CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        useSyncStore.getState().setOnlineStatus(navigator.onLine)
+        queryClient.invalidateQueries({ queryKey: ['notes'] })
+        queryClient.invalidateQueries({ queryKey: ['inbox'] })
+        void drainOfflineQueue()
+      }
+    }).then(handle => {
+      appStateHandle = handle
+    }).catch(() => { /* ignore */ })
+  }
+
+  syncStoreWithQueue()
 }
 
 export function stopSyncEngine(): void {
   if (intervalId) { clearInterval(intervalId); intervalId = null }
   if (onOnlineHandler)  { window.removeEventListener('online',  onOnlineHandler);  onOnlineHandler  = null }
   if (onOfflineHandler) { window.removeEventListener('offline', onOfflineHandler); onOfflineHandler = null }
+  if (onFocusHandler)   { window.removeEventListener('focus',    onFocusHandler);   onFocusHandler   = null }
+  if (appStateHandle)   { appStateHandle.remove(); appStateHandle = null }
 }
 
-/**
- * processSyncQueue — alias for drainOfflineQueue.
- * Kept for backward compatibility with SyncStatusDot which calls it directly.
- * The `db` parameter is accepted but ignored.
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function processSyncQueue(_db?: unknown): Promise<void> {
+export async function processSyncQueue(): Promise<void> {
   await drainOfflineQueue()
 }

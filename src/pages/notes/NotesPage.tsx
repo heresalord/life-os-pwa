@@ -20,7 +20,7 @@ import {
   FileText, Plus, Search, X, Edit3,
   FolderOpen, FolderPlus,
   Folder, Pin, BookText, LayoutTemplate, FolderTree, ListTodo,
-  Maximize2, Minimize2, Lock, Unlock, Flame,
+  Maximize2, Minimize2, Lock, Unlock, Flame, AlertTriangle,
 } from 'lucide-react'
 import type { Note } from '../../db/schema'
 import ReactMarkdown from 'react-markdown'
@@ -73,6 +73,10 @@ function DesktopNoteEditor({
   // Apple Notes pattern: open rendered, tap body → edit mode, Done → rendered
   const [isEditing, setIsEditing] = useState(() => !stripTags(note.content || '').trim())
   const [showUnlockModal, setShowUnlockModal] = useState(false)
+  const [isDirty, setIsDirty]   = useState(false)
+  const [showConflict, setShowConflict] = useState(false)
+  const lastLoadedUpdatedAtRef  = useRef(note.updated_at)
+  const lastLoadedIdRef         = useRef(note.id)
   const { updateNote } = useNoteMutations()
   const { timezone } = useAppStore()
   const today = getUserLocalDate(timezone)
@@ -92,14 +96,31 @@ function DesktopNoteEditor({
     return () => window.removeEventListener('keydown', handler)
   }, [onToggleFocusMode])
 
+  // Phase 0.4: Re-seed from note when note.updated_at changes and editor is not dirty.
+  // If dirty and incoming updated_at is newer, show conflict banner instead of auto-saving.
   useEffect(() => {
-    const newBody = stripTags(note.content || '')
-    setTitle(note.title)
-    setBody(newBody)
-    setTags(extractTags(note.content || ''))
-    // Open in edit mode when note has no content yet, otherwise open rendered
-    setIsEditing(!newBody.trim())
-  }, [note.id]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (note.id !== lastLoadedIdRef.current) {
+      lastLoadedIdRef.current = note.id
+      lastLoadedUpdatedAtRef.current = note.updated_at
+      setIsDirty(false)
+      setShowConflict(false)
+      const newBody = stripTags(note.content || '')
+      setTitle(note.title)
+      setBody(newBody)
+      setTags(extractTags(note.content || ''))
+      setIsEditing(!newBody.trim())
+    } else if (note.updated_at !== lastLoadedUpdatedAtRef.current) {
+      if (!isDirty) {
+        lastLoadedUpdatedAtRef.current = note.updated_at
+        const newBody = stripTags(note.content || '')
+        setTitle(note.title)
+        setBody(newBody)
+        setTags(extractTags(note.content || ''))
+      } else {
+        setShowConflict(true)
+      }
+    }
+  }, [note.id, note.updated_at, isDirty])
 
   if (isLocked) {
     return (
@@ -132,9 +153,12 @@ function DesktopNoteEditor({
   }
 
   const save = (b = body, t = tags, ttl = title) => {
+    if (showConflict) return
     const content = applyTags(b, t)
     if (ttl !== note.title || content !== note.content) {
       updateNote.mutate({ id: note.id, updates: { title: ttl, content } })
+      lastLoadedUpdatedAtRef.current = note.updated_at
+      setIsDirty(false)
     }
   }
 
@@ -143,6 +167,7 @@ function DesktopNoteEditor({
     if (!val || tags.includes(val)) { setTagInput(''); return }
     const next = [...tags, val]
     setTags(next)
+    setIsDirty(true)
     setTagInput('')
     save(body, next)
   }
@@ -150,6 +175,7 @@ function DesktopNoteEditor({
   const removeTag = (tag: string) => {
     const next = tags.filter(t => t !== tag)
     setTags(next)
+    setIsDirty(true)
     save(body, next)
   }
 
@@ -204,7 +230,7 @@ function DesktopNoteEditor({
         <input
           type="text"
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={e => { setTitle(e.target.value); setIsDirty(true) }}
           onBlur={() => save()}
           className="text-lg font-display text-text bg-transparent border-none focus:outline-none flex-1 min-w-0"
           placeholder="Note title"
@@ -235,6 +261,44 @@ function DesktopNoteEditor({
         </div>
       </div>
 
+      {/* Phase 0.4: Conflict banner when changed on another device */}
+      {showConflict && (
+        <div className="flex items-center justify-between px-5 py-2.5 bg-warning/15 border-b border-warning/30 text-xs animate-in fade-in duration-150">
+          <div className="flex items-center gap-2 text-text font-medium">
+            <AlertTriangle size={14} className="text-warning flex-shrink-0" />
+            <span>This note changed on another device.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                lastLoadedUpdatedAtRef.current = note.updated_at
+                setShowConflict(false)
+                save(body, tags, title)
+              }}
+              className="px-2.5 py-1 bg-surface border border-border rounded-lg text-text font-semibold hover:bg-surface-2 transition-colors cursor-pointer"
+            >
+              Keep mine
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                lastLoadedUpdatedAtRef.current = note.updated_at
+                setShowConflict(false)
+                setIsDirty(false)
+                const newBody = stripTags(note.content || '')
+                setTitle(note.title)
+                setBody(newBody)
+                setTags(extractTags(note.content || ''))
+              }}
+              className="px-2.5 py-1 bg-accent text-white rounded-lg font-semibold hover:bg-accent/90 transition-colors cursor-pointer"
+            >
+              Load theirs
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Rich text toolbar — only visible while editing */}
       {isEditing && (
         <div className="relative">
@@ -261,7 +325,7 @@ function DesktopNoteEditor({
               ref={textareaRef}
               autoFocus
               value={body}
-              onChange={e => setBody(e.target.value)}
+              onChange={e => { setBody(e.target.value); setIsDirty(true) }}
               onBlur={e => save(e.target.value)}
               placeholder="Start writing… Markdown supported. Type [[ to link a note."
               className="flex-1 w-full bg-transparent px-6 py-5 text-text resize-none focus:outline-none font-body leading-relaxed"
@@ -286,6 +350,7 @@ function DesktopNoteEditor({
           >
             <article className="prose prose-invert prose-p:text-text-secondary prose-headings:text-text max-w-none">
               {body.trim() ? (
+                // eslint-disable-next-line react-hooks/refs
                 <>{renderPreviewParts(body)}</>
               ) : (
                 <p className="text-text-muted italic select-none">Nothing written yet. Click to start writing…</p>

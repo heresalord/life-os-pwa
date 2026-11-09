@@ -250,6 +250,12 @@ export async function sendNotification(
   }
 ): Promise<{ ok: boolean; notificationId?: string; error?: string }> {
   try {
+    const { data: { user } } = await supabase.auth.getUser()
+    // Defense-in-depth: client can only notify self directly
+    if (user && user.id !== userId) {
+      throw new Error('Direct cross-user notifications are forbidden. Use database triggers.')
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase.rpc as any)('notify', {
       p_user_id: userId,

@@ -1,6 +1,6 @@
-import { WifiOff, RefreshCw, CheckCheck } from 'lucide-react'
+import { WifiOff, RefreshCw, CheckCheck, AlertTriangle } from 'lucide-react'
 import { useSyncStore } from '../store/useSyncStore'
-import { processSyncQueue, hasPendingSync } from '../lib/sync'
+import { processSyncQueue, hasPendingSync, hasBlockedSync } from '../lib/sync'
 import { useState } from 'react'
 import clsx from 'clsx'
 
@@ -10,29 +10,29 @@ interface SyncStatusDotProps {
 }
 
 export function SyncStatusDot({ showLabel, className }: SyncStatusDotProps = {}) {
-  const { isOnline, isSyncing, pendingCount } = useSyncStore()
+  const { isOnline, isSyncing, pendingCount, blockedCount, lastError } = useSyncStore()
   const [showTip, setShowTip] = useState(false)
 
-  // Keep pendingCount in sync with localStorage queue on each render
-  // (the store is updated by startSyncEngine/drainOfflineQueue but a manual
-  // check here handles edge cases where the store count drifts)
   const actualPending = pendingCount > 0 ? pendingCount : (hasPendingSync() ? 1 : 0)
+  const actualBlocked = blockedCount > 0 ? blockedCount : (hasBlockedSync() ? 1 : 0)
 
   const handleClick = () => {
-    if (isOnline && actualPending > 0 && !isSyncing) {
+    if (isOnline && (actualPending > 0 || actualBlocked > 0) && !isSyncing) {
       void processSyncQueue()
     }
     setShowTip(v => !v)
-    setTimeout(() => setShowTip(false), 2500)
+    setTimeout(() => setShowTip(false), 3000)
   }
 
   const state = !isOnline
-    ? { icon: WifiOff,    color: 'text-text-muted', statusText: 'Offline', label: 'Offline — changes saved locally' }
+    ? { icon: WifiOff,       color: 'text-text-muted', statusText: 'Offline', label: 'Offline — changes saved locally' }
     : isSyncing
-    ? { icon: RefreshCw,  color: 'text-warning',    statusText: 'Syncing…', label: 'Syncing…' }
+    ? { icon: RefreshCw,     color: 'text-warning',    statusText: 'Syncing…', label: 'Syncing changes…' }
+    : actualBlocked > 0
+    ? { icon: AlertTriangle, color: 'text-danger',     statusText: `${actualBlocked} blocked`, label: `${actualBlocked} item${actualBlocked > 1 ? 's' : ''} blocked: ${lastError || 'See Settings → Sync diagnostics'}` }
     : actualPending > 0
-    ? { icon: RefreshCw,  color: 'text-warning',    statusText: `${actualPending} pending`, label: `${actualPending} change${actualPending > 1 ? 's' : ''} pending — tap to sync` }
-    : { icon: CheckCheck, color: 'text-success',    statusText: 'Synced', label: 'All changes saved' }
+    ? { icon: RefreshCw,     color: 'text-warning',    statusText: `${actualPending} pending`, label: `${actualPending} change${actualPending > 1 ? 's' : ''} pending — tap to sync` }
+    : { icon: CheckCheck,    color: 'text-success',    statusText: 'Synced', label: 'All changes saved' }
 
   const Icon = state.icon
 

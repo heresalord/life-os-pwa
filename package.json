@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "verify": "tsc --noEmit && eslint src && vite build",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "types:supabase": "npx supabase gen types typescript --project-id $SUPABASE_PROJECT_ID --schema public > src/types/database.ts",
     "prepare": "husky"
   },
