@@ -36,8 +36,9 @@ export function useMessagesQuery(conversationId?: string) {
   useEffect(() => {
     if (!conversationId || !user) return
 
+    const channelName = `chat-${conversationId}-${Math.random().toString(36).slice(2)}`
     const channel = supabase
-      .channel(`chat-${conversationId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
