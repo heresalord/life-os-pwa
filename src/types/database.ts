@@ -31,6 +31,8 @@ export interface Database {
           avatar_url: string | null
           timezone: string
           onboarded: boolean
+          username: string | null
+          username_changed_at: string | null
           created_at: string
           updated_at: string
         }
@@ -40,6 +42,8 @@ export interface Database {
           avatar_url?: string | null
           timezone?: string
           onboarded?: boolean
+          username?: string | null
+          username_changed_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -49,6 +53,8 @@ export interface Database {
           avatar_url?: string | null
           timezone?: string
           onboarded?: boolean
+          username?: string | null
+          username_changed_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -844,6 +850,7 @@ export interface Database {
           word_count: number
           is_template: boolean
           pin_hash: string | null
+          deleted_at: string | null
           created_at: string
           updated_at: string
         }
@@ -859,6 +866,7 @@ export interface Database {
           word_count?: number
           is_template?: boolean
           pin_hash?: string | null
+          deleted_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -874,6 +882,7 @@ export interface Database {
           word_count?: number
           is_template?: boolean
           pin_hash?: string | null
+          deleted_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1112,6 +1121,104 @@ export interface Database {
           platform?: 'ios' | 'android' | 'web' | 'pwa'
           push_token?: string
           last_seen_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── note_versions ──────────────────────────────────────────────────────
+      note_versions: {
+        Row: {
+          id: string
+          note_id: string
+          user_id: string
+          title: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          note_id: string
+          user_id: string
+          title: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          note_id?: string
+          user_id?: string
+          title?: string
+          content?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── friend_requests ────────────────────────────────────────────────────
+      friend_requests: {
+        Row: {
+          id: string
+          from_user: string
+          to_user: string
+          status: 'pending' | 'accepted' | 'declined' | 'cancelled'
+          created_at: string
+          responded_at: string | null
+        }
+        Insert: {
+          id?: string
+          from_user: string
+          to_user: string
+          status?: 'pending' | 'accepted' | 'declined' | 'cancelled'
+          created_at?: string
+          responded_at?: string | null
+        }
+        Update: {
+          id?: string
+          from_user?: string
+          to_user?: string
+          status?: 'pending' | 'accepted' | 'declined' | 'cancelled'
+          created_at?: string
+          responded_at?: string | null
+        }
+        Relationships: []
+      }
+
+      // ── friendships ────────────────────────────────────────────────────────
+      friendships: {
+        Row: {
+          user_a: string
+          user_b: string
+          created_at: string
+        }
+        Insert: {
+          user_a: string
+          user_b: string
+          created_at?: string
+        }
+        Update: {
+          user_a?: string
+          user_b?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── blocks ─────────────────────────────────────────────────────────────
+      blocks: {
+        Row: {
+          blocker: string
+          blocked: string
+          created_at: string
+        }
+        Insert: {
+          blocker: string
+          blocked: string
+          created_at?: string
+        }
+        Update: {
+          blocker?: string
+          blocked?: string
           created_at?: string
         }
         Relationships: []

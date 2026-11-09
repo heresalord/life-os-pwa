@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Maximize2, Minimize2, Plus, ListTodo, Lock, Edit3 } from 'lucide-react'
+import { X, Maximize2, Minimize2, Plus, ListTodo, Lock, Edit3, History } from 'lucide-react'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import { useAppStore } from '../../store/useAppStore'
@@ -11,6 +11,7 @@ import { useNotesQuery } from '../../hooks/useNotesQuery'
 import { RichTextToolbar } from './RichTextToolbar'
 import { NoteLinkAutocomplete } from './NoteLinkAutocomplete'
 import { NotePinUnlockModal } from './NotePinModal'
+import { NoteVersionHistoryModal } from './NoteVersionHistoryModal'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { haptic } from '../../lib/haptic'
@@ -103,6 +104,7 @@ export function NoteEditorModal({
   // ── PIN lock gate ── defense in depth
   const [localUnlocked, setLocalUnlocked] = useState(false)
   const [showUnlockModal, setShowUnlockModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   const isUnlocked = isUnlockedProp || localUnlocked
   const isLocked = !!note?.pin_hash && !isUnlocked
 
@@ -271,9 +273,20 @@ export function NoteEditorModal({
                 )
               )}
               {!isLocked && (
-              <button onClick={() => setFullscreen(!fullscreen)} className="text-text-muted hover:text-text hidden sm:block p-1.5">
-                {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-              </button>
+                <>
+                  {note?.id && (
+                    <button
+                      onClick={() => setShowHistoryModal(true)}
+                      title="Version history"
+                      className="text-text-muted hover:text-text p-1.5 rounded-lg hover:bg-surface-2 transition-colors"
+                    >
+                      <History size={17} />
+                    </button>
+                  )}
+                  <button onClick={() => setFullscreen(!fullscreen)} className="text-text-muted hover:text-text hidden sm:block p-1.5">
+                    {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                  </button>
+                </>
               )}
               <button onClick={handleClose} className="text-text-muted hover:text-text p-1.5">
                 <X size={20} />
@@ -406,18 +419,32 @@ export function NoteEditorModal({
     </Dialog.Root>
 
     {note && (
-      <NotePinUnlockModal
-        open={showUnlockModal}
-        noteTitle={note.title || 'Untitled'}
-        pinHash={note.pin_hash || ''}
-        onUnlocked={() => {
-          setShowUnlockModal(false)
-          setLocalUnlocked(true)
-          if (note) onUnlock?.(note.id)
-          haptic('success')
-        }}
-        onClose={() => setShowUnlockModal(false)}
-      />
+      <>
+        <NotePinUnlockModal
+          open={showUnlockModal}
+          noteTitle={note.title || 'Untitled'}
+          pinHash={note.pin_hash || ''}
+          onUnlocked={() => {
+            setShowUnlockModal(false)
+            setLocalUnlocked(true)
+            if (note) onUnlock?.(note.id)
+            haptic('success')
+          }}
+          onClose={() => setShowUnlockModal(false)}
+        />
+        <NoteVersionHistoryModal
+          open={showHistoryModal}
+          noteId={note.id}
+          noteTitle={note.title || 'Untitled'}
+          onClose={() => setShowHistoryModal(false)}
+          onRestore={(ver) => {
+            setTitle(ver.title)
+            setBody(ver.content)
+            setIsEditing(true)
+            haptic('success')
+          }}
+        />
+      </>
     )}
 
     <Dialog.Root open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>

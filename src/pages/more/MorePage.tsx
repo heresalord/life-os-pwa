@@ -4,7 +4,7 @@ import {
   Sun, Moon, Settings, LogOut,
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
   CalendarDays, Inbox, FileText, Search, Heart, Briefcase,
-  ChevronRight, Sparkles,
+  ChevronRight, Sparkles, Users, Trash2,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
@@ -160,6 +160,22 @@ export function MorePage() {
           {t('more.account', 'Account')}
         </h2>
         <div className="bg-surface border border-border rounded-2xl overflow-hidden divide-y divide-border">
+          <button
+            onClick={() => go('/friends')}
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-surface-2 press-row transition-colors text-left"
+          >
+            <Users size={17} className="text-accent flex-shrink-0" />
+            <span className="text-sm font-medium text-text flex-1">Friends & Social</span>
+            <ChevronRight size={15} className="text-text-muted" />
+          </button>
+          <button
+            onClick={() => go('/trash')}
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-surface-2 press-row transition-colors text-left"
+          >
+            <Trash2 size={17} className="text-text-secondary flex-shrink-0" />
+            <span className="text-sm font-medium text-text flex-1">Trash</span>
+            <ChevronRight size={15} className="text-text-muted" />
+          </button>
           <button
             onClick={() => go('/settings')}
             className="w-full flex items-center gap-3 px-4 py-4 hover:bg-surface-2 press-row transition-colors text-left"

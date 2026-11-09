@@ -54,12 +54,32 @@ export interface NotificationPreference {
   updated_at?: string
 }
 
-export interface Device {
+export type Device = Database['public']['Tables']['devices']['Row']
+export type NoteVersion = Database['public']['Tables']['note_versions']['Row']
+export type FriendRequest = Database['public']['Tables']['friend_requests']['Row']
+export type Friendship = Database['public']['Tables']['friendships']['Row']
+export type Block = Database['public']['Tables']['blocks']['Row']
+
+export interface OutboxRow {
+  seq?: number
   id: string
-  user_id: string
-  platform: 'ios' | 'android' | 'web' | 'pwa'
-  push_token: string
-  last_seen_at?: string
-  created_at?: string
+  row_key: string // e.g. "notes:c3e6..."
+  table: string
+  op: 'insert' | 'update' | 'delete'
+  row_id: string
+  patch: Record<string, unknown>
+  base_updated_at?: string | null
+  attempts: number
+  last_error?: string | null
+  status: 'pending' | 'inflight' | 'failed' | 'blocked'
+  created_at: string
+  next_retry_at?: number
 }
+
+export interface SyncStateRow {
+  table: string
+  cursor: string
+  last_pull_at?: string
+}
+
 

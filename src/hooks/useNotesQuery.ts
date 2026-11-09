@@ -16,14 +16,16 @@ export function useNotesQuery(date?: string) {
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      // updated_at is not a Dexie index — always fetch all and sort in JS
+      // updated_at is not a Dexie index — always fetch all, filter out soft-deleted, and sort in JS
       const all = await (date
         ? db.notes.where('date').equals(date).toArray()
         : db.notes.toArray()
       )
-      const local = all.sort(
-        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-      )
+      const local = all
+        .filter(n => !(n as any).deleted_at)
+        .sort(
+          (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
 
       if (navigator.onLine) {
         bgSync(`notes-${date ?? 'all'}-${user!.id}`, async () => {

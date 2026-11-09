@@ -98,7 +98,7 @@ export function DbProvider({ userId, children }: { userId: string; children: Rea
         sessionStorage.setItem('lifeos_active_db', `LifeOSDB_${userId}`)
 
         // Start background sync engine with current user db
-        startSyncEngine()
+        startSyncEngine(userDb, userId)
       } catch (err) {
         console.error('[DbProvider] Failed to initialize user database:', err)
       }

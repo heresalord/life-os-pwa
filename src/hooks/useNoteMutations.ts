@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useDb } from '../db/DbContext'
-import { enqueueSync } from '../db/syncQueue'
 import { useAuth } from './useAuth'
 import { stripTags } from '../lib/noteTagUtils'
 import { QK } from '../lib/queryKeys'
+import { enqueueOutboxItem } from '../lib/sync'
+import type { Note } from '../db/schema'
 
 type AnyItem = { id: string; [key: string]: unknown }
 
@@ -28,16 +29,15 @@ export async function verifyPin(pin: string, hash: string): Promise<boolean> {
   return computed === hash
 }
 
-async function write(op: 'insert' | 'update' | 'delete', payload: Record<string, unknown>) {
-  await enqueueSync('notes', op, payload)
-}
-
 export function useNoteMutations() {
   const db = useDb()
   const { user } = useAuth()
   const qc = useQueryClient()
   const queryKey = QK.notes(undefined, user?.id ?? '')
-  const invalidate = () => qc.invalidateQueries({ queryKey: QK.notesAll() })
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: QK.notesAll() })
+    qc.invalidateQueries({ queryKey: ['trash', 'notes'] })
+  }
 
   const addNote = useMutation({
     mutationFn: async (payload: {
@@ -50,23 +50,27 @@ export function useNoteMutations() {
       is_template?: boolean
     }) => {
       if (!user) return
-      const note = {
+      const note: Note = {
         id: crypto.randomUUID(),
         user_id: user.id,
         date: payload.date,
         title: payload.title,
         content: payload.content,
-        template: payload.template ?? null,
+        template: (payload.template as any) ?? null,
         folder: payload.folder ?? 'All',
         pinned: payload.pinned ?? false,
         is_template: payload.is_template ?? false,
         pin_hash: null,
         word_count: computeWordCount(payload.content),
+        deleted_at: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      await db.notes.add(note as Parameters<typeof db.notes.add>[0])
-      await write('insert', note)
+      // Single Dexie transaction: row + outbox entry written atomically
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.add(note)
+        await enqueueOutboxItem(db, 'notes', 'insert', note.id, note as unknown as Record<string, unknown>, null)
+      })
       return note
     },
     onMutate: async (payload) => {
@@ -84,6 +88,7 @@ export function useNoteMutations() {
         is_template: payload.is_template ?? false,
         pin_hash: null,
         word_count: computeWordCount(payload.content),
+        deleted_at: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -98,17 +103,29 @@ export function useNoteMutations() {
 
   const updateNote = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
-      // Recompute word_count if content is changing
       const existing = await db.notes.get(id)
+      const baseUpdatedAt = existing?.updated_at || null
       const newContent = (updates.content as string | undefined) ?? existing?.content ?? ''
       const withTs = {
         ...updates,
         word_count: computeWordCount(newContent),
         updated_at: new Date().toISOString(),
       }
-      await db.notes.update(id, withTs)
-      const updated = await db.notes.get(id)
-      if (updated) await write('update', updated as Record<string, unknown>)
+
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.update(id, withTs)
+        const updated = await db.notes.get(id)
+        if (updated) {
+          await enqueueOutboxItem(
+            db,
+            'notes',
+            'update',
+            id,
+            updated as unknown as Record<string, unknown>,
+            baseUpdatedAt
+          )
+        }
+      })
     },
     onMutate: async ({ id, updates }) => {
       await qc.cancelQueries({ queryKey })
@@ -124,10 +141,14 @@ export function useNoteMutations() {
     onSettled: () => invalidate(),
   })
 
+  // Soft delete (tombstone) — moves note to Trash
   const deleteNote = useMutation({
     mutationFn: async (id: string) => {
-      await db.notes.delete(id)
-      await write('delete', { id })
+      const now = new Date().toISOString()
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.update(id, { deleted_at: now, updated_at: now })
+        await enqueueOutboxItem(db, 'notes', 'delete', id, { id, deleted_at: now, updated_at: now })
+      })
     },
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey })
@@ -141,11 +162,42 @@ export function useNoteMutations() {
     onSettled: () => invalidate(),
   })
 
+  // Restore soft-deleted note from Trash
+  const restoreNote = useMutation({
+    mutationFn: async (id: string) => {
+      const now = new Date().toISOString()
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.update(id, { deleted_at: null, updated_at: now })
+        const updated = await db.notes.get(id)
+        if (updated) {
+          await enqueueOutboxItem(db, 'notes', 'update', id, updated as unknown as Record<string, unknown>)
+        }
+      })
+    },
+    onSettled: () => invalidate(),
+  })
+
+  // Permanent hard delete
+  const permanentDeleteNote = useMutation({
+    mutationFn: async (id: string) => {
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.delete(id)
+        await enqueueOutboxItem(db, 'notes', 'delete', id, { id, permanent: true })
+      })
+    },
+    onSettled: () => invalidate(),
+  })
+
   const pinNote = useMutation({
     mutationFn: async ({ id, pinned }: { id: string; pinned: boolean }) => {
-      await db.notes.update(id, { pinned, updated_at: new Date().toISOString() })
-      const updated = await db.notes.get(id)
-      if (updated) await write('update', updated as Record<string, unknown>)
+      const now = new Date().toISOString()
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.update(id, { pinned, updated_at: now })
+        const updated = await db.notes.get(id)
+        if (updated) {
+          await enqueueOutboxItem(db, 'notes', 'update', id, updated as unknown as Record<string, unknown>)
+        }
+      })
     },
     onMutate: async ({ id, pinned }) => {
       await qc.cancelQueries({ queryKey })
@@ -163,9 +215,14 @@ export function useNoteMutations() {
 
   const moveToFolder = useMutation({
     mutationFn: async ({ id, folder }: { id: string; folder: string }) => {
-      await db.notes.update(id, { folder, updated_at: new Date().toISOString() })
-      const updated = await db.notes.get(id)
-      if (updated) await write('update', updated as Record<string, unknown>)
+      const now = new Date().toISOString()
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.update(id, { folder, updated_at: now })
+        const updated = await db.notes.get(id)
+        if (updated) {
+          await enqueueOutboxItem(db, 'notes', 'update', id, updated as unknown as Record<string, unknown>)
+        }
+      })
     },
     onMutate: async ({ id, folder }) => {
       await qc.cancelQueries({ queryKey })
@@ -185,9 +242,14 @@ export function useNoteMutations() {
   const setPinHash = useMutation({
     mutationFn: async ({ id, pin }: { id: string; pin: string }) => {
       const pin_hash = await hashPin(pin)
-      await db.notes.update(id, { pin_hash, updated_at: new Date().toISOString() })
-      const updated = await db.notes.get(id)
-      if (updated) await write('update', updated as Record<string, unknown>)
+      const now = new Date().toISOString()
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.update(id, { pin_hash, updated_at: now })
+        const updated = await db.notes.get(id)
+        if (updated) {
+          await enqueueOutboxItem(db, 'notes', 'update', id, updated as unknown as Record<string, unknown>)
+        }
+      })
       return { id, pin_hash }
     },
     onMutate: async ({ id, pin }) => {
@@ -208,9 +270,14 @@ export function useNoteMutations() {
   /** Remove PIN lock from a note. */
   const clearPinHash = useMutation({
     mutationFn: async (id: string) => {
-      await db.notes.update(id, { pin_hash: null, updated_at: new Date().toISOString() })
-      const updated = await db.notes.get(id)
-      if (updated) await write('update', updated as Record<string, unknown>)
+      const now = new Date().toISOString()
+      await db.transaction('rw', [db.notes, db.outbox], async () => {
+        await db.notes.update(id, { pin_hash: null, updated_at: now })
+        const updated = await db.notes.get(id)
+        if (updated) {
+          await enqueueOutboxItem(db, 'notes', 'update', id, updated as unknown as Record<string, unknown>)
+        }
+      })
     },
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey })
@@ -226,5 +293,16 @@ export function useNoteMutations() {
     onSettled: () => invalidate(),
   })
 
-  return { addNote, updateNote, deleteNote, pinNote, moveToFolder, setPinHash, clearPinHash }
+  return {
+    addNote,
+    updateNote,
+    deleteNote,
+    restoreNote,
+    permanentDeleteNote,
+    pinNote,
+    moveToFolder,
+    setPinHash,
+    clearPinHash,
+  }
 }
+

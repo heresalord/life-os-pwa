@@ -25,9 +25,11 @@ import {
   Key,
   Target,
   Settings,
+  AtSign,
 } from 'lucide-react'
 import { redeemShareCode, fetchMySharedItems, type SharedItem } from '../../lib/share'
 import { RecoveryKeyModal } from '../../components/auth/RecoveryKeyModal'
+import { UsernameModal } from '../../components/social/UsernameModal'
 import { useRecoveryKeyStatus } from '../../hooks/useRecoveryKeyStatus'
 import { haptic } from '../../lib/haptic'
 import clsx from 'clsx'
@@ -218,6 +220,7 @@ export function ProfilePage() {
   const { isVerified: isRecoveryVerified, refreshStatus: refreshRecoveryStatus } =
     useRecoveryKeyStatus()
   const [showRecoveryModal, setShowRecoveryModal] = useState(false)
+  const [usernameModalOpen, setUsernameModalOpen] = useState(false)
 
   // Save display name
   const handleSaveName = async () => {
@@ -345,6 +348,29 @@ export function ProfilePage() {
                 />
               </button>
             )}
+
+            {/* Username Badge */}
+            <div className="pt-0.5">
+              {profile?.username ? (
+                <button
+                  type="button"
+                  onClick={() => setUsernameModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-accent/10 border border-accent/25 text-xs text-accent font-medium hover:bg-accent/20 transition-colors"
+                >
+                  <AtSign size={12} />
+                  <span>{profile.username}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setUsernameModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-2 border border-border text-xs text-text-muted hover:text-text hover:border-accent/40 transition-colors"
+                >
+                  <AtSign size={12} className="text-accent" />
+                  <span>Claim @username</span>
+                </button>
+              )}
+            </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs text-text-muted">
               <span className="inline-flex items-center gap-1 bg-surface-2 px-2.5 py-0.5 rounded-full border border-border/60">
@@ -637,6 +663,11 @@ export function ProfilePage() {
           onVerified={refreshRecoveryStatus}
         />
       )}
+
+      <UsernameModal
+        open={usernameModalOpen}
+        onClose={() => setUsernameModalOpen(false)}
+      />
     </div>
   )
 }

@@ -64,6 +64,8 @@ export const ALL_DEXIE_TABLES = [
   'recurring_tasks',
   'user_settings',
   'user_profiles',
+  'outbox',
+  'sync_state',
 ] as const
 
 export interface FullBackupPayload {

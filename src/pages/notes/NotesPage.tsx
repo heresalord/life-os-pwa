@@ -20,7 +20,7 @@ import {
   FileText, Plus, Search, X, Edit3,
   FolderOpen, FolderPlus,
   Folder, Pin, BookText, LayoutTemplate, FolderTree, ListTodo,
-  Maximize2, Minimize2, Lock, Unlock, Flame, AlertTriangle,
+  Maximize2, Minimize2, Lock, Unlock, Flame, AlertTriangle, History,
 } from 'lucide-react'
 import type { Note } from '../../db/schema'
 import ReactMarkdown from 'react-markdown'
@@ -28,6 +28,7 @@ import remarkGfm from 'remark-gfm'
 import clsx from 'clsx'
 import { NotePinUnlockModal } from '../../components/notes/NotePinModal'
 import { WritingGoalModal } from '../../components/notes/WritingGoalModal'
+import { NoteVersionHistoryModal } from '../../components/notes/NoteVersionHistoryModal'
 import { checklistMarkdownComponents } from '../../lib/markdownChecklist'
 import { haptic } from '../../lib/haptic'
 
@@ -83,6 +84,7 @@ function DesktopNoteEditor({
   const { addTask } = useTaskMutations(today)
   const [taskFeedback, setTaskFeedback] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
 
   // Focus mode keyboard shortcut — Cmd/Ctrl+Shift+F toggles distraction-free writing
   useEffect(() => {
@@ -252,6 +254,13 @@ function DesktopNoteEditor({
             </button>
           )}
           <button
+            onClick={() => setShowHistoryModal(true)}
+            title="Version history"
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+          >
+            <History size={15} />
+          </button>
+          <button
             onClick={onToggleFocusMode}
             title={isFocusMode ? 'Exit focus mode (⌘⇧F)' : 'Focus mode (⌘⇧F)'}
             className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
@@ -394,6 +403,19 @@ function DesktopNoteEditor({
           </div>
         </div>
       </div>
+
+      <NoteVersionHistoryModal
+        open={showHistoryModal}
+        noteId={note.id}
+        noteTitle={note.title || 'Untitled'}
+        onClose={() => setShowHistoryModal(false)}
+        onRestore={(ver) => {
+          setTitle(ver.title)
+          setBody(ver.content)
+          setIsEditing(true)
+          haptic('success')
+        }}
+      />
     </div>
   )
 }
