@@ -4,11 +4,12 @@ import {
   Sun, Moon, Settings, LogOut,
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
   CalendarDays, Inbox, FileText, Search, Heart, Briefcase,
-  ChevronRight, Sparkles, Users, Trash2,
+  ChevronRight, Sparkles, Users, Trash2, MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../i18n'
+import { useConversationsQuery } from '../../hooks/useConversationsQuery'
 import { WeeklyRecapModal } from '../../components/dashboard/WeeklyRecapModal'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 
@@ -35,6 +36,7 @@ export function MorePage() {
   const { navItems } = useAppStore()
   const { t } = useTranslation()
   const [recapOpen, setRecapOpen] = useState(false)
+  const { totalUnreadCount } = useConversationsQuery()
 
   const displayName = profile?.display_name || 'You'
   const initials    = displayName.slice(0, 2).toUpperCase()
@@ -160,6 +162,19 @@ export function MorePage() {
           {t('more.account', 'Account')}
         </h2>
         <div className="bg-surface border border-border rounded-2xl overflow-hidden divide-y divide-border">
+          <button
+            onClick={() => go('/messages')}
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-surface-2 press-row transition-colors text-left"
+          >
+            <MessageSquare size={17} className="text-[#007AFF] flex-shrink-0" />
+            <span className="text-sm font-medium text-text flex-1">Messages</span>
+            {totalUnreadCount > 0 && (
+              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-[#007AFF] text-white">
+                {totalUnreadCount}
+              </span>
+            )}
+            <ChevronRight size={15} className="text-text-muted" />
+          </button>
           <button
             onClick={() => go('/friends')}
             className="w-full flex items-center gap-3 px-4 py-4 hover:bg-surface-2 press-row transition-colors text-left"

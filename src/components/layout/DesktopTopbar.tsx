@@ -1,8 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Sun, Moon, Search, Settings, LogOut, Plus, Zap, User } from 'lucide-react'
+import { Sun, Moon, Search, Settings, LogOut, Plus, Zap, User, MessageSquare } from 'lucide-react'
 import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
+import { useConversationsQuery } from '../../hooks/useConversationsQuery'
 import { displayDate } from '../../lib/dateUtils'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useHasSyncIssue } from '../../hooks/useHasSyncIssue'
@@ -23,6 +24,7 @@ const pathTitleMap: Record<string, string> = {
   '/agenda':   'Agenda & Schedule',
   '/inbox':    'Inbox & Quick Capture',
   '/notes':    'Notes Journal',
+  '/messages': 'Messages',
   '/search':   'Search Workspace',
   '/settings': 'Settings',
   '/day':      'Daily Log',
@@ -40,6 +42,7 @@ export function DesktopTopbar() {
   const navigate = useNavigate()
   const { selectedDate } = useAppStore()
   const { profile, signOut } = useAuth()
+  const { totalUnreadCount } = useConversationsQuery()
   const [menuOpen, setMenuOpen] = useState(false)
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false)
   const hasSyncIssue = useHasSyncIssue()
@@ -113,6 +116,19 @@ export function DesktopTopbar() {
         <ErrorBoundary inline>
           <NotificationCenter />
         </ErrorBoundary>
+
+        {/* Messages */}
+        <button
+          onClick={() => navigate('/messages')}
+          className="relative w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors rounded-lg hover:bg-surface-2"
+          aria-label="Messages"
+          title="Messages"
+        >
+          <MessageSquare size={17} />
+          {totalUnreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#007AFF] ring-2 ring-bg" />
+          )}
+        </button>
 
         {/* Search button */}
         <button

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Maximize2, Minimize2, Plus, ListTodo, Lock, Edit3, History } from 'lucide-react'
+import { X, Maximize2, Minimize2, Plus, ListTodo, Lock, Edit3, History, Send } from 'lucide-react'
 import { useNoteMutations } from '../../hooks/useNoteMutations'
 import { useTaskMutations } from '../../hooks/useTaskMutations'
 import { useAppStore } from '../../store/useAppStore'
@@ -12,6 +12,8 @@ import { RichTextToolbar } from './RichTextToolbar'
 import { NoteLinkAutocomplete } from './NoteLinkAutocomplete'
 import { NotePinUnlockModal } from './NotePinModal'
 import { NoteVersionHistoryModal } from './NoteVersionHistoryModal'
+import { ShareWithFriendModal } from '../messages/ShareWithFriendModal'
+import { createNoteAttachment } from '../../lib/attachmentUtils'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { haptic } from '../../lib/haptic'
@@ -105,6 +107,7 @@ export function NoteEditorModal({
   const [localUnlocked, setLocalUnlocked] = useState(false)
   const [showUnlockModal, setShowUnlockModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const isUnlocked = isUnlockedProp || localUnlocked
   const isLocked = !!note?.pin_hash && !isUnlocked
 
@@ -274,6 +277,15 @@ export function NoteEditorModal({
               )}
               {!isLocked && (
                 <>
+                  {note?.folder !== 'Journal' && (
+                    <button
+                      onClick={() => setShowShareModal(true)}
+                      title="Send to a friend"
+                      className="text-text-muted hover:text-accent p-1.5 rounded-lg hover:bg-surface-2 transition-colors"
+                    >
+                      <Send size={16} />
+                    </button>
+                  )}
                   {note?.id && (
                     <button
                       onClick={() => setShowHistoryModal(true)}
@@ -550,6 +562,15 @@ export function NoteEditorModal({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+
+    {showShareModal && note && (
+      <ShareWithFriendModal
+        open={showShareModal}
+        attachment={createNoteAttachment(note)}
+        attachmentTitle={note.title || 'Untitled Note'}
+        onClose={() => setShowShareModal(false)}
+      />
+    )}
   </>
   )
 }

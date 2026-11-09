@@ -5,7 +5,8 @@ import type {
   DailyRecord, UserProfile, UserSettings,
   Wallet, Budget, SavingsGoal, Debt, Project,
   HabitLog, Milestone, ReadingGoal, Notification,
-  OutboxRow, SyncStateRow
+  OutboxRow, SyncStateRow,
+  Conversation, ConversationMember, Message
 } from './schema'
 
 export interface RecurringTask {
@@ -62,6 +63,9 @@ export class LifeOSDatabase extends Dexie {
   notifications!:   Table<Notification,   string>
   outbox!:          Table<OutboxRow,      number>
   sync_state!:      Table<SyncStateRow,   string>
+  conversations!:        Table<Conversation,       string>
+  conversation_members!: Table<ConversationMember, [string, string]>
+  messages!:             Table<Message,            string>
 
   constructor(userId: string) {
     super(`LifeOSDB_${userId}`)
@@ -430,6 +434,36 @@ export class LifeOSDatabase extends Dexie {
       notifications:   'id, user_id, read, created_at',
       outbox:          'seq++, row_key, table, status, created_at',
       sync_state:      'table',
+    })
+    // v18: conversations, conversation_members, messages (Phase 3 Messaging)
+    this.version(18).stores({
+      tasks:           'id, user_id, date, completed, skipped, priority, kanban_status, project_id, created_at, updated_at, deleted_at',
+      transactions:    'id, user_id, date, type, category, wallet_id, updated_at, deleted_at',
+      goals:           'id, user_id, state, tracker_type, category, project_id, updated_at, deleted_at',
+      goal_events:     'id, user_id, goal_id, date, updated_at, deleted_at',
+      books:           'id, user_id, status, updated_at, deleted_at',
+      quotes:          'id, user_id, book_id, updated_at, deleted_at',
+      agenda_blocks:   'id, user_id, date, all_day, updated_at, deleted_at',
+      inbox_items:     'id, user_id, processed, updated_at, deleted_at',
+      notes:           'id, user_id, date, pinned, folder, pin_hash, updated_at, deleted_at',
+      daily_records:   'id, user_id, date, updated_at, deleted_at',
+      user_profiles:   'id, username, updated_at',
+      user_settings:   'user_id, updated_at',
+      recurring_tasks: 'id, user_id, active, repeat, updated_at, deleted_at',
+      wallets:         'id, user_id, type, archived, updated_at, deleted_at',
+      budgets:         'id, user_id, category, period, updated_at, deleted_at',
+      savings_goals:   'id, user_id, deadline, updated_at, deleted_at',
+      debts:           'id, user_id, type, due_date, updated_at, deleted_at',
+      projects:        'id, user_id, archived, created_at, updated_at, deleted_at',
+      habit_logs:      'id, user_id, goal_id, date, updated_at, deleted_at',
+      milestones:      'id, user_id, goal_id, completed, due_date, updated_at, deleted_at',
+      reading_goals:   'id, user_id, year, updated_at, deleted_at',
+      notifications:   'id, user_id, read, created_at',
+      outbox:          'seq++, row_key, table, status, created_at',
+      sync_state:      'table',
+      conversations:   'id, direct_key, last_message_at',
+      conversation_members: '[conversation_id+user_id], conversation_id, user_id',
+      messages:        'id, conversation_id, sender_id, created_at, [conversation_id+created_at]',
     })
   }
 }

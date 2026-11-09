@@ -1224,6 +1224,105 @@ export interface Database {
         Relationships: []
       }
 
+      // ── conversations ──────────────────────────────────────────────────────
+      conversations: {
+        Row: {
+          id: string
+          kind: 'direct' | 'group'
+          direct_key: string | null
+          created_at: string
+          last_message_at: string | null
+        }
+        Insert: {
+          id?: string
+          kind?: 'direct' | 'group'
+          direct_key?: string | null
+          created_at?: string
+          last_message_at?: string | null
+        }
+        Update: {
+          id?: string
+          kind?: 'direct' | 'group'
+          direct_key?: string | null
+          created_at?: string
+          last_message_at?: string | null
+        }
+        Relationships: []
+      }
+
+      // ── conversation_members ───────────────────────────────────────────────
+      conversation_members: {
+        Row: {
+          conversation_id: string
+          user_id: string
+          role: string
+          last_read_at: string | null
+          muted: boolean
+          hidden: boolean
+          joined_at: string
+        }
+        Insert: {
+          conversation_id: string
+          user_id: string
+          role?: string
+          last_read_at?: string | null
+          muted?: boolean
+          hidden?: boolean
+          joined_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          user_id?: string
+          role?: string
+          last_read_at?: string | null
+          muted?: boolean
+          hidden?: boolean
+          joined_at?: string
+        }
+        Relationships: []
+      }
+
+      // ── messages ───────────────────────────────────────────────────────────
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          sender_id: string | null
+          kind: 'text' | 'attachment' | 'system'
+          body: string | null
+          attachment: Json | null
+          reply_to: string | null
+          created_at: string
+          edited_at: string | null
+          deleted_at: string | null
+        }
+        Insert: {
+          id: string
+          conversation_id: string
+          sender_id?: string | null
+          kind: 'text' | 'attachment' | 'system'
+          body?: string | null
+          attachment?: Json | null
+          reply_to?: string | null
+          created_at?: string
+          edited_at?: string | null
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          sender_id?: string | null
+          kind?: 'text' | 'attachment' | 'system'
+          body?: string | null
+          attachment?: Json | null
+          reply_to?: string | null
+          created_at?: string
+          edited_at?: string | null
+          deleted_at?: string | null
+        }
+        Relationships: []
+      }
+
     }
 
     // Supabase client requires these sections even if unused

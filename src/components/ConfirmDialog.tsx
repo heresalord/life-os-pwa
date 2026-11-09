@@ -3,15 +3,18 @@ import { AlertTriangle, X } from 'lucide-react'
 import { haptic } from '../lib/haptic'
 import clsx from 'clsx'
 
-interface ConfirmDialogProps {
+export interface ConfirmDialogProps {
   open: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange?: (open: boolean) => void
   title: string
-  description: string
+  description?: string
+  message?: string
   confirmLabel?: string
+  confirmText?: string
   cancelLabel?: string
   onConfirm: () => void
-  /** 'default' = neutral action (e.g. reset a layout). 'danger' = destructive / irreversible (e.g. delete data). */
+  onCancel?: () => void
+  danger?: boolean
   variant?: 'default' | 'danger'
 }
 
@@ -20,21 +23,36 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Confirm',
+  message,
+  confirmLabel,
+  confirmText,
   cancelLabel = 'Cancel',
   onConfirm,
-  variant = 'default',
+  onCancel,
+  danger,
+  variant,
 }: ConfirmDialogProps) {
-  const isDanger = variant === 'danger'
+  const isDanger = variant === 'danger' || !!danger
+  const resolvedConfirm = confirmLabel || confirmText || 'Confirm'
+  const resolvedDesc = description || message || ''
+
+  const handleOpenChange = (val: boolean) => {
+    if (!val && onCancel) {
+      onCancel()
+    }
+    if (onOpenChange) {
+      onOpenChange(val)
+    }
+  }
 
   const handleConfirm = () => {
     haptic(isDanger ? 'heavy' : 'medium')
     onConfirm()
-    onOpenChange(false)
+    handleOpenChange(false)
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
@@ -60,12 +78,15 @@ export function ConfirmDialog({
           </div>
 
           <Dialog.Description className="text-sm text-text-secondary leading-relaxed mb-5">
-            {description}
+            {resolvedDesc}
           </Dialog.Description>
 
           <div className="flex gap-2">
             <Dialog.Close asChild>
-              <button className="flex-1 py-3 bg-surface-2 border border-border text-text-secondary hover:text-text font-medium text-sm rounded-xl transition-colors">
+              <button
+                onClick={onCancel}
+                className="flex-1 py-3 bg-surface-2 border border-border text-text-secondary hover:text-text font-medium text-sm rounded-xl transition-colors"
+              >
                 {cancelLabel}
               </button>
             </Dialog.Close>
@@ -78,7 +99,7 @@ export function ConfirmDialog({
                   : 'bg-accent text-bg hover:bg-accent-dim'
               )}
             >
-              {confirmLabel}
+              {resolvedConfirm}
             </button>
           </div>
         </Dialog.Content>

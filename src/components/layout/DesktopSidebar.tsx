@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, DollarSign, Target, BookOpen,
   CalendarDays, Inbox, FileText, Search, Settings, LogOut, Heart,
-  Briefcase, PanelLeftClose, PanelLeftOpen
+  Briefcase, PanelLeftClose, PanelLeftOpen, MessageSquare
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAppStore } from '../../store/useAppStore'
@@ -30,6 +30,7 @@ const navGroups = [
       { to: '/agenda', icon: CalendarDays, label: 'Agenda' },
       { to: '/inbox',  icon: Inbox,        label: 'Inbox'  },
       { to: '/notes',  icon: FileText,     label: 'Notes'  },
+      { to: '/messages', icon: MessageSquare, label: 'Messages' },
     ]
   }
 ]

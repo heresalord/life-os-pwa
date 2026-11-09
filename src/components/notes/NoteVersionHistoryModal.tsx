@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { History, RotateCcw, X, Clock, FileText } from 'lucide-react'
 import { useNoteVersions } from '../../hooks/useNoteVersions'
 import type { NoteVersion } from '../../db/schema'

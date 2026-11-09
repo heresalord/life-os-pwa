@@ -66,6 +66,9 @@ export const ALL_DEXIE_TABLES = [
   'user_profiles',
   'outbox',
   'sync_state',
+  'conversations',
+  'conversation_members',
+  'messages',
 ] as const
 
 export interface FullBackupPayload {

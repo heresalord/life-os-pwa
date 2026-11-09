@@ -13,11 +13,13 @@ import {
   UserMinus,
   Ban,
   AtSign,
+  MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useFriendsQuery, useFriendRequestsQuery } from '../../hooks/useFriendsQuery'
 import { useFriendMutations } from '../../hooks/useFriendMutations'
 import { findUserByUsername, type PublicUserProfile } from '../../api/friends'
+import { getOrCreateDirectConversation } from '../../api/messages'
 import { UsernameModal } from '../../components/social/UsernameModal'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 
@@ -263,6 +265,20 @@ export function FriendsPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const convId = await getOrCreateDirectConversation(friend.id)
+                          navigate(`/messages/${convId}`)
+                        } catch (err: unknown) {
+                          showNotice((err as Error)?.message || 'Failed to open chat')
+                        }
+                      }}
+                      title="Message friend"
+                      className="p-2 rounded-xl text-accent hover:bg-accent/10 transition-colors"
+                    >
+                      <MessageSquare size={15} />
+                    </button>
                     <button
                       onClick={() => setConfirmRemoveId(friend.id)}
                       title="Remove friend"

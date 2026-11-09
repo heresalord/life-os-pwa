@@ -59,6 +59,15 @@ export type NoteVersion = Database['public']['Tables']['note_versions']['Row']
 export type FriendRequest = Database['public']['Tables']['friend_requests']['Row']
 export type Friendship = Database['public']['Tables']['friendships']['Row']
 export type Block = Database['public']['Tables']['blocks']['Row']
+export type Conversation = Database['public']['Tables']['conversations']['Row']
+export type ConversationMember = Database['public']['Tables']['conversation_members']['Row']
+export type Message = Database['public']['Tables']['messages']['Row']
+
+export interface MessageAttachment {
+  type: 'note' | 'task' | 'inbox_item' | 'book' | 'quote'
+  schema_version: number
+  snapshot: Record<string, unknown>
+}
 
 export interface OutboxRow {
   seq?: number

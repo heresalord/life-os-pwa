@@ -1,11 +1,12 @@
 import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard, Search, Clock, Plus,
+  LayoutDashboard, Search, Clock, Plus, MessageSquare,
 } from 'lucide-react'
 import { SyncStatusDot } from '../SyncStatusDot'
 import { useHasSyncIssue } from '../../hooks/useHasSyncIssue'
 import { useAuth } from '../../hooks/useAuth'
+import { useConversationsQuery } from '../../hooks/useConversationsQuery'
 import { useAppStore } from '../../store/useAppStore'
 import { useRecoveryKeyStatus } from '../../hooks/useRecoveryKeyStatus'
 import { displayDate } from '../../lib/dateUtils'
@@ -95,6 +96,7 @@ export function AppShell({ children }: AppShellProps) {
   const initials = displayName.slice(0, 2).toUpperCase()
   const hasSyncIssue = useHasSyncIssue()
   const { isVerified: isRecoveryVerified } = useRecoveryKeyStatus()
+  const { totalUnreadCount } = useConversationsQuery()
 
   // Translate nav label using JSON keys; fall back to the English label
   const navLabel = (key: string, fallback: string) =>
@@ -137,6 +139,18 @@ export function AppShell({ children }: AppShellProps) {
               <ErrorBoundary inline>
                 <NotificationCenter />
               </ErrorBoundary>
+
+              <button
+                onClick={() => navigate('/messages')}
+                className="relative min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-text transition-colors"
+                aria-label="Messages"
+                title="Messages"
+              >
+                <MessageSquare size={20} />
+                {totalUnreadCount > 0 && (
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#007AFF] ring-2 ring-bg" />
+                )}
+              </button>
 
               <button
                 onClick={() => navigate('/search')}

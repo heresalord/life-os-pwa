@@ -33,6 +33,8 @@ const ProjectDetailPage = React.lazy(() => import('./pages/projects/ProjectDetai
 const ProfilePage = React.lazy(() => import('./pages/profile/ProfilePage').then(m => ({ default: m.ProfilePage })))
 const MorePage = React.lazy(() => import('./pages/more/MorePage').then(m => ({ default: m.MorePage })))
 const FriendsPage = React.lazy(() => import('./pages/friends/FriendsPage').then(m => ({ default: m.FriendsPage })))
+const MessagesPage = React.lazy(() => import('./pages/messages/MessagesPage').then(m => ({ default: m.MessagesPage })))
+const ConversationPage = React.lazy(() => import('./pages/messages/ConversationPage').then(m => ({ default: m.ConversationPage })))
 const TrashPage = React.lazy(() => import('./pages/trash/TrashPage').then(m => ({ default: m.TrashPage })))
 
 const LoadingFallback = () => (
@@ -103,6 +105,8 @@ function App() {
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/profile"  element={<ProfilePage />} />
                           <Route path="/friends"  element={<FriendsPage />} />
+                          <Route path="/messages" element={<MessagesPage />} />
+                          <Route path="/messages/:id" element={<ConversationPage />} />
                           <Route path="/trash"    element={<TrashPage />} />
                           <Route path="/more"     element={<MorePage />} />
                           <Route path="*"         element={<Navigate to="/" replace />} />
